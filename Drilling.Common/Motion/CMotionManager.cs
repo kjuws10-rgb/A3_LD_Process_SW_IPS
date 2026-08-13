@@ -904,19 +904,35 @@ public sealed class CMotionManager : IMotionManager
 
     private static double GetInitialPosition(string axisName)
     {
-        return NormalizeAxisId(axisName) switch
+        double EvaluateValueSwitch1()
         {
-            "GX" => 12.340,
-            "GY" => -8.960,
-            "X" => 125.000,
-            "Y" => -75.000,
-            "Z" => 23.500,
-            "THETA" => 0.002,
-            "ATTENUATOR" => 55.000,
-            "BET_MAG" => 1.000,
-            "BET_DIV" => 1.000,
-            _ => 0.0
-        };
+            var switchValue = NormalizeAxisId(axisName);
+            switch (switchValue)
+            {
+                case "GX":
+                    return 12.340;
+                case "GY":
+                    return -8.960;
+                case "X":
+                    return 125.000;
+                case "Y":
+                    return -75.000;
+                case "Z":
+                    return 23.500;
+                case "THETA":
+                    return 0.002;
+                case "ATTENUATOR":
+                    return 55.000;
+                case "BET_MAG":
+                    return 1.000;
+                case "BET_DIV":
+                    return 1.000;
+                default:
+                    return 0.0;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string NormalizeAxisId(string axisId)
@@ -1068,15 +1084,27 @@ public sealed class CMotionManager : IMotionManager
 
     private static string FormatMotionCommand(EN_MOTION_COMMAND command)
     {
-        return command switch
+        string EvaluateCommandSwitch2()
         {
-            EN_MOTION_COMMAND.ServoOn => "SERVO ON",
-            EN_MOTION_COMMAND.ServoOff => "SERVO OFF",
-            EN_MOTION_COMMAND.MoveAbs => "ABS MOVE",
-            EN_MOTION_COMMAND.MoveRel => "REL MOVE",
-            EN_MOTION_COMMAND.ResetAlarm => "RESET ALARM",
-            _ => command.ToString().ToUpperInvariant()
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_MOTION_COMMAND.ServoOn:
+                    return "SERVO ON";
+                case EN_MOTION_COMMAND.ServoOff:
+                    return "SERVO OFF";
+                case EN_MOTION_COMMAND.MoveAbs:
+                    return "ABS MOVE";
+                case EN_MOTION_COMMAND.MoveRel:
+                    return "REL MOVE";
+                case EN_MOTION_COMMAND.ResetAlarm:
+                    return "RESET ALARM";
+                default:
+                    return command.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     private static bool IsOnText(string value)

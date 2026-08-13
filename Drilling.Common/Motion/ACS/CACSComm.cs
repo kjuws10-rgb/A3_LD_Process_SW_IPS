@@ -121,13 +121,21 @@ internal sealed class CACSComm(
             api.Command(function);
             return "OK:COMMAND";
         }
-
-        return tokens[1].ToUpperInvariant() switch
+        string EvaluateValueSwitch1()
         {
-            "AXIS" => ExecuteAxisFunction(api, tokens),
-            "IO" => ExecuteIoFunction(api, tokens),
-            _ => ExecuteRawACSCommand(api, function)
-        };
+            var switchValue = tokens[1].ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "AXIS":
+                    return ExecuteAxisFunction(api, tokens);
+                case "IO":
+                    return ExecuteIoFunction(api, tokens);
+                default:
+                    return ExecuteRawACSCommand(api, function);
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string ExecuteAxisFunction(Api api, IReadOnlyList<string> tokens)

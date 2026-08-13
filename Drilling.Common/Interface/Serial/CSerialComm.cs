@@ -184,14 +184,25 @@ internal class CSerialComm(
 
     private static Handshake ParseHandshake(string value)
     {
-        return NormalizeEnumValue(value) switch
+        Handshake EvaluateValueSwitch1()
         {
-            "" or "NONE" or "NO" or "OFF" => Handshake.None,
-            "XONXOFF" or "XONOFF" => Handshake.XOnXOff,
-            "REQUESTTOSEND" or "RTSCTS" => Handshake.RequestToSend,
-            "REQUESTTOSENDXONXOFF" or "RTSCTSXONXOFF" => Handshake.RequestToSendXOnXOff,
-            _ => Handshake.None
-        };
+            var switchValue = NormalizeEnumValue(value);
+            switch (switchValue)
+            {
+                case "" or "NONE" or "NO" or "OFF":
+                    return Handshake.None;
+                case "XONXOFF" or "XONOFF":
+                    return Handshake.XOnXOff;
+                case "REQUESTTOSEND" or "RTSCTS":
+                    return Handshake.RequestToSend;
+                case "REQUESTTOSENDXONXOFF" or "RTSCTSXONXOFF":
+                    return Handshake.RequestToSendXOnXOff;
+                default:
+                    return Handshake.None;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string NormalizeEnumValue(string value)

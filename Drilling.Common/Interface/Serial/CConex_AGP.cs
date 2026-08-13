@@ -39,19 +39,35 @@ internal sealed class CConex_AGP(
 {
     public static string Build(EN_ATTENUATOR_COMMAND command, double parameter = 0.0)
     {
-        return command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_ATTENUATOR_COMMAND.MoveAbs => $"PA:{parameter.ToString("F3", CultureInfo.InvariantCulture)}",
-            EN_ATTENUATOR_COMMAND.MoveRel => $"PR:{parameter.ToString("F3", CultureInfo.InvariantCulture)}",
-            EN_ATTENUATOR_COMMAND.Home => "OR",
-            EN_ATTENUATOR_COMMAND.Stop => "ST",
-            EN_ATTENUATOR_COMMAND.ResetAlarm => "RS",
-            EN_ATTENUATOR_COMMAND.Refresh => "TP",
-            EN_ATTENUATOR_COMMAND.PollCurrentPosition => "TP",
-            EN_ATTENUATOR_COMMAND.PollTargetPosition => "TH",
-            EN_ATTENUATOR_COMMAND.PollState => "TS",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_ATTENUATOR_COMMAND.MoveAbs:
+                    return $"PA:{parameter.ToString("F3", CultureInfo.InvariantCulture)}";
+                case EN_ATTENUATOR_COMMAND.MoveRel:
+                    return $"PR:{parameter.ToString("F3", CultureInfo.InvariantCulture)}";
+                case EN_ATTENUATOR_COMMAND.Home:
+                    return "OR";
+                case EN_ATTENUATOR_COMMAND.Stop:
+                    return "ST";
+                case EN_ATTENUATOR_COMMAND.ResetAlarm:
+                    return "RS";
+                case EN_ATTENUATOR_COMMAND.Refresh:
+                    return "TP";
+                case EN_ATTENUATOR_COMMAND.PollCurrentPosition:
+                    return "TP";
+                case EN_ATTENUATOR_COMMAND.PollTargetPosition:
+                    return "TH";
+                case EN_ATTENUATOR_COMMAND.PollState:
+                    return "TS";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch1();
     }
 
     public static bool IsSuccessResponse(string response)
@@ -87,44 +103,58 @@ internal sealed class CConex_AGP(
             LastError = EN_CONEX_AGP_ERROR.Ok,
             UpdatedAt = DateTimeOffset.Now
         };
-
-        return command switch
+        ST_ATTENUATOR_STATUS EvaluateCommandSwitch2()
         {
-            EN_ATTENUATOR_COMMAND.MoveAbs => ok with
+            var switchValue = command;
+            switch (switchValue)
             {
-                CurrentPosition = simulation ? parameter : ok.CurrentPosition,
-                TargetPosition = parameter,
-                CommandState = simulation ? "READY" : "MOVING"
-            },
-            EN_ATTENUATOR_COMMAND.MoveRel => ok with
-            {
-                CurrentPosition = simulation ? ok.CurrentPosition + parameter : ok.CurrentPosition,
-                TargetPosition = simulation ? ok.CurrentPosition + parameter : ok.TargetPosition + parameter,
-                CommandState = simulation ? "READY" : "MOVING"
-            },
-            EN_ATTENUATOR_COMMAND.Home => ok with
-            {
-                CurrentPosition = simulation ? 0.0 : ok.CurrentPosition,
-                TargetPosition = simulation ? 0.0 : ok.TargetPosition,
-                CommandState = simulation ? "READY" : "HOMING"
-            },
-            EN_ATTENUATOR_COMMAND.Stop => ok with { CommandState = "STOP" },
-            EN_ATTENUATOR_COMMAND.ResetAlarm => ok with { CommandState = "READY" },
-            EN_ATTENUATOR_COMMAND.Refresh or EN_ATTENUATOR_COMMAND.PollCurrentPosition => ok with
-            {
-                CurrentPosition = ReadTaggedDouble(value, "TP", ok.CurrentPosition),
-                CommandState = IsMovingState(ok.CommandState) ? ok.CommandState : "READY"
-            },
-            EN_ATTENUATOR_COMMAND.PollTargetPosition => ok with
-            {
-                TargetPosition = ReadTaggedDouble(value, "TH", ok.TargetPosition)
-            },
-            EN_ATTENUATOR_COMMAND.PollState => ok with
-            {
-                CommandState = ReadControllerState(value, ok.CommandState)
-            },
-            _ => ok
-        };
+                case EN_ATTENUATOR_COMMAND.MoveAbs:
+                    return ok with
+                    {
+                        CurrentPosition = simulation ? parameter : ok.CurrentPosition,
+                        TargetPosition = parameter,
+                        CommandState = simulation ? "READY" : "MOVING"
+                    };
+                case EN_ATTENUATOR_COMMAND.MoveRel:
+                    return ok with
+                    {
+                        CurrentPosition = simulation ? ok.CurrentPosition + parameter : ok.CurrentPosition,
+                        TargetPosition = simulation ? ok.CurrentPosition + parameter : ok.TargetPosition + parameter,
+                        CommandState = simulation ? "READY" : "MOVING"
+                    };
+                case EN_ATTENUATOR_COMMAND.Home:
+                    return ok with
+                    {
+                        CurrentPosition = simulation ? 0.0 : ok.CurrentPosition,
+                        TargetPosition = simulation ? 0.0 : ok.TargetPosition,
+                        CommandState = simulation ? "READY" : "HOMING"
+                    };
+                case EN_ATTENUATOR_COMMAND.Stop:
+                    return ok with { CommandState = "STOP" };
+                case EN_ATTENUATOR_COMMAND.ResetAlarm:
+                    return ok with { CommandState = "READY" };
+                case EN_ATTENUATOR_COMMAND.Refresh or EN_ATTENUATOR_COMMAND.PollCurrentPosition:
+                    return ok with
+                    {
+                        CurrentPosition = ReadTaggedDouble(value, "TP", ok.CurrentPosition),
+                        CommandState = IsMovingState(ok.CommandState) ? ok.CommandState : "READY"
+                    };
+                case EN_ATTENUATOR_COMMAND.PollTargetPosition:
+                    return ok with
+                    {
+                        TargetPosition = ReadTaggedDouble(value, "TH", ok.TargetPosition)
+                    };
+                case EN_ATTENUATOR_COMMAND.PollState:
+                    return ok with
+                    {
+                        CommandState = ReadControllerState(value, ok.CommandState)
+                    };
+                default:
+                    return ok;
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     public override async Task<string> Execute(
@@ -195,16 +225,27 @@ internal sealed class CConex_AGP(
         }
 
         var command = parts.Length > 0 ? parts[0].ToUpperInvariant() : text;
-
-        return command switch
+        string EvaluateCommandSwitch3()
         {
-            "PA" when parts.Length >= 2 => SendSelecting("PA", parts[1]),
-            "PR" when parts.Length >= 2 => SendSelecting("PR", parts[1]),
-            "OR" => SendSelecting("OR", ""),
-            "ST" => SendSelecting("ST", ""),
-            "RS" => SendSelecting("RS", ""),
-            _ => "ERR:-2"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case "PA" when parts.Length >= 2:
+                    return SendSelecting("PA", parts[1]);
+                case "PR" when parts.Length >= 2:
+                    return SendSelecting("PR", parts[1]);
+                case "OR":
+                    return SendSelecting("OR", "");
+                case "ST":
+                    return SendSelecting("ST", "");
+                case "RS":
+                    return SendSelecting("RS", "");
+                default:
+                    return "ERR:-2";
+            }
+        }
+
+        return EvaluateCommandSwitch3();
     }
 
     private string SendSelecting(string command, string value)
@@ -322,15 +363,23 @@ internal sealed class CConex_AGP(
         double parameter,
         ST_ATTENUATOR_STATUS current)
     {
-        return command switch
+        string EvaluateCommandSwitch4()
         {
-            EN_ATTENUATOR_COMMAND.PollCurrentPosition or EN_ATTENUATOR_COMMAND.Refresh =>
-                $"TP:{current.CurrentPosition.ToString("F3", CultureInfo.InvariantCulture)}",
-            EN_ATTENUATOR_COMMAND.PollTargetPosition =>
-                $"TH:{current.TargetPosition.ToString("F3", CultureInfo.InvariantCulture)}",
-            EN_ATTENUATOR_COMMAND.PollState => "TS:0:READY",
-            _ => "OK"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_ATTENUATOR_COMMAND.PollCurrentPosition or EN_ATTENUATOR_COMMAND.Refresh:
+                    return $"TP:{current.CurrentPosition.ToString("F3", CultureInfo.InvariantCulture)}";
+                case EN_ATTENUATOR_COMMAND.PollTargetPosition:
+                    return $"TH:{current.TargetPosition.ToString("F3", CultureInfo.InvariantCulture)}";
+                case EN_ATTENUATOR_COMMAND.PollState:
+                    return "TS:0:READY";
+                default:
+                    return "OK";
+            }
+        }
+
+        return EvaluateCommandSwitch4();
     }
 
     private static EN_CONEX_AGP_ERROR ReadError(string response)
@@ -343,14 +392,23 @@ internal sealed class CConex_AGP(
         {
             return EN_CONEX_AGP_ERROR.Error;
         }
-
-        return code switch
+        EN_CONEX_AGP_ERROR EvaluateCodeSwitch5()
         {
-            -99 => EN_CONEX_AGP_ERROR.NotSupported,
-            -2 => EN_CONEX_AGP_ERROR.InvalidResponse,
-            -1 => EN_CONEX_AGP_ERROR.Timeout,
-            _ => EN_CONEX_AGP_ERROR.Error
-        };
+            var switchValue = code;
+            switch (switchValue)
+            {
+                case -99:
+                    return EN_CONEX_AGP_ERROR.NotSupported;
+                case -2:
+                    return EN_CONEX_AGP_ERROR.InvalidResponse;
+                case -1:
+                    return EN_CONEX_AGP_ERROR.Timeout;
+                default:
+                    return EN_CONEX_AGP_ERROR.Error;
+            }
+        }
+
+        return EvaluateCodeSwitch5();
     }
 
     private static double ReadTaggedDouble(string response, string tag, double defaultValue)
@@ -382,14 +440,23 @@ internal sealed class CConex_AGP(
         {
             return value.ToUpperInvariant();
         }
-
-        return state switch
+        string EvaluateStateSwitch6()
         {
-            0x1E => "HOMING",
-            0x28 => "MOVING",
-            0x32 or 0x33 or 0x34 => "READY",
-            _ => $"STATE_{state:X2}"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case 0x1E:
+                    return "HOMING";
+                case 0x28:
+                    return "MOVING";
+                case 0x32 or 0x33 or 0x34:
+                    return "READY";
+                default:
+                    return $"STATE_{state:X2}";
+            }
+        }
+
+        return EvaluateStateSwitch6();
     }
 
     private static bool IsMovingState(string value)

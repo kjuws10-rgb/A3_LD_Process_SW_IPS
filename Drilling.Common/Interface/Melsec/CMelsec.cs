@@ -682,25 +682,47 @@ public sealed class CMelsec : IMelsec, IDisposable
 
     private static byte GetDeviceCode(string device)
     {
-        return device switch
+        byte EvaluateDeviceSwitch1()
         {
-            "M" => 0x90,
-            "SM" => 0x91,
-            "L" => 0x92,
-            "F" => 0x93,
-            "V" => 0x94,
-            "X" => 0x9C,
-            "Y" => 0x9D,
-            "B" => 0xA0,
-            "SB" => 0xA1,
-            "D" => 0xA8,
-            "SD" => 0xA9,
-            "R" => 0xAF,
-            "ZR" => 0xB0,
-            "W" => 0xB4,
-            "SW" => 0xB5,
-            _ => throw new NotSupportedException($"MELSEC device is not supported: {device}")
-        };
+            var switchValue = device;
+            switch (switchValue)
+            {
+                case "M":
+                    return 0x90;
+                case "SM":
+                    return 0x91;
+                case "L":
+                    return 0x92;
+                case "F":
+                    return 0x93;
+                case "V":
+                    return 0x94;
+                case "X":
+                    return 0x9C;
+                case "Y":
+                    return 0x9D;
+                case "B":
+                    return 0xA0;
+                case "SB":
+                    return 0xA1;
+                case "D":
+                    return 0xA8;
+                case "SD":
+                    return 0xA9;
+                case "R":
+                    return 0xAF;
+                case "ZR":
+                    return 0xB0;
+                case "W":
+                    return 0xB4;
+                case "SW":
+                    return 0xB5;
+                default:
+                    throw new NotSupportedException($"MELSEC device is not supported: {device}");
+            }
+        }
+
+        return EvaluateDeviceSwitch1();
     }
 
     private static int RequireWordBit(

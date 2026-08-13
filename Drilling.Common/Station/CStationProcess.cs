@@ -1934,14 +1934,23 @@ public sealed class CStationProcess
         {
             return state;
         }
-
-        return (stepKey, scriptStatus, processStep) switch
+        string EvaluateValueSwitch1()
         {
-            (AutoStepProcess, EN_SCRIPT_STATUS.Created or EN_SCRIPT_STATUS.Running or EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Process) => AutoStepRunning,
-            (AutoStepInspection, EN_SCRIPT_STATUS.Running, EN_PROCESS_STEP.Inspection) => AutoStepRunning,
-            (AutoStepComplete, EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Completed) => AutoStepDone,
-            _ => AutoStepWait
-        };
+            var switchValue = (stepKey, scriptStatus, processStep);
+            switch (switchValue)
+            {
+                case (AutoStepProcess, EN_SCRIPT_STATUS.Created or EN_SCRIPT_STATUS.Running or EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Process):
+                    return AutoStepRunning;
+                case (AutoStepInspection, EN_SCRIPT_STATUS.Running, EN_PROCESS_STEP.Inspection):
+                    return AutoStepRunning;
+                case (AutoStepComplete, EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Completed):
+                    return AutoStepDone;
+                default:
+                    return AutoStepWait;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private EN_SCRIPT_STATUS ResolveStepScriptStatus(
@@ -1998,17 +2007,31 @@ public sealed class CStationProcess
         EN_PROCESS_STEP processStep,
         int stepNo)
     {
-        return (scriptStatus, processStep, stepNo) switch
+        string EvaluateValueSwitch2()
         {
-            (EN_SCRIPT_STATUS.NotCreated, _, 0) => "ACTIVE",
-            (EN_SCRIPT_STATUS.Created, _, 0) => "DONE",
-            (EN_SCRIPT_STATUS.Created, _, 1) => "ACTIVE",
-            (EN_SCRIPT_STATUS.Running, _, <= 2) => "DONE",
-            (EN_SCRIPT_STATUS.Running, _, 3) => "ACTIVE",
-            (EN_SCRIPT_STATUS.Completed, _, _) => stepNo < 4 ? "DONE" : "ACTIVE",
-            (EN_SCRIPT_STATUS.Error, _, _) => stepNo == 3 ? "ERROR" : "-",
-            _ => "-"
-        };
+            var switchValue = (scriptStatus, processStep, stepNo);
+            switch (switchValue)
+            {
+                case (EN_SCRIPT_STATUS.NotCreated, _, 0):
+                    return "ACTIVE";
+                case (EN_SCRIPT_STATUS.Created, _, 0):
+                    return "DONE";
+                case (EN_SCRIPT_STATUS.Created, _, 1):
+                    return "ACTIVE";
+                case (EN_SCRIPT_STATUS.Running, _, <= 2):
+                    return "DONE";
+                case (EN_SCRIPT_STATUS.Running, _, 3):
+                    return "ACTIVE";
+                case (EN_SCRIPT_STATUS.Completed, _, _):
+                    return stepNo < 4 ? "DONE" : "ACTIVE";
+                case (EN_SCRIPT_STATUS.Error, _, _):
+                    return stepNo == 3 ? "ERROR" : "-";
+                default:
+                    return "-";
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static bool IsAttenuatorReady(ST_ATTENUATOR_STATUS status)
@@ -2073,12 +2096,21 @@ public sealed class CStationProcess
 
     private static string FormatCommState(EN_COMM_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch3()
         {
-            EN_COMM_STATE.Online => "ONLINE",
-            EN_COMM_STATE.Simulation => "SIMULATION",
-            _ => "OFFLINE"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_COMM_STATE.Online:
+                    return "ONLINE";
+                case EN_COMM_STATE.Simulation:
+                    return "SIMULATION";
+                default:
+                    return "OFFLINE";
+            }
+        }
+
+        return EvaluateStateSwitch3();
     }
 
     private static string FormatInterfaceName(ST_INTERFACE_DATA data)
@@ -2332,13 +2364,21 @@ public sealed class CStationProcess
         {
             return defaultValue;
         }
-
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch4()
         {
-            "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-            "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-            _ => defaultValue
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                    return true;
+                case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch4();
     }
 
     private static bool ReadBoolAny(
@@ -2351,12 +2391,21 @@ public sealed class CStationProcess
             if (parameters.TryGetValue(key, out var value) &&
                 !string.IsNullOrWhiteSpace(value))
             {
-                return value.Trim().ToUpperInvariant() switch
+                bool EvaluateValueSwitch5()
                 {
-                    "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-                    "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-                    _ => defaultValue
-                };
+                    var switchValue = value.Trim().ToUpperInvariant();
+                    switch (switchValue)
+                    {
+                        case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                            return true;
+                        case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                            return false;
+                        default:
+                            return defaultValue;
+                    }
+                }
+
+                return EvaluateValueSwitch5();
             }
         }
 
@@ -2385,13 +2434,21 @@ public sealed class CStationProcess
         {
             return defaultValue;
         }
-
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch6()
         {
-            "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-            "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-            _ => defaultValue
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                    return true;
+                case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch6();
     }
 
     private static string ReadText(
@@ -2542,11 +2599,19 @@ public sealed class CStationProcess
 
     private static string FormatScriptStatus(EN_SCRIPT_STATUS status)
     {
-        return status switch
+        string EvaluateStatusSwitch7()
         {
-            EN_SCRIPT_STATUS.NotCreated => "Not Created",
-            _ => status.ToString()
-        };
+            var switchValue = status;
+            switch (switchValue)
+            {
+                case EN_SCRIPT_STATUS.NotCreated:
+                    return "Not Created";
+                default:
+                    return status.ToString();
+            }
+        }
+
+        return EvaluateStatusSwitch7();
     }
 
     private static string FormatExecuteState(
@@ -2563,14 +2628,23 @@ public sealed class CStationProcess
         {
             return result.IsSuccess ? "Completed" : "Failed";
         }
-
-        return scriptStatus switch
+        string EvaluateScriptStatusSwitch8()
         {
-            EN_SCRIPT_STATUS.Running => "Running",
-            EN_SCRIPT_STATUS.Created => "Ready",
-            EN_SCRIPT_STATUS.Error => "Error",
-            _ => "-"
-        };
+            var switchValue = scriptStatus;
+            switch (switchValue)
+            {
+                case EN_SCRIPT_STATUS.Running:
+                    return "Running";
+                case EN_SCRIPT_STATUS.Created:
+                    return "Ready";
+                case EN_SCRIPT_STATUS.Error:
+                    return "Error";
+                default:
+                    return "-";
+            }
+        }
+
+        return EvaluateScriptStatusSwitch8();
     }
 
     private static string FormatScriptResult(

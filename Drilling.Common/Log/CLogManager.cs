@@ -412,44 +412,49 @@ public sealed class CLogManager : ILogManager
         {
             return null;
         }
-
-        return action.ToUpperInvariant() switch
+        ST_RECIPE_HISTORY EvaluateValueSwitch1()
         {
-            "MODIFY" when parts.Length >= 8 =>
-                CreateRecipeHistory(
-                    changedAt,
-                    recipeName,
-                    action,
-                    UnescapeField(parts[5]),
-                    UnescapeField(parts[6]),
-                    UnescapeField(parts[7]),
-                    UnescapeField(parts[3]),
-                    UnescapeField(parts[4])),
-            "MODIFY" when parts.Length >= 6 =>
-                CreateRecipeHistory(changedAt, recipeName, action, UnescapeField(parts[3]), UnescapeField(parts[4]), UnescapeField(parts[5])),
-            "PARAM CHANGE" when parts.Length >= 7 =>
-                CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]),
-            "PARAM CHANGE OFFSET X" when parts.Length >= 7 =>
-                CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]),
-            "PARAM CHANGE OFFSET Y" when parts.Length >= 7 =>
-                CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]),
-            "CREATE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            "HOST RECIPE CREATE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            "DELETE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", recipeName, "-"),
-            "RENAME" when parts.Length >= 6 =>
-                CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]),
-            "CHANGE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            "SAVE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            _ when parts.Length >= 6 =>
-                CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]),
-            _ =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", "-")
-        };
+            var switchValue = action.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "MODIFY" when parts.Length >= 8:
+                    return CreateRecipeHistory(
+                            changedAt,
+                            recipeName,
+                            action,
+                            UnescapeField(parts[5]),
+                            UnescapeField(parts[6]),
+                            UnescapeField(parts[7]),
+                            UnescapeField(parts[3]),
+                            UnescapeField(parts[4]));
+                case "MODIFY" when parts.Length >= 6:
+                    return CreateRecipeHistory(changedAt, recipeName, action, UnescapeField(parts[3]), UnescapeField(parts[4]), UnescapeField(parts[5]));
+                case "PARAM CHANGE" when parts.Length >= 7:
+                    return CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]);
+                case "PARAM CHANGE OFFSET X" when parts.Length >= 7:
+                    return CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]);
+                case "PARAM CHANGE OFFSET Y" when parts.Length >= 7:
+                    return CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]);
+                case "CREATE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case "HOST RECIPE CREATE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case "DELETE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", recipeName, "-");
+                case "RENAME" when parts.Length >= 6:
+                    return CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]);
+                case "CHANGE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case "SAVE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case var _ when parts.Length >= 6:
+                    return CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]);
+                default:
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", "-");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static ST_INTERFACE_HISTORY? ParseInterfaceLine(string line)
@@ -576,13 +581,23 @@ public sealed class CLogManager : ILogManager
 
     private static string ModuleLogName(EN_EQP_MODULE module)
     {
-        return module switch
+        string EvaluateModuleSwitch2()
         {
-            EN_EQP_MODULE.WonikCtrl => "WONIK_CTRL",
-            EN_EQP_MODULE.TalonLaser => "TALON_LASER",
-            EN_EQP_MODULE.PowerMeter => "POWER_METER",
-            _ => module.ToString().ToUpperInvariant()
-        };
+            var switchValue = module;
+            switch (switchValue)
+            {
+                case EN_EQP_MODULE.WonikCtrl:
+                    return "WONIK_CTRL";
+                case EN_EQP_MODULE.TalonLaser:
+                    return "TALON_LASER";
+                case EN_EQP_MODULE.PowerMeter:
+                    return "POWER_METER";
+                default:
+                    return module.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateModuleSwitch2();
     }
 
     private static bool TryReadModuleLogName(string value, out EN_EQP_MODULE module)
@@ -618,16 +633,29 @@ public sealed class CLogManager : ILogManager
 
     private static bool TryReadSection(string value, out EN_SETTING_TAB section)
     {
-        section = value.Trim().ToUpperInvariant() switch
+        EN_SETTING_TAB EvaluateValueSwitch3()
         {
-            "OPTION" => EN_SETTING_TAB.Option,
-            "INTERFACE" => EN_SETTING_TAB.Interface,
-            "IO" => EN_SETTING_TAB.Io,
-            "MOTOR" => EN_SETTING_TAB.Motor,
-            "POSITION" => EN_SETTING_TAB.Option,
-            "ALARM" => EN_SETTING_TAB.Alarm,
-            _ => EN_SETTING_TAB.Option
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "OPTION":
+                    return EN_SETTING_TAB.Option;
+                case "INTERFACE":
+                    return EN_SETTING_TAB.Interface;
+                case "IO":
+                    return EN_SETTING_TAB.Io;
+                case "MOTOR":
+                    return EN_SETTING_TAB.Motor;
+                case "POSITION":
+                    return EN_SETTING_TAB.Option;
+                case "ALARM":
+                    return EN_SETTING_TAB.Alarm;
+                default:
+                    return EN_SETTING_TAB.Option;
+            }
+        }
+
+        section = EvaluateValueSwitch3();
 
         return value.Trim().ToUpperInvariant() is "OPTION" or "INTERFACE" or "IO" or "MOTOR" or "POSITION" or "ALARM";
     }

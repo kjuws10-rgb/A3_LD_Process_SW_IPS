@@ -840,23 +840,35 @@ public sealed class CReviewManager(
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
-
-        return rule.RuleType switch
+        IReadOnlyCollection<string> EvaluateRuleTypeSwitch1()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => allPlan.Points.Select(point => point.HoleKey).ToArray(),
-            EN_REVIEW_RULE_TYPE.Edge => SelectEdgeKeys(allPlan),
-            EN_REVIEW_RULE_TYPE.Center => SelectCenterKeys(allPlan),
-            EN_REVIEW_RULE_TYPE.HeadPoint => allPlan.Points
-                .Where(point => point.HeadNo == Math.Clamp(rule.HeadNo, 1, Math.Max(1, allPlan.HeadCount)))
-                .Select(point => point.HoleKey)
-                .ToArray(),
-            EN_REVIEW_RULE_TYPE.CellPoint => allPlan.Points
-                .Where(point => point.CellNo == Math.Clamp(rule.CellNo, 1, Math.Max(1, allPlan.CellCount)))
-                .Select(point => point.HoleKey)
-                .ToArray(),
-            EN_REVIEW_RULE_TYPE.ZeroLine => SelectZeroLineKeys(allPlan, rule.ZeroPointCount),
-            _ => []
-        };
+            var switchValue = rule.RuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return allPlan.Points.Select(point => point.HoleKey).ToArray();
+                case EN_REVIEW_RULE_TYPE.Edge:
+                    return SelectEdgeKeys(allPlan);
+                case EN_REVIEW_RULE_TYPE.Center:
+                    return SelectCenterKeys(allPlan);
+                case EN_REVIEW_RULE_TYPE.HeadPoint:
+                    return allPlan.Points
+                        .Where(point => point.HeadNo == Math.Clamp(rule.HeadNo, 1, Math.Max(1, allPlan.HeadCount)))
+                        .Select(point => point.HoleKey)
+                        .ToArray();
+                case EN_REVIEW_RULE_TYPE.CellPoint:
+                    return allPlan.Points
+                        .Where(point => point.CellNo == Math.Clamp(rule.CellNo, 1, Math.Max(1, allPlan.CellCount)))
+                        .Select(point => point.HoleKey)
+                        .ToArray();
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return SelectZeroLineKeys(allPlan, rule.ZeroPointCount);
+                default:
+                    return [];
+            }
+        }
+
+        return EvaluateRuleTypeSwitch1();
     }
 
     private static IReadOnlyCollection<string> SelectEdgeKeys(ST_REVIEW_PLAN plan)

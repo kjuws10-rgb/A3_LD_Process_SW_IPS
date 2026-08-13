@@ -447,20 +447,32 @@ public sealed class CPicoMotorService : IDisposable
             case EN_PICO_MOTOR_COMMAND.Refresh: Refresh(number, false).GetAwaiter().GetResult(); return;
         }
         var status = GetStatus(number);
+        string EvaluateCommandSwitch1()
+        {
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_PICO_MOTOR_COMMAND.StopMotion or EN_PICO_MOTOR_COMMAND.AllMotorStop:
+                    return "IDLE";
+                case EN_PICO_MOTOR_COMMAND.Home:
+                    return "HOME";
+                case EN_PICO_MOTOR_COMMAND.JogNegative or EN_PICO_MOTOR_COMMAND.JogPositive:
+                    return "JOG";
+                case EN_PICO_MOTOR_COMMAND.MoveRelativeNegative or EN_PICO_MOTOR_COMMAND.MoveRelativePositive:
+                    return "REL MOVE";
+                case EN_PICO_MOTOR_COMMAND.MoveAbsolute:
+                    return "ABS MOVE";
+                default:
+                    return status.MotionState;
+            }
+        }
+
         SetStatus(number, status with
         {
             SelectedMotorNo = motorNo,
             CurrentVelocity = command == EN_PICO_MOTOR_COMMAND.SetVelocity ? parameter : status.CurrentVelocity,
             CurrentAcceleration = command == EN_PICO_MOTOR_COMMAND.SetAcceleration ? parameter : status.CurrentAcceleration,
-            MotionState = command switch
-            {
-                EN_PICO_MOTOR_COMMAND.StopMotion or EN_PICO_MOTOR_COMMAND.AllMotorStop => "IDLE",
-                EN_PICO_MOTOR_COMMAND.Home => "HOME",
-                EN_PICO_MOTOR_COMMAND.JogNegative or EN_PICO_MOTOR_COMMAND.JogPositive => "JOG",
-                EN_PICO_MOTOR_COMMAND.MoveRelativeNegative or EN_PICO_MOTOR_COMMAND.MoveRelativePositive => "REL MOVE",
-                EN_PICO_MOTOR_COMMAND.MoveAbsolute => "ABS MOVE",
-                _ => status.MotionState
-            },
+            MotionState = EvaluateCommandSwitch1(),
             CommOk = true,
             LastError = EN_PICO_MOTOR_ERROR.Ok,
             UpdatedAt = DateTimeOffset.Now
@@ -471,26 +483,52 @@ public sealed class CPicoMotorService : IDisposable
     {
         var status = GetStatus(number);
         var position = GetPosition(status, motorNo);
-        status = command switch
+        ST_PICO_MOTOR_STATUS EvaluateCommandSwitch2()
         {
-            EN_PICO_MOTOR_COMMAND.Connect => status with { IsConnected = true },
-            EN_PICO_MOTOR_COMMAND.Disconnect => status with { IsConnected = false },
-            EN_PICO_MOTOR_COMMAND.SetVelocity => status with { CurrentVelocity = parameter },
-            EN_PICO_MOTOR_COMMAND.SetAcceleration => status with { CurrentAcceleration = parameter },
-            EN_PICO_MOTOR_COMMAND.Home => SetPosition(status, motorNo, CPicoMotor.StepToMillimeter(status.HomePosition)),
-            EN_PICO_MOTOR_COMMAND.MoveRelativeNegative => SetPosition(status, motorNo, position - parameter),
-            EN_PICO_MOTOR_COMMAND.MoveRelativePositive => SetPosition(status, motorNo, position + parameter),
-            EN_PICO_MOTOR_COMMAND.MoveAbsolute => SetPosition(status, motorNo, parameter),
-            EN_PICO_MOTOR_COMMAND.JogNegative => SetPosition(status, motorNo, position - GetSimulationStepDistance(status)),
-            EN_PICO_MOTOR_COMMAND.JogPositive => SetPosition(status, motorNo, position + GetSimulationStepDistance(status)),
-            _ => status
-        };
-        var motionState = command switch
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_PICO_MOTOR_COMMAND.Connect:
+                    return status with { IsConnected = true };
+                case EN_PICO_MOTOR_COMMAND.Disconnect:
+                    return status with { IsConnected = false };
+                case EN_PICO_MOTOR_COMMAND.SetVelocity:
+                    return status with { CurrentVelocity = parameter };
+                case EN_PICO_MOTOR_COMMAND.SetAcceleration:
+                    return status with { CurrentAcceleration = parameter };
+                case EN_PICO_MOTOR_COMMAND.Home:
+                    return SetPosition(status, motorNo, CPicoMotor.StepToMillimeter(status.HomePosition));
+                case EN_PICO_MOTOR_COMMAND.MoveRelativeNegative:
+                    return SetPosition(status, motorNo, position - parameter);
+                case EN_PICO_MOTOR_COMMAND.MoveRelativePositive:
+                    return SetPosition(status, motorNo, position + parameter);
+                case EN_PICO_MOTOR_COMMAND.MoveAbsolute:
+                    return SetPosition(status, motorNo, parameter);
+                case EN_PICO_MOTOR_COMMAND.JogNegative:
+                    return SetPosition(status, motorNo, position - GetSimulationStepDistance(status));
+                case EN_PICO_MOTOR_COMMAND.JogPositive:
+                    return SetPosition(status, motorNo, position + GetSimulationStepDistance(status));
+                default:
+                    return status;
+            }
+        }
+
+        status = EvaluateCommandSwitch2();
+        string EvaluateCommandSwitch3()
         {
-            EN_PICO_MOTOR_COMMAND.JogNegative or EN_PICO_MOTOR_COMMAND.JogPositive => "JOG",
-            EN_PICO_MOTOR_COMMAND.StopMotion or EN_PICO_MOTOR_COMMAND.AllMotorStop or EN_PICO_MOTOR_COMMAND.Disconnect => "IDLE",
-            _ => status.MotionState
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_PICO_MOTOR_COMMAND.JogNegative or EN_PICO_MOTOR_COMMAND.JogPositive:
+                    return "JOG";
+                case EN_PICO_MOTOR_COMMAND.StopMotion or EN_PICO_MOTOR_COMMAND.AllMotorStop or EN_PICO_MOTOR_COMMAND.Disconnect:
+                    return "IDLE";
+                default:
+                    return status.MotionState;
+            }
+        }
+
+        var motionState = EvaluateCommandSwitch3();
         SetStatus(number, status with
         {
             SelectedMotorNo = motorNo,
@@ -519,19 +557,38 @@ public sealed class CPicoMotorService : IDisposable
         {
             var status = GetStatus(number);
             var start = GetPosition(status, motorNo);
-            var target = command switch
+            double EvaluateCommandSwitch4()
             {
-                EN_PICO_MOTOR_COMMAND.Home => CPicoMotor.StepToMillimeter(status.HomePosition),
-                EN_PICO_MOTOR_COMMAND.MoveRelativeNegative => start - Math.Abs(parameter),
-                EN_PICO_MOTOR_COMMAND.MoveRelativePositive => start + Math.Abs(parameter),
-                _ => parameter
-            };
-            var motionState = command switch
+                var switchValue = command;
+                switch (switchValue)
+                {
+                    case EN_PICO_MOTOR_COMMAND.Home:
+                        return CPicoMotor.StepToMillimeter(status.HomePosition);
+                    case EN_PICO_MOTOR_COMMAND.MoveRelativeNegative:
+                        return start - Math.Abs(parameter);
+                    case EN_PICO_MOTOR_COMMAND.MoveRelativePositive:
+                        return start + Math.Abs(parameter);
+                    default:
+                        return parameter;
+                }
+            }
+
+            var target = EvaluateCommandSwitch4();
+            string EvaluateCommandSwitch5()
             {
-                EN_PICO_MOTOR_COMMAND.Home => "HOME",
-                EN_PICO_MOTOR_COMMAND.MoveAbsolute => "ABS MOVE",
-                _ => "REL MOVE"
-            };
+                var switchValue = command;
+                switch (switchValue)
+                {
+                    case EN_PICO_MOTOR_COMMAND.Home:
+                        return "HOME";
+                    case EN_PICO_MOTOR_COMMAND.MoveAbsolute:
+                        return "ABS MOVE";
+                    default:
+                        return "REL MOVE";
+                }
+            }
+
+            var motionState = EvaluateCommandSwitch5();
 
             while (true)
             {
@@ -606,23 +663,43 @@ public sealed class CPicoMotorService : IDisposable
 
     private static double GetPosition(ST_PICO_MOTOR_STATUS status, int motorNo)
     {
-        return motorNo switch
+        double EvaluateMotorNoSwitch6()
         {
-            1 => status.Motor1Position,
-            2 => status.Motor2Position,
-            3 => status.Motor3Position,
-            _ => status.Motor4Position
-        };
+            var switchValue = motorNo;
+            switch (switchValue)
+            {
+                case 1:
+                    return status.Motor1Position;
+                case 2:
+                    return status.Motor2Position;
+                case 3:
+                    return status.Motor3Position;
+                default:
+                    return status.Motor4Position;
+            }
+        }
+
+        return EvaluateMotorNoSwitch6();
     }
 
     private static ST_PICO_MOTOR_STATUS SetPosition(ST_PICO_MOTOR_STATUS status, int motorNo, double value)
     {
-        return motorNo switch
+        ST_PICO_MOTOR_STATUS EvaluateMotorNoSwitch7()
         {
-            1 => status with { Motor1Position = value },
-            2 => status with { Motor2Position = value },
-            3 => status with { Motor3Position = value },
-            _ => status with { Motor4Position = value }
-        };
+            var switchValue = motorNo;
+            switch (switchValue)
+            {
+                case 1:
+                    return status with { Motor1Position = value };
+                case 2:
+                    return status with { Motor2Position = value };
+                case 3:
+                    return status with { Motor3Position = value };
+                default:
+                    return status with { Motor4Position = value };
+            }
+        }
+
+        return EvaluateMotorNoSwitch7();
     }
 }

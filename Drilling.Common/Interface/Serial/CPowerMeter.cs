@@ -116,19 +116,35 @@ internal sealed class CPowerMeter(
         EN_POWER_METER_COMMAND command,
         double parameter = 0.0)
     {
-        return command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_POWER_METER_COMMAND.ReadPower => "pw?",
-            EN_POWER_METER_COMMAND.QueryHardwareDescription => "*ind",
-            EN_POWER_METER_COMMAND.QuerySerialNumber => "msn?",
-            EN_POWER_METER_COMMAND.QueryWaveLength => "wv?",
-            EN_POWER_METER_COMMAND.SetWaveLength => $"wv {ToMeter(parameter).ToString("F8", CultureInfo.InvariantCulture)}",
-            EN_POWER_METER_COMMAND.QueryBeamPosition => "pos",
-            EN_POWER_METER_COMMAND.StartStreaming => "dst",
-            EN_POWER_METER_COMMAND.StopStreaming => "dsp",
-            EN_POWER_METER_COMMAND.Reset => "*rst",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_POWER_METER_COMMAND.ReadPower:
+                    return "pw?";
+                case EN_POWER_METER_COMMAND.QueryHardwareDescription:
+                    return "*ind";
+                case EN_POWER_METER_COMMAND.QuerySerialNumber:
+                    return "msn?";
+                case EN_POWER_METER_COMMAND.QueryWaveLength:
+                    return "wv?";
+                case EN_POWER_METER_COMMAND.SetWaveLength:
+                    return $"wv {ToMeter(parameter).ToString("F8", CultureInfo.InvariantCulture)}";
+                case EN_POWER_METER_COMMAND.QueryBeamPosition:
+                    return "pos";
+                case EN_POWER_METER_COMMAND.StartStreaming:
+                    return "dst";
+                case EN_POWER_METER_COMMAND.StopStreaming:
+                    return "dsp";
+                case EN_POWER_METER_COMMAND.Reset:
+                    return "*rst";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch1();
     }
 
     public static bool IsSuccessResponse(string response)
@@ -163,25 +179,40 @@ internal sealed class CPowerMeter(
             LastError = EN_POWER_METER_ERROR.Ok,
             MeasuredAt = DateTimeOffset.Now
         };
-
-        return command switch
+        ST_POWER_METER_STATUS EvaluateCommandSwitch2()
         {
-            EN_POWER_METER_COMMAND.ReadPower => ApplyPowerValue(ok, ReadDouble(value)),
-            EN_POWER_METER_COMMAND.QueryHardwareDescription => ok with { ModelName = value },
-            EN_POWER_METER_COMMAND.QuerySerialNumber => ok with { SerialNumber = value },
-            EN_POWER_METER_COMMAND.QueryWaveLength => ok with { WaveLengthNm = ReadWaveLengthNm(value) },
-            EN_POWER_METER_COMMAND.SetWaveLength => ok with { WaveLengthNm = parameter },
-            EN_POWER_METER_COMMAND.QueryBeamPosition => ApplyBeamPosition(ok, value),
-            EN_POWER_METER_COMMAND.StartStreaming => ok with { IsMeasuring = true },
-            EN_POWER_METER_COMMAND.StopStreaming => ok with { IsMeasuring = false },
-            EN_POWER_METER_COMMAND.Reset => ST_POWER_METER_STATUS.Empty with
+            var switchValue = command;
+            switch (switchValue)
             {
-                Unit = ok.Unit,
-                MeasuredAt = DateTimeOffset.Now,
-                LastCommand = "RESET"
-            },
-            _ => ok
-        };
+                case EN_POWER_METER_COMMAND.ReadPower:
+                    return ApplyPowerValue(ok, ReadDouble(value));
+                case EN_POWER_METER_COMMAND.QueryHardwareDescription:
+                    return ok with { ModelName = value };
+                case EN_POWER_METER_COMMAND.QuerySerialNumber:
+                    return ok with { SerialNumber = value };
+                case EN_POWER_METER_COMMAND.QueryWaveLength:
+                    return ok with { WaveLengthNm = ReadWaveLengthNm(value) };
+                case EN_POWER_METER_COMMAND.SetWaveLength:
+                    return ok with { WaveLengthNm = parameter };
+                case EN_POWER_METER_COMMAND.QueryBeamPosition:
+                    return ApplyBeamPosition(ok, value);
+                case EN_POWER_METER_COMMAND.StartStreaming:
+                    return ok with { IsMeasuring = true };
+                case EN_POWER_METER_COMMAND.StopStreaming:
+                    return ok with { IsMeasuring = false };
+                case EN_POWER_METER_COMMAND.Reset:
+                    return ST_POWER_METER_STATUS.Empty with
+                    {
+                        Unit = ok.Unit,
+                        MeasuredAt = DateTimeOffset.Now,
+                        LastCommand = "RESET"
+                    };
+                default:
+                    return ok;
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     private static ST_POWER_METER_STATUS ApplyPowerValue(
@@ -234,17 +265,29 @@ internal sealed class CPowerMeter(
         var power = current.MeasuredPower <= 0.0
             ? 1.204
             : current.MeasuredPower + 0.003;
-
-        return command switch
+        string EvaluateCommandSwitch3()
         {
-            EN_POWER_METER_COMMAND.ReadPower => power.ToString("F4", CultureInfo.InvariantCulture),
-            EN_POWER_METER_COMMAND.QueryHardwareDescription => string.IsNullOrWhiteSpace(current.ModelName) ? "PowerMax" : current.ModelName,
-            EN_POWER_METER_COMMAND.QuerySerialNumber => string.IsNullOrWhiteSpace(current.SerialNumber) ? "PM_SIM_0000" : current.SerialNumber,
-            EN_POWER_METER_COMMAND.QueryWaveLength => ToMeter(current.WaveLengthNm).ToString("0.########E+0", CultureInfo.InvariantCulture),
-            EN_POWER_METER_COMMAND.SetWaveLength => ToMeter(parameter).ToString("0.########E+0", CultureInfo.InvariantCulture),
-            EN_POWER_METER_COMMAND.QueryBeamPosition => $"{current.BeamPositionX.ToString("F3", CultureInfo.InvariantCulture)},{current.BeamPositionY.ToString("F3", CultureInfo.InvariantCulture)}",
-            _ => "OK"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_POWER_METER_COMMAND.ReadPower:
+                    return power.ToString("F4", CultureInfo.InvariantCulture);
+                case EN_POWER_METER_COMMAND.QueryHardwareDescription:
+                    return string.IsNullOrWhiteSpace(current.ModelName) ? "PowerMax" : current.ModelName;
+                case EN_POWER_METER_COMMAND.QuerySerialNumber:
+                    return string.IsNullOrWhiteSpace(current.SerialNumber) ? "PM_SIM_0000" : current.SerialNumber;
+                case EN_POWER_METER_COMMAND.QueryWaveLength:
+                    return ToMeter(current.WaveLengthNm).ToString("0.########E+0", CultureInfo.InvariantCulture);
+                case EN_POWER_METER_COMMAND.SetWaveLength:
+                    return ToMeter(parameter).ToString("0.########E+0", CultureInfo.InvariantCulture);
+                case EN_POWER_METER_COMMAND.QueryBeamPosition:
+                    return $"{current.BeamPositionX.ToString("F3", CultureInfo.InvariantCulture)},{current.BeamPositionY.ToString("F3", CultureInfo.InvariantCulture)}";
+                default:
+                    return "OK";
+            }
+        }
+
+        return EvaluateCommandSwitch3();
     }
 
     private static double ReadWaveLengthNm(string value)

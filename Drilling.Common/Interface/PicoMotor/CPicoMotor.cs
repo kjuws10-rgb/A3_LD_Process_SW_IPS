@@ -363,11 +363,20 @@ public sealed class CPicoMotorCommandSession : IDisposable
 
     private static int ToInt32Step(long step)
     {
-        return step switch
+        int EvaluateStepSwitch1()
         {
-            > int.MaxValue => int.MaxValue,
-            < int.MinValue => int.MinValue,
-            _ => (int)step
-        };
+            var switchValue = step;
+            switch (switchValue)
+            {
+                case > int.MaxValue:
+                    return int.MaxValue;
+                case < int.MinValue:
+                    return int.MinValue;
+                default:
+                    return (int)step;
+            }
+        }
+
+        return EvaluateStepSwitch1();
     }
 }

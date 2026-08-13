@@ -70,38 +70,73 @@ internal sealed class CTalonLaser(
 
     public static string Build(EN_TALON_COMMAND command, double parameter)
     {
-        return command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_TALON_COMMAND.SetDiodeCurrent => $"C1:{parameter.ToString("F2", CultureInfo.InvariantCulture)}",
-            EN_TALON_COMMAND.SetQsw => $"Q:{(int)parameter}",
-            EN_TALON_COMMAND.SetEprf => $"EPRF:{(int)parameter}",
-            EN_TALON_COMMAND.SetLaserOnOff => parameter > 0 ? "ON" : "OFF",
-            EN_TALON_COMMAND.SetShutterOpenClose => $"SHT:{(int)parameter}",
-            EN_TALON_COMMAND.SetGateOpenClose => $"G:{(int)parameter}",
-            EN_TALON_COMMAND.SetExtGateEnableDisable => $"GEXT:{(int)parameter}",
-            EN_TALON_COMMAND.SetShg => $"SHG:{(int)parameter}",
-            EN_TALON_COMMAND.SetShgAutotune => $"SAUTO:{(int)parameter}",
-            EN_TALON_COMMAND.SetQMode => $"QMODE:{(int)parameter}",
-            EN_TALON_COMMAND.GetDiodeCurrent => "?C1",
-            EN_TALON_COMMAND.GetQsw => "?Q",
-            EN_TALON_COMMAND.GetEprf => "?EPRF",
-            EN_TALON_COMMAND.GetShutterOpenClose => "?SHT",
-            EN_TALON_COMMAND.GetGateOpenClose => "?G",
-            EN_TALON_COMMAND.GetExtGateEnableDisable => "?GEXT",
-            EN_TALON_COMMAND.GetOutputPower => "?P",
-            EN_TALON_COMMAND.GetShg => "?SHG",
-            EN_TALON_COMMAND.GetShgAutotune => "?SAUTO",
-            EN_TALON_COMMAND.GetThgSpot => "?MTR:TSPOT",
-            EN_TALON_COMMAND.GetThgHour => "?MTR:THR",
-            EN_TALON_COMMAND.GetQMode => "?QMODE",
-            EN_TALON_COMMAND.GetDiodeTemp => "?T1",
-            EN_TALON_COMMAND.GetTowerTemp => "?TT",
-            EN_TALON_COMMAND.GetLaserOnOff => "?F",
-            EN_TALON_COMMAND.RequestStatusString => "?F",
-            EN_TALON_COMMAND.RequestStatusCode => "?FH",
-            EN_TALON_COMMAND.RequestSave => "SAVE",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_TALON_COMMAND.SetDiodeCurrent:
+                    return $"C1:{parameter.ToString("F2", CultureInfo.InvariantCulture)}";
+                case EN_TALON_COMMAND.SetQsw:
+                    return $"Q:{(int)parameter}";
+                case EN_TALON_COMMAND.SetEprf:
+                    return $"EPRF:{(int)parameter}";
+                case EN_TALON_COMMAND.SetLaserOnOff:
+                    return parameter > 0 ? "ON" : "OFF";
+                case EN_TALON_COMMAND.SetShutterOpenClose:
+                    return $"SHT:{(int)parameter}";
+                case EN_TALON_COMMAND.SetGateOpenClose:
+                    return $"G:{(int)parameter}";
+                case EN_TALON_COMMAND.SetExtGateEnableDisable:
+                    return $"GEXT:{(int)parameter}";
+                case EN_TALON_COMMAND.SetShg:
+                    return $"SHG:{(int)parameter}";
+                case EN_TALON_COMMAND.SetShgAutotune:
+                    return $"SAUTO:{(int)parameter}";
+                case EN_TALON_COMMAND.SetQMode:
+                    return $"QMODE:{(int)parameter}";
+                case EN_TALON_COMMAND.GetDiodeCurrent:
+                    return "?C1";
+                case EN_TALON_COMMAND.GetQsw:
+                    return "?Q";
+                case EN_TALON_COMMAND.GetEprf:
+                    return "?EPRF";
+                case EN_TALON_COMMAND.GetShutterOpenClose:
+                    return "?SHT";
+                case EN_TALON_COMMAND.GetGateOpenClose:
+                    return "?G";
+                case EN_TALON_COMMAND.GetExtGateEnableDisable:
+                    return "?GEXT";
+                case EN_TALON_COMMAND.GetOutputPower:
+                    return "?P";
+                case EN_TALON_COMMAND.GetShg:
+                    return "?SHG";
+                case EN_TALON_COMMAND.GetShgAutotune:
+                    return "?SAUTO";
+                case EN_TALON_COMMAND.GetThgSpot:
+                    return "?MTR:TSPOT";
+                case EN_TALON_COMMAND.GetThgHour:
+                    return "?MTR:THR";
+                case EN_TALON_COMMAND.GetQMode:
+                    return "?QMODE";
+                case EN_TALON_COMMAND.GetDiodeTemp:
+                    return "?T1";
+                case EN_TALON_COMMAND.GetTowerTemp:
+                    return "?TT";
+                case EN_TALON_COMMAND.GetLaserOnOff:
+                    return "?F";
+                case EN_TALON_COMMAND.RequestStatusString:
+                    return "?F";
+                case EN_TALON_COMMAND.RequestStatusCode:
+                    return "?FH";
+                case EN_TALON_COMMAND.RequestSave:
+                    return "SAVE";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch1();
     }
 
     public static bool IsValidResponse(string response)
@@ -127,38 +162,71 @@ internal sealed class CTalonLaser(
         }
 
         var ok = current with { LastError = EN_TALON_ERROR.Ok };
-
-        return command switch
+        ST_TALON_STATUS EvaluateCommandSwitch2()
         {
-            EN_TALON_COMMAND.SetDiodeCurrent => ok with { DiodeCurrent = parameter },
-            EN_TALON_COMMAND.SetQsw => ok with { Qsw = (int)parameter },
-            EN_TALON_COMMAND.SetEprf => ok with { Eprf = (int)parameter },
-            EN_TALON_COMMAND.SetLaserOnOff => ok with { LaserOn = parameter > 0 },
-            EN_TALON_COMMAND.SetShutterOpenClose => ok with { ShutterOpen = parameter > 0 },
-            EN_TALON_COMMAND.SetGateOpenClose => ok with { GateOpen = parameter > 0 },
-            EN_TALON_COMMAND.SetExtGateEnableDisable => ok with { ExtGateEnable = parameter > 0 },
-            EN_TALON_COMMAND.SetShg => ok with { ShgReadBackCount = (uint)Math.Max(0, parameter) },
-            EN_TALON_COMMAND.SetShgAutotune => ok with { ShgAutoTuneActive = parameter > 0 },
-            EN_TALON_COMMAND.SetQMode => ok with { QMode = (int)parameter },
-            EN_TALON_COMMAND.GetDiodeCurrent => ok with { DiodeCurrent = ReadDouble(value) },
-            EN_TALON_COMMAND.GetQsw => ok with { Qsw = ReadInt(value) },
-            EN_TALON_COMMAND.GetEprf => ok with { Eprf = ReadInt(value) },
-            EN_TALON_COMMAND.GetDiodeTemp => ok with { DiodeTemp = ReadDouble(value) },
-            EN_TALON_COMMAND.GetTowerTemp => ok with { TowerTemp = ReadDouble(value) },
-            EN_TALON_COMMAND.GetOutputPower => ok with { OutputPower = ReadDouble(value) },
-            EN_TALON_COMMAND.GetShutterOpenClose => ok with { ShutterOpen = ReadDouble(value) > 0.5 },
-            EN_TALON_COMMAND.GetGateOpenClose => ok with { GateOpen = ReadBool(value) },
-            EN_TALON_COMMAND.GetExtGateEnableDisable => ok with { ExtGateEnable = ReadBool(value) },
-            EN_TALON_COMMAND.GetShg => ok with { ShgReadBackCount = (uint)Math.Max(0, ReadInt(value)) },
-            EN_TALON_COMMAND.GetShgAutotune => ok with { ShgAutoTuneActive = ReadDouble(value) > 0.5 },
-            EN_TALON_COMMAND.GetThgSpot => ok with { ThgSpot = ReadInt(value) },
-            EN_TALON_COMMAND.GetThgHour => ok with { ThgHour = ReadDouble(value) },
-            EN_TALON_COMMAND.GetQMode => ok with { QMode = ReadInt(value) },
-            EN_TALON_COMMAND.GetLaserOnOff => ok with { LaserOn = ReadLaserEmission(value) },
-            EN_TALON_COMMAND.RequestStatusString => ok with { StatusMessage = value },
-            EN_TALON_COMMAND.RequestStatusCode => ok with { StatusCode = ReadInt(value) },
-            _ => ok
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_TALON_COMMAND.SetDiodeCurrent:
+                    return ok with { DiodeCurrent = parameter };
+                case EN_TALON_COMMAND.SetQsw:
+                    return ok with { Qsw = (int)parameter };
+                case EN_TALON_COMMAND.SetEprf:
+                    return ok with { Eprf = (int)parameter };
+                case EN_TALON_COMMAND.SetLaserOnOff:
+                    return ok with { LaserOn = parameter > 0 };
+                case EN_TALON_COMMAND.SetShutterOpenClose:
+                    return ok with { ShutterOpen = parameter > 0 };
+                case EN_TALON_COMMAND.SetGateOpenClose:
+                    return ok with { GateOpen = parameter > 0 };
+                case EN_TALON_COMMAND.SetExtGateEnableDisable:
+                    return ok with { ExtGateEnable = parameter > 0 };
+                case EN_TALON_COMMAND.SetShg:
+                    return ok with { ShgReadBackCount = (uint)Math.Max(0, parameter) };
+                case EN_TALON_COMMAND.SetShgAutotune:
+                    return ok with { ShgAutoTuneActive = parameter > 0 };
+                case EN_TALON_COMMAND.SetQMode:
+                    return ok with { QMode = (int)parameter };
+                case EN_TALON_COMMAND.GetDiodeCurrent:
+                    return ok with { DiodeCurrent = ReadDouble(value) };
+                case EN_TALON_COMMAND.GetQsw:
+                    return ok with { Qsw = ReadInt(value) };
+                case EN_TALON_COMMAND.GetEprf:
+                    return ok with { Eprf = ReadInt(value) };
+                case EN_TALON_COMMAND.GetDiodeTemp:
+                    return ok with { DiodeTemp = ReadDouble(value) };
+                case EN_TALON_COMMAND.GetTowerTemp:
+                    return ok with { TowerTemp = ReadDouble(value) };
+                case EN_TALON_COMMAND.GetOutputPower:
+                    return ok with { OutputPower = ReadDouble(value) };
+                case EN_TALON_COMMAND.GetShutterOpenClose:
+                    return ok with { ShutterOpen = ReadDouble(value) > 0.5 };
+                case EN_TALON_COMMAND.GetGateOpenClose:
+                    return ok with { GateOpen = ReadBool(value) };
+                case EN_TALON_COMMAND.GetExtGateEnableDisable:
+                    return ok with { ExtGateEnable = ReadBool(value) };
+                case EN_TALON_COMMAND.GetShg:
+                    return ok with { ShgReadBackCount = (uint)Math.Max(0, ReadInt(value)) };
+                case EN_TALON_COMMAND.GetShgAutotune:
+                    return ok with { ShgAutoTuneActive = ReadDouble(value) > 0.5 };
+                case EN_TALON_COMMAND.GetThgSpot:
+                    return ok with { ThgSpot = ReadInt(value) };
+                case EN_TALON_COMMAND.GetThgHour:
+                    return ok with { ThgHour = ReadDouble(value) };
+                case EN_TALON_COMMAND.GetQMode:
+                    return ok with { QMode = ReadInt(value) };
+                case EN_TALON_COMMAND.GetLaserOnOff:
+                    return ok with { LaserOn = ReadLaserEmission(value) };
+                case EN_TALON_COMMAND.RequestStatusString:
+                    return ok with { StatusMessage = value };
+                case EN_TALON_COMMAND.RequestStatusCode:
+                    return ok with { StatusCode = ReadInt(value) };
+                default:
+                    return ok;
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     private static string CreateSimulationResponse(
@@ -166,28 +234,53 @@ internal sealed class CTalonLaser(
         double parameter,
         ST_TALON_STATUS current)
     {
-        return command switch
+        string EvaluateCommandSwitch3()
         {
-            EN_TALON_COMMAND.GetDiodeCurrent => current.DiodeCurrent.ToString("F2", CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetQsw => current.Qsw.ToString(CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetEprf => current.Eprf.ToString(CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetDiodeTemp => (current.DiodeTemp <= 0 ? 24.6 : current.DiodeTemp).ToString("F1", CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetTowerTemp => (current.TowerTemp <= 0 ? 24.2 : current.TowerTemp).ToString("F1", CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetOutputPower => current.OutputPower.ToString("F3", CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetShutterOpenClose => current.ShutterOpen ? "1" : "0",
-            EN_TALON_COMMAND.GetGateOpenClose => current.GateOpen ? "1" : "0",
-            EN_TALON_COMMAND.GetExtGateEnableDisable => current.ExtGateEnable ? "1" : "0",
-            EN_TALON_COMMAND.GetShg => current.ShgReadBackCount.ToString(CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetShgAutotune => current.ShgAutoTuneActive ? "1" : "0",
-            EN_TALON_COMMAND.GetThgSpot => current.ThgSpot.ToString(CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetThgHour => current.ThgHour.ToString("F1", CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetQMode => current.QMode.ToString(CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.GetLaserOnOff => current.LaserOn ? "1" : "0",
-            EN_TALON_COMMAND.RequestStatusString => current.LaserOn ? "Emission" : "Standby",
-            EN_TALON_COMMAND.RequestStatusCode => current.StatusCode.ToString(CultureInfo.InvariantCulture),
-            EN_TALON_COMMAND.SetLaserOnOff => parameter > 0 ? "Emission" : "Standby",
-            _ => "OK"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_TALON_COMMAND.GetDiodeCurrent:
+                    return current.DiodeCurrent.ToString("F2", CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetQsw:
+                    return current.Qsw.ToString(CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetEprf:
+                    return current.Eprf.ToString(CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetDiodeTemp:
+                    return (current.DiodeTemp <= 0 ? 24.6 : current.DiodeTemp).ToString("F1", CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetTowerTemp:
+                    return (current.TowerTemp <= 0 ? 24.2 : current.TowerTemp).ToString("F1", CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetOutputPower:
+                    return current.OutputPower.ToString("F3", CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetShutterOpenClose:
+                    return current.ShutterOpen ? "1" : "0";
+                case EN_TALON_COMMAND.GetGateOpenClose:
+                    return current.GateOpen ? "1" : "0";
+                case EN_TALON_COMMAND.GetExtGateEnableDisable:
+                    return current.ExtGateEnable ? "1" : "0";
+                case EN_TALON_COMMAND.GetShg:
+                    return current.ShgReadBackCount.ToString(CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetShgAutotune:
+                    return current.ShgAutoTuneActive ? "1" : "0";
+                case EN_TALON_COMMAND.GetThgSpot:
+                    return current.ThgSpot.ToString(CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetThgHour:
+                    return current.ThgHour.ToString("F1", CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetQMode:
+                    return current.QMode.ToString(CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.GetLaserOnOff:
+                    return current.LaserOn ? "1" : "0";
+                case EN_TALON_COMMAND.RequestStatusString:
+                    return current.LaserOn ? "Emission" : "Standby";
+                case EN_TALON_COMMAND.RequestStatusCode:
+                    return current.StatusCode.ToString(CultureInfo.InvariantCulture);
+                case EN_TALON_COMMAND.SetLaserOnOff:
+                    return parameter > 0 ? "Emission" : "Standby";
+                default:
+                    return "OK";
+            }
+        }
+
+        return EvaluateCommandSwitch3();
     }
 
     private static double ReadDouble(string value)

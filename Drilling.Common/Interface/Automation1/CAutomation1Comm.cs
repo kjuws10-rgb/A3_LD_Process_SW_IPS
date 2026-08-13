@@ -319,16 +319,27 @@ internal sealed class CAutomation1Comm(
         var body = command[(prefixEnd + 1)..];
         var sectionEnd = body.IndexOfAny([':', '|']);
         var section = sectionEnd >= 0 ? body[..sectionEnd] : body;
-
-        return section.ToUpperInvariant() switch
+        string EvaluateValueSwitch1()
         {
-            "SCRIPT" => ExecuteScriptFunction(controller, body, cancellationToken),
-            "TASK" => ExecuteTaskFunction(controller, body),
-            "COMMAND" => ExecuteCommandFunction(controller, body),
-            "AXIS" => ExecuteAxisFunction(controller, SplitColon(body)),
-            "IO" => ExecuteIoFunction(controller, SplitColon(body)),
-            _ => throw new InvalidOperationException($"Automation1 command is unknown: {function}")
-        };
+            var switchValue = section.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "SCRIPT":
+                    return ExecuteScriptFunction(controller, body, cancellationToken);
+                case "TASK":
+                    return ExecuteTaskFunction(controller, body);
+                case "COMMAND":
+                    return ExecuteCommandFunction(controller, body);
+                case "AXIS":
+                    return ExecuteAxisFunction(controller, SplitColon(body));
+                case "IO":
+                    return ExecuteIoFunction(controller, SplitColon(body));
+                default:
+                    throw new InvalidOperationException($"Automation1 command is unknown: {function}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string ExecuteScriptFunction(
@@ -344,18 +355,31 @@ internal sealed class CAutomation1Comm(
         }
 
         var command = fields[1].ToUpperInvariant();
-
-        return command switch
+        string EvaluateCommandSwitch2()
         {
-            "UPLOAD" => UploadScript(controller, fields),
-            "RUN" => RunControllerScript(controller, fields),
-            "RUN_LOCAL" => RunLocalScript(controller, fields),
-            "BUFFERED_RUN" => RunBufferedScript(controller, fields, cancellationToken),
-            "BUFFERED_RUN_GROUP" => RunBufferedScriptGroup(controller, fields, cancellationToken),
-            "STOP" => StopTask(controller, ReadInt(fields, 2, DefaultTaskIndex, "TASK")),
-            "STATUS" => ReadTaskStatus(controller, ReadInt(fields, 2, DefaultTaskIndex, "TASK")),
-            _ => throw new InvalidOperationException($"Automation1 script command is unknown: {command}")
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case "UPLOAD":
+                    return UploadScript(controller, fields);
+                case "RUN":
+                    return RunControllerScript(controller, fields);
+                case "RUN_LOCAL":
+                    return RunLocalScript(controller, fields);
+                case "BUFFERED_RUN":
+                    return RunBufferedScript(controller, fields, cancellationToken);
+                case "BUFFERED_RUN_GROUP":
+                    return RunBufferedScriptGroup(controller, fields, cancellationToken);
+                case "STOP":
+                    return StopTask(controller, ReadInt(fields, 2, DefaultTaskIndex, "TASK"));
+                case "STATUS":
+                    return ReadTaskStatus(controller, ReadInt(fields, 2, DefaultTaskIndex, "TASK"));
+                default:
+                    throw new InvalidOperationException($"Automation1 script command is unknown: {command}");
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     private static string ExecuteTaskFunction(
@@ -372,13 +396,21 @@ internal sealed class CAutomation1Comm(
 
             var pipeCommand = fields[1].ToUpperInvariant();
             var pipeTaskIndex = ReadInt(fields, 2, DefaultTaskIndex, "TASK");
-
-            return pipeCommand switch
+            string EvaluatePipeCommandSwitch3()
             {
-                "STATUS" => ReadTaskStatus(controller, pipeTaskIndex),
-                "STOP" => StopTask(controller, pipeTaskIndex),
-                _ => throw new InvalidOperationException($"Automation1 task command is unknown: {pipeCommand}")
-            };
+                var switchValue = pipeCommand;
+                switch (switchValue)
+                {
+                    case "STATUS":
+                        return ReadTaskStatus(controller, pipeTaskIndex);
+                    case "STOP":
+                        return StopTask(controller, pipeTaskIndex);
+                    default:
+                        throw new InvalidOperationException($"Automation1 task command is unknown: {pipeCommand}");
+                }
+            }
+
+            return EvaluatePipeCommandSwitch3();
         }
 
         var tokens = SplitColon(body);
@@ -390,13 +422,21 @@ internal sealed class CAutomation1Comm(
 
         var taskIndex = ReadInt(tokens[1], "TASK");
         var command = tokens[2].ToUpperInvariant();
-
-        return command switch
+        string EvaluateCommandSwitch4()
         {
-            "STATUS" => ReadTaskStatus(controller, taskIndex),
-            "STOP" => StopTask(controller, taskIndex),
-            _ => throw new InvalidOperationException($"Automation1 task command is unknown: {command}")
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case "STATUS":
+                    return ReadTaskStatus(controller, taskIndex);
+                case "STOP":
+                    return StopTask(controller, taskIndex);
+                default:
+                    throw new InvalidOperationException($"Automation1 task command is unknown: {command}");
+            }
+        }
+
+        return EvaluateCommandSwitch4();
     }
 
     private static string ExecuteCommandFunction(

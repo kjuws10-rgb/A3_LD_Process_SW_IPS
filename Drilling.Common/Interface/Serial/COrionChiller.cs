@@ -56,36 +56,68 @@ internal sealed class COrionChiller(
 
     public static string Build(EN_CHILLER_COMMAND command, double parameter)
     {
-        return command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_CHILLER_COMMAND.Run => "ORION:RUN",
-            EN_CHILLER_COMMAND.Stop => "ORION:STOP",
-            EN_CHILLER_COMMAND.PumpOnly => "ORION:PUMP",
-            EN_CHILLER_COMMAND.SetTemperature => $"ORION:SETTEMP:{parameter.ToString("F1", CultureInfo.InvariantCulture)}",
-            EN_CHILLER_COMMAND.ResetAlarm => "ORION:RESETALARM",
-            EN_CHILLER_COMMAND.PollLiquidTemp => "ORION:POLL:M1",
-            EN_CHILLER_COMMAND.PollSetTemp => "ORION:POLL:S1",
-            EN_CHILLER_COMMAND.PollRunState => "ORION:POLL:JO",
-            EN_CHILLER_COMMAND.PollAlarmCode => "ORION:POLL:ER",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_CHILLER_COMMAND.Run:
+                    return "ORION:RUN";
+                case EN_CHILLER_COMMAND.Stop:
+                    return "ORION:STOP";
+                case EN_CHILLER_COMMAND.PumpOnly:
+                    return "ORION:PUMP";
+                case EN_CHILLER_COMMAND.SetTemperature:
+                    return $"ORION:SETTEMP:{parameter.ToString("F1", CultureInfo.InvariantCulture)}";
+                case EN_CHILLER_COMMAND.ResetAlarm:
+                    return "ORION:RESETALARM";
+                case EN_CHILLER_COMMAND.PollLiquidTemp:
+                    return "ORION:POLL:M1";
+                case EN_CHILLER_COMMAND.PollSetTemp:
+                    return "ORION:POLL:S1";
+                case EN_CHILLER_COMMAND.PollRunState:
+                    return "ORION:POLL:JO";
+                case EN_CHILLER_COMMAND.PollAlarmCode:
+                    return "ORION:POLL:ER";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch1();
     }
 
     public static string DescribeCommand(EN_CHILLER_COMMAND command, double parameter)
     {
-        return command switch
+        string EvaluateCommandSwitch2()
         {
-            EN_CHILLER_COMMAND.Run => FormatTxFrame(CreateSelectingFrame("JO", CreateRunData(1))),
-            EN_CHILLER_COMMAND.Stop => FormatTxFrame(CreateSelectingFrame("JO", CreateRunData(0))),
-            EN_CHILLER_COMMAND.PumpOnly => FormatTxFrame(CreateSelectingFrame("JO", CreateRunData(2))),
-            EN_CHILLER_COMMAND.SetTemperature => DescribeSelectingCommand("S1", FormatTemperatureData(parameter)),
-            EN_CHILLER_COMMAND.PollLiquidTemp => FormatTxFrame(CreatePollingFrame("M1")),
-            EN_CHILLER_COMMAND.PollSetTemp => FormatTxFrame(CreatePollingFrame("S1")),
-            EN_CHILLER_COMMAND.PollRunState => FormatTxFrame(CreatePollingFrame("JO")),
-            EN_CHILLER_COMMAND.PollAlarmCode => FormatTxFrame(CreatePollingFrame("ER")),
-            EN_CHILLER_COMMAND.ResetAlarm => "UNSUPPORTED:ORION:RESETALARM",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_CHILLER_COMMAND.Run:
+                    return FormatTxFrame(CreateSelectingFrame("JO", CreateRunData(1)));
+                case EN_CHILLER_COMMAND.Stop:
+                    return FormatTxFrame(CreateSelectingFrame("JO", CreateRunData(0)));
+                case EN_CHILLER_COMMAND.PumpOnly:
+                    return FormatTxFrame(CreateSelectingFrame("JO", CreateRunData(2)));
+                case EN_CHILLER_COMMAND.SetTemperature:
+                    return DescribeSelectingCommand("S1", FormatTemperatureData(parameter));
+                case EN_CHILLER_COMMAND.PollLiquidTemp:
+                    return FormatTxFrame(CreatePollingFrame("M1"));
+                case EN_CHILLER_COMMAND.PollSetTemp:
+                    return FormatTxFrame(CreatePollingFrame("S1"));
+                case EN_CHILLER_COMMAND.PollRunState:
+                    return FormatTxFrame(CreatePollingFrame("JO"));
+                case EN_CHILLER_COMMAND.PollAlarmCode:
+                    return FormatTxFrame(CreatePollingFrame("ER"));
+                case EN_CHILLER_COMMAND.ResetAlarm:
+                    return "UNSUPPORTED:ORION:RESETALARM";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     public static bool IsSuccessResponse(string response)
@@ -130,19 +162,33 @@ internal sealed class COrionChiller(
             LastError = EN_CHILLER_ERROR.Ok,
             UpdatedAt = DateTimeOffset.Now
         };
-
-        return command switch
+        ST_ORION_CHILLER_STATUS EvaluateCommandSwitch3()
         {
-            EN_CHILLER_COMMAND.Run => ok with { RunState = EN_CHILLER_RUN_STATE.Run },
-            EN_CHILLER_COMMAND.Stop => ok with { RunState = EN_CHILLER_RUN_STATE.Stop },
-            EN_CHILLER_COMMAND.PumpOnly => ok with { RunState = EN_CHILLER_RUN_STATE.PumpOnly },
-            EN_CHILLER_COMMAND.SetTemperature => ok with { SetTempC = parameter },
-            EN_CHILLER_COMMAND.PollLiquidTemp => ok with { LiquidTempC = ReadPollingDouble(value, "M1") },
-            EN_CHILLER_COMMAND.PollSetTemp => ok with { SetTempC = ReadPollingDouble(value, "S1") },
-            EN_CHILLER_COMMAND.PollRunState => ok with { RunState = ReadRunState(value) },
-            EN_CHILLER_COMMAND.PollAlarmCode => ok with { AlarmCode = ReadPollingData(value, "ER") },
-            _ => ok
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_CHILLER_COMMAND.Run:
+                    return ok with { RunState = EN_CHILLER_RUN_STATE.Run };
+                case EN_CHILLER_COMMAND.Stop:
+                    return ok with { RunState = EN_CHILLER_RUN_STATE.Stop };
+                case EN_CHILLER_COMMAND.PumpOnly:
+                    return ok with { RunState = EN_CHILLER_RUN_STATE.PumpOnly };
+                case EN_CHILLER_COMMAND.SetTemperature:
+                    return ok with { SetTempC = parameter };
+                case EN_CHILLER_COMMAND.PollLiquidTemp:
+                    return ok with { LiquidTempC = ReadPollingDouble(value, "M1") };
+                case EN_CHILLER_COMMAND.PollSetTemp:
+                    return ok with { SetTempC = ReadPollingDouble(value, "S1") };
+                case EN_CHILLER_COMMAND.PollRunState:
+                    return ok with { RunState = ReadRunState(value) };
+                case EN_CHILLER_COMMAND.PollAlarmCode:
+                    return ok with { AlarmCode = ReadPollingData(value, "ER") };
+                default:
+                    return ok;
+            }
+        }
+
+        return EvaluateCommandSwitch3();
     }
 
     public override async Task<string> Execute(
@@ -206,21 +252,33 @@ internal sealed class COrionChiller(
         {
             return "ERR:-2";
         }
-
-        return parts[1].ToUpperInvariant() switch
+        string EvaluateValueSwitch4()
         {
-            "RUN" => SendSelecting("JO", CreateRunData(1)),
-            "STOP" => SendSelecting("JO", CreateRunData(0)),
-            "PUMP" => SendSelecting("JO", CreateRunData(2)),
-            "SETTEMP" when parts.Length >= 3 && double.TryParse(
-                parts[2],
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out var temp) => SendSelecting("S1", FormatTemperatureData(temp)),
-            "POLL" when parts.Length >= 3 => SendPolling(parts[2]),
-            "RESETALARM" => "ERR:-99",
-            _ => "ERR:-2"
-        };
+            var switchValue = parts[1].ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "RUN":
+                    return SendSelecting("JO", CreateRunData(1));
+                case "STOP":
+                    return SendSelecting("JO", CreateRunData(0));
+                case "PUMP":
+                    return SendSelecting("JO", CreateRunData(2));
+                case "SETTEMP" when parts.Length >= 3 && double.TryParse(
+                        parts[2],
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out var temp):
+                    return SendSelecting("S1", FormatTemperatureData(temp));
+                case "POLL" when parts.Length >= 3:
+                    return SendPolling(parts[2]);
+                case "RESETALARM":
+                    return "ERR:-99";
+                default:
+                    return "ERR:-2";
+            }
+        }
+
+        return EvaluateValueSwitch4();
     }
 
     private string SendPolling(string id)
@@ -266,13 +324,21 @@ internal sealed class COrionChiller(
         SerialPort!.DiscardInBuffer();
         SerialPort.DiscardOutBuffer();
         SerialPort.Write(tx, 0, tx.Length);
-
-        return WaitAck() switch
+        string EvaluateValueSwitch5()
         {
-            0 => "OK",
-            -2 => "ERR:-2",
-            _ => "ERR:-1"
-        };
+            var switchValue = WaitAck();
+            switch (switchValue)
+            {
+                case 0:
+                    return "OK";
+                case -2:
+                    return "ERR:-2";
+                default:
+                    return "ERR:-1";
+            }
+        }
+
+        return EvaluateValueSwitch5();
     }
 
     private static string CreateRunData(int state)
@@ -304,21 +370,33 @@ internal sealed class COrionChiller(
         {
             return function;
         }
-
-        return parts[1].ToUpperInvariant() switch
+        string EvaluateValueSwitch6()
         {
-            "RUN" => DescribeCommand(EN_CHILLER_COMMAND.Run, 0.0),
-            "STOP" => DescribeCommand(EN_CHILLER_COMMAND.Stop, 0.0),
-            "PUMP" => DescribeCommand(EN_CHILLER_COMMAND.PumpOnly, 0.0),
-            "SETTEMP" when parts.Length >= 3 && double.TryParse(
-                parts[2],
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out var temp) => DescribeCommand(EN_CHILLER_COMMAND.SetTemperature, temp),
-            "POLL" when parts.Length >= 3 => FormatTxFrame(CreatePollingFrame(parts[2])),
-            "RESETALARM" => "UNSUPPORTED:ORION:RESETALARM",
-            _ => function
-        };
+            var switchValue = parts[1].ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "RUN":
+                    return DescribeCommand(EN_CHILLER_COMMAND.Run, 0.0);
+                case "STOP":
+                    return DescribeCommand(EN_CHILLER_COMMAND.Stop, 0.0);
+                case "PUMP":
+                    return DescribeCommand(EN_CHILLER_COMMAND.PumpOnly, 0.0);
+                case "SETTEMP" when parts.Length >= 3 && double.TryParse(
+                        parts[2],
+                        NumberStyles.Float,
+                        CultureInfo.InvariantCulture,
+                        out var temp):
+                    return DescribeCommand(EN_CHILLER_COMMAND.SetTemperature, temp);
+                case "POLL" when parts.Length >= 3:
+                    return FormatTxFrame(CreatePollingFrame(parts[2]));
+                case "RESETALARM":
+                    return "UNSUPPORTED:ORION:RESETALARM";
+                default:
+                    return function;
+            }
+        }
+
+        return EvaluateValueSwitch6();
     }
 
     private static string DescribeSelectingCommand(string id, string data)
@@ -380,18 +458,33 @@ internal sealed class COrionChiller(
         double parameter,
         ST_ORION_CHILLER_STATUS current)
     {
-        return command switch
+        string EvaluateCommandSwitch7()
         {
-            EN_CHILLER_COMMAND.PollLiquidTemp => $"M1:{current.LiquidTempC.ToString("F1", CultureInfo.InvariantCulture)}",
-            EN_CHILLER_COMMAND.PollSetTemp => $"S1:{current.SetTempC.ToString("F1", CultureInfo.InvariantCulture)}",
-            EN_CHILLER_COMMAND.PollRunState => $"JO:{(int)current.RunState}",
-            EN_CHILLER_COMMAND.PollAlarmCode => $"ER:{current.AlarmCode}",
-            EN_CHILLER_COMMAND.Run => "OK",
-            EN_CHILLER_COMMAND.Stop => "OK",
-            EN_CHILLER_COMMAND.PumpOnly => "OK",
-            EN_CHILLER_COMMAND.SetTemperature => "OK",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_CHILLER_COMMAND.PollLiquidTemp:
+                    return $"M1:{current.LiquidTempC.ToString("F1", CultureInfo.InvariantCulture)}";
+                case EN_CHILLER_COMMAND.PollSetTemp:
+                    return $"S1:{current.SetTempC.ToString("F1", CultureInfo.InvariantCulture)}";
+                case EN_CHILLER_COMMAND.PollRunState:
+                    return $"JO:{(int)current.RunState}";
+                case EN_CHILLER_COMMAND.PollAlarmCode:
+                    return $"ER:{current.AlarmCode}";
+                case EN_CHILLER_COMMAND.Run:
+                    return "OK";
+                case EN_CHILLER_COMMAND.Stop:
+                    return "OK";
+                case EN_CHILLER_COMMAND.PumpOnly:
+                    return "OK";
+                case EN_CHILLER_COMMAND.SetTemperature:
+                    return "OK";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch7();
     }
 
     private static EN_CHILLER_ERROR ReadError(string response)
@@ -404,14 +497,23 @@ internal sealed class COrionChiller(
         {
             return EN_CHILLER_ERROR.Error;
         }
-
-        return code switch
+        EN_CHILLER_ERROR EvaluateCodeSwitch8()
         {
-            -99 => EN_CHILLER_ERROR.NotSupported,
-            -2 => EN_CHILLER_ERROR.InvalidResponse,
-            -1 => EN_CHILLER_ERROR.Timeout,
-            _ => EN_CHILLER_ERROR.Error
-        };
+            var switchValue = code;
+            switch (switchValue)
+            {
+                case -99:
+                    return EN_CHILLER_ERROR.NotSupported;
+                case -2:
+                    return EN_CHILLER_ERROR.InvalidResponse;
+                case -1:
+                    return EN_CHILLER_ERROR.Timeout;
+                default:
+                    return EN_CHILLER_ERROR.Error;
+            }
+        }
+
+        return EvaluateCodeSwitch8();
     }
 
     private static double ReadPollingDouble(string response, string id)
@@ -553,11 +655,21 @@ internal sealed class COrionChiller(
 
     private static string NormalizeId(string id)
     {
-        return id.Trim().ToUpperInvariant() switch
+        string EvaluateValueSwitch9()
         {
-            "J0" => "JO",
-            var value => value
-        };
+            var switchValue = id.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "J0":
+                    return "JO";
+                case var value:
+                    return value;
+                default:
+                    throw new global::System.Runtime.CompilerServices.SwitchExpressionException(switchValue);
+            }
+        }
+
+        return EvaluateValueSwitch9();
     }
 
     private static string FormatAddress()

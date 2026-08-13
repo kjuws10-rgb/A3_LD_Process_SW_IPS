@@ -1012,12 +1012,21 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private static string FormatConnectionState(EN_COMM_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch1()
         {
-            EN_COMM_STATE.Online => "ONLINE",
-            EN_COMM_STATE.Simulation => "SIMULATION",
-            _ => "OFFLINE"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_COMM_STATE.Online:
+                    return "ONLINE";
+                case EN_COMM_STATE.Simulation:
+                    return "SIMULATION";
+                default:
+                    return "OFFLINE";
+            }
+        }
+
+        return EvaluateStateSwitch1();
     }
 
     private static string NormalizeNickName(string nickName)
@@ -1285,12 +1294,21 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private static string FormatChillerRunState(EN_CHILLER_RUN_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch2()
         {
-            EN_CHILLER_RUN_STATE.Run => "RUN",
-            EN_CHILLER_RUN_STATE.PumpOnly => "PUMP ONLY",
-            _ => "STOP"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_CHILLER_RUN_STATE.Run:
+                    return "RUN";
+                case EN_CHILLER_RUN_STATE.PumpOnly:
+                    return "PUMP ONLY";
+                default:
+                    return "STOP";
+            }
+        }
+
+        return EvaluateStateSwitch2();
     }
 
     public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
@@ -2574,20 +2592,33 @@ internal static class CInterfaceConnectOption
             .Concat(Enumerable.Repeat("", 5))
             .Take(5)
             .ToArray();
-
-        return data.InterfaceType switch
+        ST_INTERFACE_CONNECT_OPTION EvaluateInterfaceTypeSwitch3()
         {
-            EN_INTERFACE_TYPE.Serial or EN_INTERFACE_TYPE.ModbusSerial => CreateSerialOption(data, args),
-            EN_INTERFACE_TYPE.SocketClient or EN_INTERFACE_TYPE.SocketServer or
-                EN_INTERFACE_TYPE.SocketClientUdp or EN_INTERFACE_TYPE.SocketServerUdp or
-                EN_INTERFACE_TYPE.ModbusTcp => CreateSocketOption(data, args),
-            EN_INTERFACE_TYPE.AcsNet => CreateAcsOption(args),
-            EN_INTERFACE_TYPE.XpsNet => CreateXpsOption(args),
-            EN_INTERFACE_TYPE.Automation1Net => CreateAutomation1Option(args),
-            EN_INTERFACE_TYPE.PicoMotor => CreatePicoMotorOption(),
-            EN_INTERFACE_TYPE.OpcUa => CreateOpcUaOption(args),
-            _ => CreateSocketOption(data, args)
-        };
+            var switchValue = data.InterfaceType;
+            switch (switchValue)
+            {
+                case EN_INTERFACE_TYPE.Serial or EN_INTERFACE_TYPE.ModbusSerial:
+                    return CreateSerialOption(data, args);
+                case EN_INTERFACE_TYPE.SocketClient or EN_INTERFACE_TYPE.SocketServer or
+                        EN_INTERFACE_TYPE.SocketClientUdp or EN_INTERFACE_TYPE.SocketServerUdp or
+                        EN_INTERFACE_TYPE.ModbusTcp:
+                    return CreateSocketOption(data, args);
+                case EN_INTERFACE_TYPE.AcsNet:
+                    return CreateAcsOption(args);
+                case EN_INTERFACE_TYPE.XpsNet:
+                    return CreateXpsOption(args);
+                case EN_INTERFACE_TYPE.Automation1Net:
+                    return CreateAutomation1Option(args);
+                case EN_INTERFACE_TYPE.PicoMotor:
+                    return CreatePicoMotorOption();
+                case EN_INTERFACE_TYPE.OpcUa:
+                    return CreateOpcUaOption(args);
+                default:
+                    return CreateSocketOption(data, args);
+            }
+        }
+
+        return EvaluateInterfaceTypeSwitch3();
     }
 
     private static ST_INTERFACE_CONNECT_OPTION CreateSocketOption(

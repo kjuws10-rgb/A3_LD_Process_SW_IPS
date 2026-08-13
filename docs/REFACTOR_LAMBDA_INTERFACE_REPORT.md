@@ -7,7 +7,7 @@
 | 저장소 | `kjuws10-rgb/A3_LD_Process_SW_IPS` |
 | 기준 main Commit SHA | `57d1fa176d0ecf4eb82e5233006244d58693c455` |
 | 작업 브랜치 | `refactor/remove-lambda-interface` |
-| PR | 병합 전 확정 예정 |
+| PR | https://github.com/kjuws10-rgb/A3_LD_Process_SW_IPS/pull/1 |
 | 최종 리팩터링 Merge Commit SHA | 병합 후 확정 예정 |
 | 대상 솔루션 | `Drilling.sln` |
 | 대상 프로젝트 | `Drilling.Common`, `Drilling.File`, `Drilling.UI` |

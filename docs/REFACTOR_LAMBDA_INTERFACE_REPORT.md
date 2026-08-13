@@ -8,7 +8,7 @@
 | 기준 main Commit SHA | `57d1fa176d0ecf4eb82e5233006244d58693c455` |
 | 작업 브랜치 | `refactor/remove-lambda-interface` |
 | PR | https://github.com/kjuws10-rgb/A3_LD_Process_SW_IPS/pull/1 |
-| 최종 리팩터링 Merge Commit SHA | 병합 후 확정 예정 |
+| 최종 리팩터링 Merge Commit SHA | `d056467285ff1ae84a9b736bc972075c68a47a31` |
 | 대상 솔루션 | `Drilling.sln` |
 | 대상 프로젝트 | `Drilling.Common`, `Drilling.File`, `Drilling.UI` |
 
@@ -123,6 +123,7 @@ Roslyn syntax tree와 semantic model을 사용해 `bin`, `obj`, `.g.cs`, `.g.i.c
 | 기준 main Release | 0 | 0 | 통과 |
 | 리팩터링 후 Debug | 0 | 0 | 통과 |
 | 리팩터링 후 Release | 0 | 0 | 통과 |
+| 병합된 main Release | 0 | 0 | 통과 |
 
 최종 검증 명령은 다음과 같다.
 
@@ -166,6 +167,8 @@ dotnet run --project Drilling.UI.Regression/Drilling.UI.Regression.csproj -c Deb
 - 속성명별 명시적 이벤트가 실제 WPF binding target을 갱신
 - `CButtonCommandBehavior` Click 1회 실행, CommandParameter 전달, CanExecute 변경 시 IsEnabled 갱신
 - preview 좌표의 uniform/stretch 계산 결과
+
+PR #1 병합 후 원격 main `d056467285ff1ae84a9b736bc972075c68a47a31`을 별도 worktree에 새로 받은 뒤 Release build, Golden 회귀 및 WPF 회귀를 다시 실행해 모두 통과했다.
 
 ### Simulation smoke test
 

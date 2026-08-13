@@ -301,9 +301,9 @@ Vendor SDK 내부의 Interface/Task 형식은 수정하지 않았다. 사용자 
 |---|---|
 | 기준 Commit | `9b33c16ee102a6879acb4411ba781771ec0759d4` |
 | 작업 Branch | `agent/remove-async-task-thread` |
-| 주요 작업 Commit | `d7fe6e8`, `43dc141`, `20e837d`, `5ccea3b` |
+| 주요 작업 Commit | `d7fe6e8`, `43dc141`, `20e837d`, `5ccea3b`, `8ecb200` |
 | 변경 파일 수 | 직접 관리 파일 70개 |
 | Push | `origin/agent/remove-async-task-thread` 성공 |
 | Pull Request | `https://github.com/kjuws10-rgb/A3_LD_Process_SW_IPS/pull/3` |
-| Merge Commit | 최종 병합 후 갱신 |
-| 최종 main Commit | 최종 병합 후 갱신 |
+| Merge Commit | `4fa49aefc017882c832f00426664b573583e1864` |
+| 최종 main Commit | `4fa49aefc017882c832f00426664b573583e1864` (기능 리팩터링 병합 기준) |

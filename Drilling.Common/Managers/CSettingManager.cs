@@ -138,9 +138,13 @@ public sealed class CSettingManager(
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         var parameters = await LoadSection(section, cancellationToken);
-        var parameter = parameters.FirstOrDefault(item =>
-            item.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-            item.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem1(ST_SYSTEM_PARAMETER item)
+        {
+            return item.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                        item.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var parameter = parameters.FirstOrDefault(MatchItem1);
 
         return parameter is null || string.IsNullOrWhiteSpace(parameter.Value)
             ? defaultValue
@@ -157,21 +161,22 @@ public sealed class CSettingManager(
 
         var parameters = await LoadSection(section, cancellationToken);
         var found = false;
-        var editedParameters = parameters
-            .Select(parameter =>
+        ST_SYSTEM_PARAMETER SelectParameter2(ST_SYSTEM_PARAMETER parameter)
+        {
+            var isTarget =
+                parameter.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                parameter.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+
+            if (!isTarget)
             {
-                var isTarget =
-                    parameter.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-                    parameter.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+                return parameter;
+            }
 
-                if (!isTarget)
-                {
-                    return parameter;
-                }
-
-                found = true;
-                return parameter with { Value = value };
-            })
+            found = true;
+            return parameter with { Value = value };
+        }
+        var editedParameters = parameters
+            .Select(SelectParameter2)
             .ToArray();
 
         if (!found)

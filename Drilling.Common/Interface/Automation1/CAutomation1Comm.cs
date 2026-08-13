@@ -77,9 +77,13 @@ internal sealed class CAutomation1Comm(
                 executeCancellationToken = bufferedRunCancellation.Token;
                 RegisterActiveBufferedRun(bufferedRunCancellation);
             }
+            string RunTask1()
+            {
+                return ExecuteAutomation1Function(controller, function, executeCancellationToken);
+            }
 
             var response = await Task.Run(
-                () => ExecuteAutomation1Function(controller, function, executeCancellationToken),
+RunTask1,
                 executeCancellationToken);
 
             LastSent = function;
@@ -621,9 +625,14 @@ internal sealed class CAutomation1Comm(
         catch (Exception ex)
         {
             runException = ex;
+            CBufferedRunRequest SelectItem2(CBufferedRunQueue item)
+            {
+                return item.Request;
+            }
+
             StopBufferedRunTasks(
                 controller,
-                commandQueues.Select(item => item.Request),
+                commandQueues.Select(SelectItem2),
                 cleanupExceptions);
         }
         finally
@@ -664,20 +673,32 @@ internal sealed class CAutomation1Comm(
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            CBufferedRunTaskState SelectItem3(CBufferedRunQueue item)
+            {
+                return ReadBufferedRunTaskState(controller, item);
+            }
 
             var states = queueList
-                .Select(item => ReadBufferedRunTaskState(controller, item))
+                .Select(SelectItem3)
                 .ToArray();
-            var errorState = states.FirstOrDefault(state => state.State == TaskState.Error);
+            bool MatchState4(CBufferedRunTaskState state)
+            {
+                return state.State == TaskState.Error;
+            }
+
+            var errorState = states.FirstOrDefault(MatchState4);
             if (errorState is not null)
             {
                 throw new InvalidOperationException(
                     $"Automation1 buffered run task error. Task={errorState.TaskIndex}, Error={errorState.Error}");
             }
+            bool CheckState5(CBufferedRunTaskState state)
+            {
+                return state.State == TaskState.Idle &&
+                                    state.HasQueueEmptiedAfterStart;
+            }
 
-            if (states.All(state =>
-                    state.State == TaskState.Idle &&
-                    state.HasQueueEmptiedAfterStart))
+            if (states.All(CheckState5))
             {
                 return;
             }
@@ -721,10 +742,14 @@ internal sealed class CAutomation1Comm(
     private static string FormatBufferedRunTaskStates(
         IReadOnlyList<CBufferedRunTaskState> states)
     {
+        string SelectState6(CBufferedRunTaskState state)
+        {
+            return $"T{state.TaskIndex}={state.State}/QueueEmptied={state.NumberOfTimesEmptied}/Initial={state.InitialNumberOfTimesEmptied}/Executed={state.NumberOfExecutedCommands}/Pending={state.NumberOfUnexecutedCommands}{(string.IsNullOrWhiteSpace(state.Error) ? "" : $"/{state.Error}")}";
+        }
+
         return string.Join(
             ", ",
-            states.Select(state =>
-                $"T{state.TaskIndex}={state.State}/QueueEmptied={state.NumberOfTimesEmptied}/Initial={state.InitialNumberOfTimesEmptied}/Executed={state.NumberOfExecutedCommands}/Pending={state.NumberOfUnexecutedCommands}{(string.IsNullOrWhiteSpace(state.Error) ? "" : $"/{state.Error}")}"));
+            states.Select(SelectState6));
     }
 
     private static void StopBufferedRunTasks(
@@ -732,7 +757,12 @@ internal sealed class CAutomation1Comm(
         IEnumerable<CBufferedRunRequest> requests,
         ICollection<Exception> cleanupExceptions)
     {
-        foreach (var taskIndex in requests.Select(request => request.TaskIndex).Distinct())
+        int SelectRequest7(CBufferedRunRequest request)
+        {
+            return request.TaskIndex;
+        }
+
+        foreach (var taskIndex in requests.Select(SelectRequest7).Distinct())
         {
             try
             {
@@ -783,10 +813,14 @@ internal sealed class CAutomation1Comm(
         {
             return;
         }
+        string SelectError8(Exception error)
+        {
+            return error.Message;
+        }
 
         exception.Data["Automation1BufferedRunCleanupErrors"] = string.Join(
             Environment.NewLine,
-            cleanupExceptions.Select(error => error.Message));
+            cleanupExceptions.Select(SelectError8));
     }
 
     private static string StopTask(
@@ -836,36 +870,86 @@ internal sealed class CAutomation1Comm(
         switch (command)
         {
             case "SERVO_ON":
+                void ExecuteAxisAxisNoCallback9(int axisNo)
+                {
+                    controller.Runtime.Commands.Motion.Enable(axisNo);
+                }
+
+                void ExecuteAxisAxisTextCallback10(string axisText)
+                {
+                    controller.Runtime.Commands.Motion.Enable(axisText);
+                }
+
                 ExecuteAxis(
                     axis,
-                    axisNo => controller.Runtime.Commands.Motion.Enable(axisNo),
-                    axisText => controller.Runtime.Commands.Motion.Enable(axisText));
+ExecuteAxisAxisNoCallback9,
+ExecuteAxisAxisTextCallback10);
                 return $"OK:AXIS:{Sanitize(axisName)}:SERVO_ON";
             case "SERVO_OFF":
+                void ExecuteAxisAxisNoCallback11(int axisNo)
+                {
+                    controller.Runtime.Commands.Motion.Disable(axisNo);
+                }
+
+                void ExecuteAxisAxisTextCallback12(string axisText)
+                {
+                    controller.Runtime.Commands.Motion.Disable(axisText);
+                }
+
                 ExecuteAxis(
                     axis,
-                    axisNo => controller.Runtime.Commands.Motion.Disable(axisNo),
-                    axisText => controller.Runtime.Commands.Motion.Disable(axisText));
+ExecuteAxisAxisNoCallback11,
+ExecuteAxisAxisTextCallback12);
                 return $"OK:AXIS:{Sanitize(axisName)}:SERVO_OFF";
             case "HOME":
+                void ExecuteAxisAxisNoCallback13(int axisNo)
+                {
+                    controller.Runtime.Commands.Motion.Home(axisNo);
+                }
+
+                void ExecuteAxisAxisTextCallback14(string axisText)
+                {
+                    controller.Runtime.Commands.Motion.Home(axisText);
+                }
+
                 ExecuteAxis(
                     axis,
-                    axisNo => controller.Runtime.Commands.Motion.Home(axisNo),
-                    axisText => controller.Runtime.Commands.Motion.Home(axisText));
+ExecuteAxisAxisNoCallback13,
+ExecuteAxisAxisTextCallback14);
                 return $"OK:AXIS:{Sanitize(axisName)}:HOME";
             case "MOVE_ABS":
+                void ExecuteAxisAxisNoCallback15(int axisNo, double position, double velocity)
+                {
+                    controller.Runtime.Commands.Motion.MoveAbsolute(axisNo, position, velocity);
+                }
+
+                void ExecuteAxisAxisTextCallback16(string axisText, double position, double velocity)
+                {
+                    controller.Runtime.Commands.Motion.MoveAbsolute(axisText, position, velocity);
+                }
+
                 ExecuteAxis(
                     axis,
-                    (axisNo, position, velocity) => controller.Runtime.Commands.Motion.MoveAbsolute(axisNo, position, velocity),
-                    (axisText, position, velocity) => controller.Runtime.Commands.Motion.MoveAbsolute(axisText, position, velocity),
+ExecuteAxisAxisNoCallback15,
+ExecuteAxisAxisTextCallback16,
                     ReadDouble(tokens, valueIndex, "MOVE_ABS"),
                     ReadDouble(tokens, valueIndex + 1, 100.0, "VELOCITY"));
                 return $"OK:AXIS:{Sanitize(axisName)}:MOVE_ABS";
             case "MOVE_REL":
+                void ExecuteAxisAxisNoCallback17(int axisNo, double distance, double velocity)
+                {
+                    controller.Runtime.Commands.Motion.MoveIncremental(axisNo, distance, velocity);
+                }
+
+                void ExecuteAxisAxisTextCallback18(string axisText, double distance, double velocity)
+                {
+                    controller.Runtime.Commands.Motion.MoveIncremental(axisText, distance, velocity);
+                }
+
                 ExecuteAxis(
                     axis,
-                    (axisNo, distance, velocity) => controller.Runtime.Commands.Motion.MoveIncremental(axisNo, distance, velocity),
-                    (axisText, distance, velocity) => controller.Runtime.Commands.Motion.MoveIncremental(axisText, distance, velocity),
+ExecuteAxisAxisNoCallback17,
+ExecuteAxisAxisTextCallback18,
                     ReadDouble(tokens, valueIndex, "MOVE_REL"),
                     ReadDouble(tokens, valueIndex + 1, 100.0, "VELOCITY"));
                 return $"OK:AXIS:{Sanitize(axisName)}:MOVE_REL";
@@ -873,10 +957,20 @@ internal sealed class CAutomation1Comm(
                 controller.Runtime.Commands.Execute($"Abort({axis.CommandText})", taskIndex);
                 return $"OK:AXIS:{Sanitize(axisName)}:STOP";
             case "RESET_ALARM":
+                void ExecuteAxisAxisNoCallback19(int axisNo)
+                {
+                    controller.Runtime.Commands.FaultAndError.FaultAcknowledge(axisNo);
+                }
+
+                void ExecuteAxisAxisTextCallback20(string axisText)
+                {
+                    controller.Runtime.Commands.FaultAndError.FaultAcknowledge(axisText);
+                }
+
                 ExecuteAxis(
                     axis,
-                    axisNo => controller.Runtime.Commands.FaultAndError.FaultAcknowledge(axisNo),
-                    axisText => controller.Runtime.Commands.FaultAndError.FaultAcknowledge(axisText));
+ExecuteAxisAxisNoCallback19,
+ExecuteAxisAxisTextCallback20);
                 return $"OK:AXIS:{Sanitize(axisName)}:RESET_ALARM";
             case "READ":
                 return ReadAxisStatus(controller, axis, axisName);

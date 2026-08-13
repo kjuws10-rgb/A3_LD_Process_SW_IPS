@@ -129,6 +129,11 @@ internal sealed class CXpsMotion(IInterfaceManager? interfaceManager, int device
         string value,
         params string[] patterns)
     {
-        return patterns.Any(pattern => value.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+        bool CheckPattern1(string pattern)
+        {
+            return value.Contains(pattern, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return patterns.Any(CheckPattern1);
     }
 }

@@ -225,7 +225,12 @@ internal sealed class COrionChiller(
 
         try
         {
-            LastReceived = await Task.Run(() => ExecuteOrion(function), cancellationToken);
+            string RunTask1()
+            {
+                return ExecuteOrion(function);
+            }
+
+            LastReceived = await Task.Run(RunTask1, cancellationToken);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";
@@ -448,9 +453,14 @@ internal sealed class COrionChiller(
 
     private static string FormatTxFrame(IReadOnlyList<byte> frame)
     {
+        string SelectValue2(byte value)
+        {
+            return value.ToString("X2", CultureInfo.InvariantCulture);
+        }
+
         return frame.Count == 0
             ? ""
-            : "TX HEX " + string.Join(" ", frame.Select(value => value.ToString("X2", CultureInfo.InvariantCulture)));
+            : "TX HEX " + string.Join(" ", frame.Select(SelectValue2));
     }
 
     private static string CreateSimulationResponse(

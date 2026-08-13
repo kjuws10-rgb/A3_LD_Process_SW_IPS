@@ -67,8 +67,12 @@ public sealed class CAlarmManager
                 "CHILLER",
                 "COMMON"));
         }
+        bool FilterAxis1(ST_MOTOR_AXIS_STATUS axis)
+        {
+            return axis.AlarmOn;
+        }
 
-        foreach (var axis in status.Motors.Where(axis => axis.AlarmOn))
+        foreach (var axis in status.Motors.Where(FilterAxis1))
         {
             candidates.Add(new ST_ALARM_CANDIDATE(
                 24001,
@@ -89,20 +93,42 @@ public sealed class CAlarmManager
                 "BET",
                 "COMMON"));
         }
+        int SelectAlarm2(ST_ALARM_CANDIDATE alarm)
+        {
+            return alarm.Code;
+        }
 
         var activeCodes = candidates
-            .Select(alarm => alarm.Code)
+            .Select(SelectAlarm2)
             .ToHashSet();
+        bool FilterCode3(int code)
+        {
+            return !activeCodes.Contains(code);
+        }
 
-        foreach (var code in _activeSince.Keys.Where(code => !activeCodes.Contains(code)).ToArray())
+        foreach (var code in _activeSince.Keys.Where(FilterCode3).ToArray())
         {
             _activeSince.Remove(code);
         }
+        ST_ALARM_DATA SelectAlarm4(ST_ALARM_CANDIDATE alarm)
+        {
+            return ToAlarmData(alarm, now);
+        }
+
+        EN_ALARM_LEVEL GetAlarmSortKey5(ST_ALARM_DATA alarm)
+        {
+            return alarm.Severity;
+        }
+
+        int GetAlarmSortKey6(ST_ALARM_DATA alarm)
+        {
+            return alarm.Code;
+        }
 
         return candidates
-            .Select(alarm => ToAlarmData(alarm, now))
-            .OrderByDescending(alarm => alarm.Severity)
-            .ThenBy(alarm => alarm.Code)
+            .Select(SelectAlarm4)
+            .OrderByDescending(GetAlarmSortKey5)
+            .ThenBy(GetAlarmSortKey6)
             .ToArray();
     }
 
@@ -110,7 +136,12 @@ public sealed class CAlarmManager
         ICollection<ST_ALARM_CANDIDATE> alarms,
         ST_INTERLOCK_SUMMARY interLock)
     {
-        foreach (var item in interLock.Items.Where(item => item.Level != EN_INTERLOCK_LEVEL.Ok))
+        bool FilterItem7(ST_INTERLOCK_ITEM item)
+        {
+            return item.Level != EN_INTERLOCK_LEVEL.Ok;
+        }
+
+        foreach (var item in interLock.Items.Where(FilterItem7))
         {
             if (!InterLockAlarmRules.TryGetValue(item.Signal, out var rule))
             {

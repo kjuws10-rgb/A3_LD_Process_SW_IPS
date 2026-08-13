@@ -249,7 +249,12 @@ internal sealed class CBeamExpander(
 
         try
         {
-            LastReceived = await Task.Run(() => ExecuteBeamExpander(function), cancellationToken);
+            string RunTask1()
+            {
+                return ExecuteBeamExpander(function);
+            }
+
+            LastReceived = await Task.Run(RunTask1, cancellationToken);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";
@@ -533,11 +538,16 @@ internal sealed class CBeamExpander(
         var text = response.Trim();
         var colonIndex = text.IndexOf(':', StringComparison.Ordinal);
         var value = colonIndex >= 0 ? text[(colonIndex + 1)..] : text;
+        bool TakeWhileCharacterCallback2(char character)
+        {
+            return char.IsDigit(character) ||
+                            character == '-' ||
+                            character == '+' ||
+                            character == '.';
+        }
+
         value = new string(value
-            .TakeWhile(character => char.IsDigit(character) ||
-                character == '-' ||
-                character == '+' ||
-                character == '.')
+            .TakeWhile(TakeWhileCharacterCallback2)
             .ToArray());
 
         if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var step))

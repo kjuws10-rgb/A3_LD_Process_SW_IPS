@@ -13,11 +13,28 @@ internal sealed class CCommTypeAttribute(string interfaceType, params string[] d
 {
     public string InterfaceType { get; } = NormalizeName(interfaceType);
 
-    public IReadOnlyList<string> DeviceNames { get; } = deviceNames
-        .Where(name => !string.IsNullOrWhiteSpace(name))
-        .Select(NormalizeName)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToArray();
+    public IReadOnlyList<string> DeviceNames { get; } = CreateDeviceNames(deviceNames);
+
+    private static IReadOnlyList<string> CreateDeviceNames(string[] deviceNames)
+    {
+        List<string> normalizedNames = new List<string>();
+        HashSet<string> registeredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string deviceName in deviceNames)
+        {
+            if (string.IsNullOrWhiteSpace(deviceName))
+            {
+                continue;
+            }
+
+            string normalizedName = NormalizeName(deviceName);
+            if (registeredNames.Add(normalizedName))
+            {
+                normalizedNames.Add(normalizedName);
+            }
+        }
+
+        return normalizedNames.ToArray();
+    }
 
     public static string NormalizeName(string value)
     {
@@ -73,9 +90,19 @@ internal static class CComm
     {
         var interfaceType = CCommTypeAttribute.NormalizeName(data.InterfaceType.ToString());
         var deviceName = CCommTypeAttribute.NormalizeName(data.Device.ToString());
+        bool FilterItem1(CCommRegistration item)
+        {
+            return item.IsMatch(interfaceType, deviceName);
+        }
+
+        int GetItemSortKey2(CCommRegistration item)
+        {
+            return item.DeviceNames.Count;
+        }
+
         var commType = CommTypes
-            .Where(item => item.IsMatch(interfaceType, deviceName))
-            .OrderByDescending(item => item.DeviceNames.Count)
+            .Where(FilterItem1)
+            .OrderByDescending(GetItemSortKey2)
             .FirstOrDefault();
 
         if (commType is null)
@@ -89,15 +116,30 @@ internal static class CComm
 
     private static IReadOnlyList<CCommRegistration> LoadCommTypes()
     {
+        bool FilterType3(Type type)
+        {
+            return !type.IsAbstract && typeof(CCommBase).IsAssignableFrom(type);
+        }
+
+        IEnumerable<CCommRegistration> SelectType4(Type type)
+        {
+            CCommRegistration SelectAttribute1(CCommTypeAttribute attribute)
+            {
+                return new CCommRegistration(
+                                                attribute.InterfaceType,
+                                                attribute.DeviceNames,
+                                                type);
+            }
+
+            return type.GetCustomAttributes<CCommTypeAttribute>()
+                            .Select(SelectAttribute1);
+        }
+
         return typeof(CCommBase)
             .Assembly
             .GetTypes()
-            .Where(type => !type.IsAbstract && typeof(CCommBase).IsAssignableFrom(type))
-            .SelectMany(type => type.GetCustomAttributes<CCommTypeAttribute>()
-                .Select(attribute => new CCommRegistration(
-                    attribute.InterfaceType,
-                    attribute.DeviceNames,
-                    type)))
+            .Where(FilterType3)
+            .SelectMany(SelectType4)
             .ToArray();
     }
 

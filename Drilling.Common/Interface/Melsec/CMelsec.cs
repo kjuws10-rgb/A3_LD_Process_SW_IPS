@@ -109,28 +109,57 @@ public sealed class CMelsec : IMelsec, IDisposable
     {
         get
         {
+            string GetDataSortKey1(ST_MELSEC_MAP_DATA data)
+            {
+                return data.Group;
+            }
+
+            int GetDataSortKey2(ST_MELSEC_MAP_DATA data)
+            {
+                return data.DeviceNo;
+            }
+
+            string GetDataSortKey3(ST_MELSEC_MAP_DATA data)
+            {
+                return data.Id;
+            }
+
             return _map.Values
-        .OrderBy(data => data.Group, StringComparer.OrdinalIgnoreCase)
-        .ThenBy(data => data.DeviceNo)
-        .ThenBy(data => data.Id, StringComparer.OrdinalIgnoreCase)
+        .OrderBy(GetDataSortKey1, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(GetDataSortKey2)
+        .ThenBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
         .ToArray();
         }
     }
 
     public void ReloadMap(IReadOnlyList<ST_MELSEC_MAP_DATA> map)
     {
+        bool FilterData4(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Use;
+        }
+
+        string HandleMap5(ST_MELSEC_MAP_DATA data)
+        {
+            return NormalizeId(data.Id);
+        }
+
         _map = map
-            .Where(data => data.Use)
-            .ToDictionary(data => NormalizeId(data.Id), StringComparer.OrdinalIgnoreCase);
+            .Where(FilterData4)
+            .ToDictionary(HandleMap5, StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<ST_MELSEC_MAP_DATA> GetMapList(string group = "")
     {
         var normalizedGroup = group.Trim();
+        bool FilterData6(ST_MELSEC_MAP_DATA data)
+        {
+            return string.IsNullOrWhiteSpace(normalizedGroup) ||
+                            data.Group.Equals(normalizedGroup, StringComparison.OrdinalIgnoreCase);
+        }
 
         return Map
-            .Where(data => string.IsNullOrWhiteSpace(normalizedGroup) ||
-                data.Group.Equals(normalizedGroup, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterData6)
             .ToArray();
     }
 
@@ -142,9 +171,13 @@ public sealed class CMelsec : IMelsec, IDisposable
         {
             return data;
         }
+        string GetKeySortKey7(string key)
+        {
+            return key;
+        }
 
         throw new InvalidOperationException(
-            $"MELSEC map was not registered: {id}. Available={string.Join(", ", _map.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))}");
+            $"MELSEC map was not registered: {id}. Available={string.Join(", ", _map.Keys.OrderBy(GetKeySortKey7, StringComparer.OrdinalIgnoreCase))}");
     }
 
     public async Task<bool> ReadBit(string id, CancellationToken cancellationToken = default)
@@ -931,7 +964,12 @@ public sealed class CMelsec : IMelsec, IDisposable
 
     private static string WordsToHexText(IReadOnlyList<ushort> words)
     {
-        return string.Join(" ", words.Select(word => word.ToString("X4", CultureInfo.InvariantCulture)));
+        string SelectWord8(ushort word)
+        {
+            return word.ToString("X4", CultureInfo.InvariantCulture);
+        }
+
+        return string.Join(" ", words.Select(SelectWord8));
     }
 
     private static string FormatMap(ST_MELSEC_MAP_DATA data)

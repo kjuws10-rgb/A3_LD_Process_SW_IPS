@@ -65,15 +65,28 @@ public sealed class CInterLockManager
 
     public ST_INTERLOCK_SUMMARY Evaluate(ST_DEVICE_STATUS status)
     {
+        ST_INTERLOCK_CHECK SelectRule1(ST_INTERLOCK_RULE rule)
+        {
+            return EvaluateRule(rule, status);
+        }
+
         var checks = Rules
-            .Select(rule => EvaluateRule(rule, status))
+            .Select(SelectRule1)
             .ToArray();
+        ST_INTERLOCK_ITEM SelectCheck2(ST_INTERLOCK_CHECK check)
+        {
+            return check.Item;
+        }
 
         var items = checks
-            .Select(check => check.Item)
+            .Select(SelectCheck2)
             .ToList();
+        bool CheckAxis3(ST_MOTOR_AXIS_STATUS axis)
+        {
+            return axis.AlarmOn;
+        }
 
-        var motionOk = !status.Motors.Any(axis => axis.AlarmOn);
+        var motionOk = !status.Motors.Any(CheckAxis3);
         items.Add(new ST_INTERLOCK_ITEM(
             "Motion",
             motionOk ? EN_INTERLOCK_LEVEL.Ok : EN_INTERLOCK_LEVEL.Error,
@@ -93,8 +106,12 @@ public sealed class CInterLockManager
             betOk ? EN_INTERLOCK_LEVEL.Ok : EN_INTERLOCK_LEVEL.Warn,
             betOk ? "READY" : "ALARM",
             betOk ? "Beam expander normal" : "Beam expander alarm is active"));
+        bool CheckItem4(ST_INTERLOCK_ITEM item)
+        {
+            return item.Level == EN_INTERLOCK_LEVEL.Error;
+        }
 
-        var hasError = items.Any(item => item.Level == EN_INTERLOCK_LEVEL.Error);
+        var hasError = items.Any(CheckItem4);
         var canAutoRun = IsTargetOk(checks, EN_INTERLOCK_TARGET.AutoRun) && motionOk && chillerOk && betOk;
         var canManualMove = IsTargetOk(checks, EN_INTERLOCK_TARGET.ManualMove) && motionOk;
         var canLaserOn = IsTargetOk(checks, EN_INTERLOCK_TARGET.LaserOn) && chillerOk;
@@ -111,9 +128,13 @@ public sealed class CInterLockManager
         ST_INTERLOCK_RULE rule,
         ST_DEVICE_STATUS status)
     {
-        var io = status.Io.FirstOrDefault(channel =>
-            channel.Id.Equals(rule.IoId, StringComparison.OrdinalIgnoreCase) ||
-            channel.Address.Equals(rule.IoId, StringComparison.OrdinalIgnoreCase));
+        bool MatchChannel5(ST_IO_STATUS channel)
+        {
+            return channel.Id.Equals(rule.IoId, StringComparison.OrdinalIgnoreCase) ||
+                        channel.Address.Equals(rule.IoId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var io = status.Io.FirstOrDefault(MatchChannel5);
 
         if (io is null)
         {
@@ -143,9 +164,19 @@ public sealed class CInterLockManager
         IEnumerable<ST_INTERLOCK_CHECK> checks,
         EN_INTERLOCK_TARGET target)
     {
+        bool FilterCheck6(ST_INTERLOCK_CHECK check)
+        {
+            return check.Rule.Targets.HasFlag(target);
+        }
+
+        bool CheckCheck7(ST_INTERLOCK_CHECK check)
+        {
+            return check.IsOk;
+        }
+
         return checks
-            .Where(check => check.Rule.Targets.HasFlag(target))
-            .All(check => check.IsOk);
+            .Where(FilterCheck6)
+            .All(CheckCheck7);
     }
 
     private static ST_INTERLOCK_RULE Rule(

@@ -401,14 +401,23 @@ public sealed class CManager
 
     public async Task Initialize(CancellationToken cancellationToken = default)
     {
+        Task RunInitializeStepCallbackCallback1()
+        {
+            return _interfaceManager.Initialize(cancellationToken);
+        }
+
         await RunInitializeStep(
             "Initialize Interface Connection",
-            () => _interfaceManager.Initialize(cancellationToken),
+RunInitializeStepCallbackCallback1,
             cancellationToken);
+        Task RunInitializeStepCallbackCallback2()
+        {
+            return _motionManager.Initialize(cancellationToken);
+        }
 
         await RunInitializeStep(
             "Initialize Motion Controller",
-            () => _motionManager.Initialize(cancellationToken),
+RunInitializeStepCallbackCallback2,
             cancellationToken);
     }
 
@@ -792,21 +801,30 @@ public sealed class CManager
 
     private bool GetMotionSimulationMode(bool? simulationMode)
     {
+        bool CheckData3(ST_INTERFACE_DATA? data)
+        {
+            return data is null || data.IsSimulation;
+        }
+
         return simulationMode ?? _interfaceManager
             .GetInterfaceList(EN_EQP_MODULE.Motion)
             .DefaultIfEmpty()
-            .All(data => data is null || data.IsSimulation);
+            .All(CheckData3);
     }
 
     private string GetScriptDirectory()
     {
+        bool MatchParameter4(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Key.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase) ||
+                            parameter.Name.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase);
+        }
+
         var settingPath = _settingFile
             .Load(EN_SETTING_TAB.Option)
             .GetAwaiter()
             .GetResult()
-            .FirstOrDefault(parameter =>
-                parameter.Key.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase) ||
-                parameter.Name.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(MatchParameter4)
             ?.Value;
 
         return ResolveProjectPath(settingPath, Path.Combine("Data", "Script"));

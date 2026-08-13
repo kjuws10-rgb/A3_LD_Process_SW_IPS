@@ -10,11 +10,28 @@ namespace Drilling.Common.Motion;
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 internal sealed class CMotionControllerTypeAttribute(params string[] controllerNames) : Attribute
 {
-    public IReadOnlyList<string> ControllerNames { get; } = controllerNames
-        .Where(name => !string.IsNullOrWhiteSpace(name))
-        .Select(NormalizeControllerName)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToArray();
+    public IReadOnlyList<string> ControllerNames { get; } = CreateControllerNames(controllerNames);
+
+    private static IReadOnlyList<string> CreateControllerNames(string[] controllerNames)
+    {
+        List<string> normalizedNames = new List<string>();
+        HashSet<string> registeredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string controllerName in controllerNames)
+        {
+            if (string.IsNullOrWhiteSpace(controllerName))
+            {
+                continue;
+            }
+
+            string normalizedName = NormalizeControllerName(controllerName);
+            if (registeredNames.Add(normalizedName))
+            {
+                normalizedNames.Add(normalizedName);
+            }
+        }
+
+        return normalizedNames.ToArray();
+    }
 
     private static string NormalizeControllerName(string value)
     {
@@ -264,22 +281,40 @@ internal abstract class CMotionController(
         {
             return null;
         }
+        bool FilterData1(ST_INTERFACE_DATA data)
+        {
+            return data.Number == DeviceNo;
+        }
+
+        string GetDataSortKey2(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
 
         var primary = _interfaceManager
             .GetInterfaceList(PrimaryModule)
-            .Where(data => data.Number == DeviceNo)
-            .OrderBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterData1)
+            .OrderBy(GetDataSortKey2, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
 
         if (primary is not null)
         {
             return primary;
         }
+        bool FilterData3(ST_INTERFACE_DATA data)
+        {
+            return data.Number == DeviceNo;
+        }
+
+        string GetDataSortKey4(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
 
         return _interfaceManager
             .GetInterfaceList(EN_EQP_MODULE.Motion)
-            .Where(data => data.Number == DeviceNo)
-            .OrderBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterData3)
+            .OrderBy(GetDataSortKey4, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 }

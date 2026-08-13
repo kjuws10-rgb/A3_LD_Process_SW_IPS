@@ -230,16 +230,40 @@ public sealed class CMotionManager : IMotionManager
         _interfaceManager = interfaceManager;
         _simulationMode = isSimulation;
         _motors = NormalizeMotors(motors);
+        bool FilterAxis1(ST_MOTOR_DATA axis)
+        {
+            return axis.Use;
+        }
+
+        string HandleAxisData2(ST_MOTOR_DATA axis)
+        {
+            return NormalizeAxisId(axis.Name);
+        }
+
         _axisData = _motors
-            .Where(axis => axis.Use)
-            .ToDictionary(axis => NormalizeAxisId(axis.Name), StringComparer.OrdinalIgnoreCase);
+            .Where(FilterAxis1)
+            .ToDictionary(HandleAxisData2, StringComparer.OrdinalIgnoreCase);
         _axes = CreateAxes(_motors);
         _io = CreateIo(ioData);
+        (string DevType, int DevNo) SelectAxis3(ST_MOTOR_DATA axis)
+        {
+            return (axis.DevType, axis.DevNo);
+        }
+
+        (string DevType, int DevNo) SelectChannel4(ST_IO_STATE channel)
+        {
+            return (channel.DevType, channel.DevNo);
+        }
+
+        string HandleControllerRequests5((string DevType, int DevNo) item)
+        {
+            return GetControllerKey(item.DevType, item.DevNo);
+        }
 
         var controllerRequests = _axisData.Values
-            .Select(axis => (axis.DevType, axis.DevNo))
-            .Concat(_io.Values.Select(channel => (channel.DevType, channel.DevNo)))
-            .GroupBy(item => GetControllerKey(item.DevType, item.DevNo));
+            .Select(SelectAxis3)
+            .Concat(_io.Values.Select(SelectChannel4))
+            .GroupBy(HandleControllerRequests5);
 
         foreach (var group in controllerRequests)
         {
@@ -257,7 +281,12 @@ public sealed class CMotionManager : IMotionManager
     {
         get
         {
-            return _simulationMode || _controllers.Values.All(controller => controller.IsSimulation());
+            bool CheckController6(CMotionController controller)
+            {
+                return controller.IsSimulation();
+            }
+
+            return _simulationMode || _controllers.Values.All(CheckController6);
         }
     }
 
@@ -269,8 +298,12 @@ public sealed class CMotionManager : IMotionManager
     public async Task Initialize(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        string GroupByAxisCallback7(ST_MOTOR_DATA axis)
+        {
+            return GetControllerKey(axis.DevType, axis.DevNo);
+        }
 
-        foreach (var group in _axisData.Values.GroupBy(axis => GetControllerKey(axis.DevType, axis.DevNo)))
+        foreach (var group in _axisData.Values.GroupBy(GroupByAxisCallback7))
         {
             if (_simulationMode)
             {
@@ -321,20 +354,29 @@ public sealed class CMotionManager : IMotionManager
     {
         cancellationToken.ThrowIfCancellationRequested();
         await RefreshStatus(cancellationToken);
+        int GetAxisSortKey8(ST_AXIS_STATE axis)
+        {
+            return axis.DisplayOrder;
+        }
+
+        ST_MOTOR_AXIS_STATUS SelectAxis9(ST_AXIS_STATE axis)
+        {
+            return new ST_MOTOR_AXIS_STATUS(
+                            axis.AxisId,
+                            axis.Name,
+                            axis.CurrentPosition,
+                            axis.TargetPosition,
+                            axis.CommandPosition,
+                            axis.ServoOn,
+                            axis.HomeCompleted,
+                            axis.LimitPlusOn,
+                            axis.LimitMinusOn,
+                            axis.AlarmOn);
+        }
 
         var axes = _axes.Values
-            .OrderBy(axis => axis.DisplayOrder)
-            .Select(axis => new ST_MOTOR_AXIS_STATUS(
-                axis.AxisId,
-                axis.Name,
-                axis.CurrentPosition,
-                axis.TargetPosition,
-                axis.CommandPosition,
-                axis.ServoOn,
-                axis.HomeCompleted,
-                axis.LimitPlusOn,
-                axis.LimitMinusOn,
-                axis.AlarmOn))
+            .OrderBy(GetAxisSortKey8)
+            .Select(SelectAxis9)
             .ToArray();
 
         return axes;
@@ -345,15 +387,24 @@ public sealed class CMotionManager : IMotionManager
     {
         cancellationToken.ThrowIfCancellationRequested();
         await RefreshStatus(cancellationToken);
+        int GetChannelSortKey10(ST_IO_STATE channel)
+        {
+            return channel.DisplayOrder;
+        }
+
+        ST_IO_STATUS SelectChannel11(ST_IO_STATE channel)
+        {
+            return new ST_IO_STATUS(
+                            channel.Id,
+                            channel.Address,
+                            channel.Name,
+                            channel.IsOn,
+                            channel.IsOutput);
+        }
 
         var io = _io.Values
-            .OrderBy(channel => channel.DisplayOrder)
-            .Select(channel => new ST_IO_STATUS(
-                channel.Id,
-                channel.Address,
-                channel.Name,
-                channel.IsOn,
-                channel.IsOutput))
+            .OrderBy(GetChannelSortKey10)
+            .Select(SelectChannel11)
             .ToArray();
 
         return io;
@@ -363,28 +414,72 @@ public sealed class CMotionManager : IMotionManager
         CancellationToken cancellationToken = default)
     {
         var axes = await GetAxisStatus(cancellationToken);
-        var statusMap = axes.ToDictionary(axis => axis.AxisId, StringComparer.OrdinalIgnoreCase);
+        string HandleStatusMap12(ST_MOTOR_AXIS_STATUS axis)
+        {
+            return axis.AxisId;
+        }
 
-        return _axisData.Values
-            .GroupBy(axis => NormalizeStationName(axis.StationName))
-            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(group =>
+        var statusMap = axes.ToDictionary(HandleStatusMap12, StringComparer.OrdinalIgnoreCase);
+        string GroupByAxisCallback13(ST_MOTOR_DATA axis)
+        {
+            return NormalizeStationName(axis.StationName);
+        }
+
+        string GetGroupSortKey14(IGrouping<string, ST_MOTOR_DATA> group)
+        {
+            return group.Key;
+        }
+
+        ST_MOTION_STATION_STATUS SelectGroup15(IGrouping<string, ST_MOTOR_DATA> group)
+        {
+            ST_MOTOR_AXIS_STATUS? SelectAxis1(ST_MOTOR_DATA axis)
             {
-                var stationAxes = group
-                    .Select(axis => statusMap.TryGetValue(NormalizeAxisId(axis.Name), out var status)
-                        ? status
-                        : null)
-                    .Where(status => status is not null)
-                    .Cast<ST_MOTOR_AXIS_STATUS>()
-                    .OrderBy(status => status.AxisId, StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
+                return statusMap.TryGetValue(NormalizeAxisId(axis.Name), out var status)
+                                    ? status
+                                    : null;
+            }
 
-                return new ST_MOTION_STATION_STATUS(
-                    group.Key,
-                    group.Select(axis => axis.System).FirstOrDefault(system => !string.IsNullOrWhiteSpace(system)) ?? "",
-                    stationAxes.Any(axis => axis.AlarmOn),
-                    stationAxes);
-            })
+            bool FilterStatus2(ST_MOTOR_AXIS_STATUS? status)
+            {
+                return status is not null;
+            }
+
+            string GetStatusSortKey3(ST_MOTOR_AXIS_STATUS status)
+            {
+                return status.AxisId;
+            }
+
+            var stationAxes = group
+                .Select(SelectAxis1)
+                .Where(FilterStatus2)
+                .Cast<ST_MOTOR_AXIS_STATUS>()
+                .OrderBy(GetStatusSortKey3, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+            string SelectAxis4(ST_MOTOR_DATA axis)
+            {
+                return axis.System;
+            }
+
+            bool MatchSystem5(string system)
+            {
+                return !string.IsNullOrWhiteSpace(system);
+            }
+
+            bool CheckAxis6(ST_MOTOR_AXIS_STATUS axis)
+            {
+                return axis.AlarmOn;
+            }
+
+            return new ST_MOTION_STATION_STATUS(
+                group.Key,
+                group.Select(SelectAxis4).FirstOrDefault(MatchSystem5) ?? "",
+                stationAxes.Any(CheckAxis6),
+                stationAxes);
+        }
+        return _axisData.Values
+            .GroupBy(GroupByAxisCallback13)
+            .OrderBy(GetGroupSortKey14, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectGroup15)
             .ToArray();
     }
 
@@ -392,28 +487,53 @@ public sealed class CMotionManager : IMotionManager
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        string GroupByAxisCallback16(ST_MOTOR_DATA axis)
+        {
+            return GetControllerKey(axis.DevType, axis.DevNo);
+        }
+
+        ST_MOTION_CONTROLLER_STATUS SelectGroup17(IGrouping<string, ST_MOTOR_DATA> group)
+        {
+            var first = group.First();
+            var registered = _controllers.TryGetValue(group.Key, out var controller);
+            string SelectAxis7(ST_MOTOR_DATA axis)
+            {
+                return NormalizeAxisId(axis.Name);
+            }
+
+            string GetAxisSortKey9(string axis)
+            {
+                return axis;
+            }
+
+            var axes = group
+                .Select(SelectAxis7)
+                .OrderBy(GetAxisSortKey9, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            return new ST_MOTION_CONTROLLER_STATUS(
+                NormalizeControllerName(first.DevType),
+                first.DevNo,
+                registered,
+                controller?.IsSimulation() ?? true,
+                axes.Length,
+                axes);
+        }
+        string GetItemSortKey18(ST_MOTION_CONTROLLER_STATUS item)
+        {
+            return item.DevType;
+        }
+
+        int GetItemSortKey19(ST_MOTION_CONTROLLER_STATUS item)
+        {
+            return item.DevNo;
+        }
 
         var status = _axisData.Values
-            .GroupBy(axis => GetControllerKey(axis.DevType, axis.DevNo), StringComparer.OrdinalIgnoreCase)
-            .Select(group =>
-            {
-                var first = group.First();
-                var registered = _controllers.TryGetValue(group.Key, out var controller);
-                var axes = group
-                    .Select(axis => NormalizeAxisId(axis.Name))
-                    .OrderBy(axis => axis, StringComparer.OrdinalIgnoreCase)
-                    .ToArray();
-
-                return new ST_MOTION_CONTROLLER_STATUS(
-                    NormalizeControllerName(first.DevType),
-                    first.DevNo,
-                    registered,
-                    controller?.IsSimulation() ?? true,
-                    axes.Length,
-                    axes);
-            })
-            .OrderBy(item => item.DevType, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(item => item.DevNo)
+            .GroupBy(GroupByAxisCallback16, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectGroup17)
+            .OrderBy(GetItemSortKey18, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(GetItemSortKey19)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>>(status);
@@ -816,8 +936,13 @@ public sealed class CMotionManager : IMotionManager
 
     private static IReadOnlyList<ST_MOTOR_DATA> NormalizeMotors(IReadOnlyList<ST_MOTOR_DATA>? motors)
     {
+        bool HandleLoaded20(ST_MOTOR_DATA axis)
+        {
+            return !string.IsNullOrWhiteSpace(axis.Name);
+        }
+
         var loaded = motors?
-            .Where(axis => !string.IsNullOrWhiteSpace(axis.Name))
+            .Where(HandleLoaded20)
             .ToArray();
 
         return loaded is { Length: > 0 } ? loaded : CreateDefaultMotorData();
@@ -825,25 +950,36 @@ public sealed class CMotionManager : IMotionManager
 
     private static Dictionary<string, ST_AXIS_STATE> CreateAxes(IReadOnlyList<ST_MOTOR_DATA> motors)
     {
+        bool FilterAxis21(ST_MOTOR_DATA axis)
+        {
+            return axis.Use;
+        }
+
+        ST_AXIS_STATE SelectAxis22(ST_MOTOR_DATA axis)
+        {
+            var position = GetInitialPosition(axis.Name);
+            return new ST_AXIS_STATE(
+                NormalizeAxisId(axis.Name),
+                string.IsNullOrWhiteSpace(axis.DisplayName) ? axis.Name : axis.DisplayName,
+                position,
+                position,
+                position,
+                true,
+                true,
+                false,
+                false,
+                false,
+                axis.Axis);
+        }
+        string ToDictionaryAxisCallback23(ST_AXIS_STATE axis)
+        {
+            return axis.AxisId;
+        }
+
         return motors
-            .Where(axis => axis.Use)
-            .Select(axis =>
-            {
-                var position = GetInitialPosition(axis.Name);
-                return new ST_AXIS_STATE(
-                    NormalizeAxisId(axis.Name),
-                    string.IsNullOrWhiteSpace(axis.DisplayName) ? axis.Name : axis.DisplayName,
-                    position,
-                    position,
-                    position,
-                    true,
-                    true,
-                    false,
-                    false,
-                    false,
-                    axis.Axis);
-            })
-            .ToDictionary(axis => axis.AxisId, StringComparer.OrdinalIgnoreCase);
+            .Where(FilterAxis21)
+            .Select(SelectAxis22)
+            .ToDictionary(ToDictionaryAxisCallback23, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyList<ST_MOTOR_DATA> CreateDefaultMotorData()
@@ -959,9 +1095,13 @@ public sealed class CMotionManager : IMotionManager
         {
             return channel;
         }
+        bool FilterItem24(ST_IO_STATE item)
+        {
+            return item.Address.Equals(normalizedAddress, StringComparison.OrdinalIgnoreCase);
+        }
 
         var addressMatches = _io.Values
-            .Where(item => item.Address.Equals(normalizedAddress, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterItem24)
             .ToArray();
 
         if (addressMatches.Length == 1)
@@ -970,8 +1110,13 @@ public sealed class CMotionManager : IMotionManager
         }
 
         var normalizedName = NormalizeIoName(ioName);
+        bool FilterItem25(ST_IO_STATE item)
+        {
+            return NormalizeIoName(item.Name).Equals(normalizedName, StringComparison.OrdinalIgnoreCase);
+        }
+
         var matches = _io.Values
-            .Where(item => NormalizeIoName(item.Name).Equals(normalizedName, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterItem25)
             .ToArray();
 
         if (matches.Length == 1)
@@ -984,9 +1129,13 @@ public sealed class CMotionManager : IMotionManager
             throw new InvalidOperationException(
                 $"Motion IO name is ambiguous: {ioName}. Matches={string.Join(", ", matches.Select(FormatIoReference))}");
         }
+        int GetItemSortKey26(ST_IO_STATE item)
+        {
+            return item.DisplayOrder;
+        }
 
         throw new InvalidOperationException(
-            $"Motion IO was not registered: {ioName}. Available={string.Join(", ", _io.Values.OrderBy(item => item.DisplayOrder).Select(FormatIoReference))}");
+            $"Motion IO was not registered: {ioName}. Available={string.Join(", ", _io.Values.OrderBy(GetItemSortKey26).Select(FormatIoReference))}");
     }
 
     private static string FormatIoReference(ST_IO_STATE channel)
@@ -996,10 +1145,15 @@ public sealed class CMotionManager : IMotionManager
 
     private static string NormalizeIoName(string value)
     {
+        char SelectCh27(char ch)
+        {
+            return char.IsLetterOrDigit(ch) ? ch : '_';
+        }
+
         var chars = value
             .Trim()
             .ToUpperInvariant()
-            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_')
+            .Select(SelectCh27)
             .ToArray();
 
         var compact = new string(chars);
@@ -1014,19 +1168,34 @@ public sealed class CMotionManager : IMotionManager
 
     private static Dictionary<string, ST_IO_STATE> CreateIo(IReadOnlyList<ST_IO_DATA>? ioData)
     {
+        bool FilterChannel28(ST_IO_DATA channel)
+        {
+            return channel.Use;
+        }
+
+        ST_IO_STATE SelectChannel29(ST_IO_DATA channel)
+        {
+            return new ST_IO_STATE(
+                            NormalizeIoName(channel.Id),
+                            NormalizeAddress(channel.Address),
+                            string.IsNullOrWhiteSpace(channel.Name) ? channel.Id : channel.Name.Trim(),
+                            channel.InitialState,
+                            channel.IsOutput,
+                            NormalizeControllerName(channel.DevType),
+                            channel.DevNo,
+                            channel.DisplayOrder,
+                            channel.Description);
+        }
+
+        string ToDictionaryChannelCallback30(ST_IO_STATE channel)
+        {
+            return channel.Id;
+        }
+
         return (ioData ?? [])
-            .Where(channel => channel.Use)
-            .Select(channel => new ST_IO_STATE(
-                NormalizeIoName(channel.Id),
-                NormalizeAddress(channel.Address),
-                string.IsNullOrWhiteSpace(channel.Name) ? channel.Id : channel.Name.Trim(),
-                channel.InitialState,
-                channel.IsOutput,
-                NormalizeControllerName(channel.DevType),
-                channel.DevNo,
-                channel.DisplayOrder,
-                channel.Description))
-            .ToDictionary(channel => channel.Id, StringComparer.OrdinalIgnoreCase);
+            .Where(FilterChannel28)
+            .Select(SelectChannel29)
+            .ToDictionary(ToDictionaryChannelCallback30, StringComparer.OrdinalIgnoreCase);
     }
 
     private static string NormalizeStationName(string stationName)
@@ -1045,26 +1214,33 @@ public sealed class CMotionManager : IMotionManager
 
     private static IReadOnlyDictionary<string, Type> LoadMotionControllerTypes()
     {
-        return typeof(CMotionController)
-            .Assembly
-            .GetTypes()
-            .Where(type => !type.IsAbstract && typeof(CMotionController).IsAssignableFrom(type))
-            .Select(type => new
+        Dictionary<string, Type> controllerTypes = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+        Type[] discoveredTypes = typeof(CMotionController).Assembly.GetTypes();
+        foreach (Type discoveredType in discoveredTypes)
+        {
+            if (discoveredType.IsAbstract || !typeof(CMotionController).IsAssignableFrom(discoveredType))
             {
-                Type = type,
-                Attribute = type.GetCustomAttribute<CMotionControllerTypeAttribute>()
-            })
-            .Where(item => item.Attribute is not null && item.Attribute.ControllerNames.Count > 0)
-            .SelectMany(item => item.Attribute!.ControllerNames.Select(controller => new
+                continue;
+            }
+
+            CMotionControllerTypeAttribute? attribute =
+                discoveredType.GetCustomAttribute<CMotionControllerTypeAttribute>();
+            if (attribute is null || attribute.ControllerNames.Count == 0)
             {
-                Controller = NormalizeControllerName(controller),
-                item.Type
-            }))
-            .GroupBy(item => item.Controller, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(
-                group => group.Key,
-                group => group.First().Type,
-                StringComparer.OrdinalIgnoreCase);
+                continue;
+            }
+
+            foreach (string controllerName in attribute.ControllerNames)
+            {
+                string normalizedName = NormalizeControllerName(controllerName);
+                if (!controllerTypes.ContainsKey(normalizedName))
+                {
+                    controllerTypes.Add(normalizedName, discoveredType);
+                }
+            }
+        }
+
+        return controllerTypes;
     }
 
     private static InvalidOperationException CreateMotionControllerNotRegisteredException(

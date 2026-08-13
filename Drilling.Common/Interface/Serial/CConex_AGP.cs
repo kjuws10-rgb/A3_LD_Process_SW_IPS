@@ -191,7 +191,12 @@ internal sealed class CConex_AGP(
 
         try
         {
-            LastReceived = await Task.Run(() => ExecuteConex(function), cancellationToken);
+            string RunTask1()
+            {
+                return ExecuteConex(function);
+            }
+
+            LastReceived = await Task.Run(RunTask1, cancellationToken);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";

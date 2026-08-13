@@ -183,18 +183,28 @@ public sealed class CProductManager(
 
         var resolvedProductId = ChooseProductId(processId, productId, panelId, parameters);
         var now = DateTimeOffset.Now;
+        int GetItemSortKey1(KeyValuePair<int, int> item)
+        {
+            return item.Key;
+        }
+
+        ST_PRODUCT_HEAD_RESULT SelectItem2(KeyValuePair<int, int> item)
+        {
+            return new ST_PRODUCT_HEAD_RESULT(
+                            item.Key,
+                            EN_PRODUCT_HEAD_STATE.Ready,
+                            Math.Max(0, item.Value),
+                            0,
+                            EN_PRODUCT_RESULT.Pending,
+                            "",
+                            "",
+                            null,
+                            null);
+        }
+
         var heads = headPointCounts
-            .OrderBy(item => item.Key)
-            .Select(item => new ST_PRODUCT_HEAD_RESULT(
-                item.Key,
-                EN_PRODUCT_HEAD_STATE.Ready,
-                Math.Max(0, item.Value),
-                0,
-                EN_PRODUCT_RESULT.Pending,
-                "",
-                "",
-                null,
-                null))
+            .OrderBy(GetItemSortKey1)
+            .Select(SelectItem2)
             .ToArray();
 
         _current = new ST_PRODUCT_DATA(
@@ -243,16 +253,21 @@ public sealed class CProductManager(
 
         var product = GetCurrent(productId);
         var now = DateTimeOffset.Now;
+        ST_PRODUCT_HEAD_RESULT SelectHead3(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo == headNo
+                                ? head with
+                                {
+                                    State = EN_PRODUCT_HEAD_STATE.Running,
+                                    StartedAt = head.StartedAt ?? now
+                                }
+                                : head;
+        }
+
         _current = product with
         {
             Heads = product.Heads
-                .Select(head => head.HeadNo == headNo
-                    ? head with
-                    {
-                        State = EN_PRODUCT_HEAD_STATE.Running,
-                        StartedAt = head.StartedAt ?? now
-                    }
-                    : head)
+                .Select(SelectHead3)
                 .ToArray()
         };
 
@@ -272,21 +287,26 @@ public sealed class CProductManager(
 
         var product = GetCurrent(productId);
         var now = DateTimeOffset.Now;
+        ST_PRODUCT_HEAD_RESULT SelectHead4(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo == headNo
+                                ? head with
+                                {
+                                    State = isOk ? EN_PRODUCT_HEAD_STATE.Completed : EN_PRODUCT_HEAD_STATE.Error,
+                                    CompletedPoints = isOk ? head.TotalPoints : head.CompletedPoints,
+                                    Result = isOk ? EN_PRODUCT_RESULT.OK : EN_PRODUCT_RESULT.NG,
+                                    ErrorCode = errorCode,
+                                    Message = message,
+                                    StartedAt = head.StartedAt ?? now,
+                                    CompletedAt = now
+                                }
+                                : head;
+        }
+
         _current = product with
         {
             Heads = product.Heads
-                .Select(head => head.HeadNo == headNo
-                    ? head with
-                    {
-                        State = isOk ? EN_PRODUCT_HEAD_STATE.Completed : EN_PRODUCT_HEAD_STATE.Error,
-                        CompletedPoints = isOk ? head.TotalPoints : head.CompletedPoints,
-                        Result = isOk ? EN_PRODUCT_RESULT.OK : EN_PRODUCT_RESULT.NG,
-                        ErrorCode = errorCode,
-                        Message = message,
-                        StartedAt = head.StartedAt ?? now,
-                        CompletedAt = now
-                    }
-                    : head)
+                .Select(SelectHead4)
                 .ToArray()
         };
 

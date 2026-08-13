@@ -449,9 +449,14 @@ public sealed class CInterfaceManager : IInterfaceManager
     {
         get
         {
+            bool CheckDevice1(CInterfaceDevice device)
+            {
+                return device.IsSimulation;
+            }
+
             return _devices.Count == 0
         ? _simulationMode ?? true
-        : _devices.Values.All(device => device.IsSimulation);
+        : _devices.Values.All(CheckDevice1);
         }
     }
 
@@ -701,23 +706,73 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     public IReadOnlyList<ST_INTERFACE_DATA> GetInterfaceList(EN_EQP_MODULE? module = null)
     {
+        bool FilterDevice2(CInterfaceDevice device)
+        {
+            return module is null || device.Data.Device == module;
+        }
+
+        ST_INTERFACE_DATA SelectDevice3(CInterfaceDevice device)
+        {
+            return device.Data;
+        }
+
+        EN_EQP_MODULE GetDataSortKey4(ST_INTERFACE_DATA data)
+        {
+            return data.Device;
+        }
+
+        int GetDataSortKey5(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey6(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return _devices.Values
-            .Where(device => module is null || device.Data.Device == module)
-            .Select(device => device.Data)
-            .OrderBy(data => data.Device)
-            .ThenBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterDevice2)
+            .Select(SelectDevice3)
+            .OrderBy(GetDataSortKey4)
+            .ThenBy(GetDataSortKey5)
+            .ThenBy(GetDataSortKey6, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     public IReadOnlyList<ST_INTERFACE_COMM_STATUS> GetInterfaceCommunicationList(EN_EQP_MODULE? module = null)
     {
+        bool FilterDevice7(CInterfaceDevice device)
+        {
+            return module is null || device.Data.Device == module;
+        }
+
+        ST_INTERFACE_COMM_STATUS SelectDevice8(CInterfaceDevice device)
+        {
+            return device.GetCommunicationStatus();
+        }
+
+        EN_EQP_MODULE GetStatusSortKey9(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Module;
+        }
+
+        int GetStatusSortKey10(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
+
+        string GetStatusSortKey11(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.NickName;
+        }
+
         return _devices.Values
-            .Where(device => module is null || device.Data.Device == module)
-            .Select(device => device.GetCommunicationStatus())
-            .OrderBy(status => status.Module)
-            .ThenBy(status => status.Number)
-            .ThenBy(status => status.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterDevice7)
+            .Select(SelectDevice8)
+            .OrderBy(GetStatusSortKey9)
+            .ThenBy(GetStatusSortKey10)
+            .ThenBy(GetStatusSortKey11, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
@@ -740,13 +795,32 @@ public sealed class CInterfaceManager : IInterfaceManager
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EN_EQP_MODULE GroupByDeviceCallback12(CInterfaceDevice device)
+        {
+            return device.Data.Device;
+        }
+
+        ST_DEVICE_COMM_STATUS SelectGroup13(IGrouping<EN_EQP_MODULE, CInterfaceDevice> group)
+        {
+            EN_COMM_STATE SelectDevice1(CInterfaceDevice device)
+            {
+                return device.ConnectionState;
+            }
+
+            return new ST_DEVICE_COMM_STATUS(
+                            group.Key,
+                            CollapseConnectionState(group.Select(SelectDevice1)));
+        }
+
+        EN_EQP_MODULE GetStatusSortKey14(ST_DEVICE_COMM_STATUS status)
+        {
+            return status.Module;
+        }
 
         var statuses = _devices.Values
-            .GroupBy(device => device.Data.Device)
-            .Select(group => new ST_DEVICE_COMM_STATUS(
-                group.Key,
-                CollapseConnectionState(group.Select(device => device.ConnectionState))))
-            .OrderBy(status => status.Module)
+            .GroupBy(GroupByDeviceCallback12)
+            .Select(SelectGroup13)
+            .OrderBy(GetStatusSortKey14)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<ST_DEVICE_COMM_STATUS>>(statuses);
@@ -755,13 +829,21 @@ public sealed class CInterfaceManager : IInterfaceManager
     private static EN_COMM_STATE CollapseConnectionState(IEnumerable<EN_COMM_STATE> states)
     {
         var stateArray = states.ToArray();
+        bool CheckState15(EN_COMM_STATE state)
+        {
+            return state == EN_COMM_STATE.Offline;
+        }
 
-        if (stateArray.Any(state => state == EN_COMM_STATE.Offline))
+        if (stateArray.Any(CheckState15))
         {
             return EN_COMM_STATE.Offline;
         }
+        bool CheckState16(EN_COMM_STATE state)
+        {
+            return state == EN_COMM_STATE.Simulation;
+        }
 
-        if (stateArray.All(state => state == EN_COMM_STATE.Simulation))
+        if (stateArray.All(CheckState16))
         {
             return EN_COMM_STATE.Simulation;
         }
@@ -831,8 +913,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         bool throwIfAmbiguous = false)
     {
         var normalized = NormalizeNickName(nickName);
+        bool FilterItem17(CInterfaceDevice item)
+        {
+            return NormalizeNickName(item.Data.NickName).Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
+
         var matches = _devices.Values
-            .Where(item => NormalizeNickName(item.Data.NickName).Equals(normalized, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterItem17)
             .ToArray();
 
         if (matches.Length == 0)
@@ -843,7 +930,12 @@ public sealed class CInterfaceManager : IInterfaceManager
 
         if (matches.Length > 1 && throwIfAmbiguous)
         {
-            var candidates = string.Join(", ", matches.Select(item => FormatDeviceName(item.Data)));
+            string SelectItem18(CInterfaceDevice item)
+            {
+                return FormatDeviceName(item.Data);
+            }
+
+            var candidates = string.Join(", ", matches.Select(SelectItem18));
             throw new InvalidOperationException(
                 $"Interface NICKNAME is duplicated: {nickName}. Use DEVICE + NUMBER instead. Candidates: {candidates}");
         }
@@ -1656,7 +1748,12 @@ public sealed class CInterfaceManager : IInterfaceManager
         {
             var table = await LoadBETData(cancellationToken);
             var index = (int)Math.Round(parameter1);
-            var row = table.FirstOrDefault(item => item.Index == index);
+            bool MatchItem19(ST_BET_TABLE_DATA item)
+            {
+                return item.Index == index;
+            }
+
+            var row = table.FirstOrDefault(MatchItem19);
 
             if (row is null)
             {
@@ -1993,8 +2090,13 @@ public sealed class CInterfaceManager : IInterfaceManager
     public async Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(
         CancellationToken cancellationToken = default)
     {
+        int GetItemSortKey20(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey20)
             .FirstOrDefault();
         if (data is null)
         {
@@ -2013,8 +2115,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         int number,
         CancellationToken cancellationToken = default)
     {
+        bool MatchItem21(ST_INTERFACE_DATA item)
+        {
+            return item.Number == number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem21);
         if (data is null)
         {
             return ST_PICO_MOTOR_STATUS.Empty with
@@ -2062,8 +2169,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
     {
+        int GetItemSortKey22(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey22)
             .FirstOrDefault();
         if (data is null)
         {
@@ -2080,8 +2192,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
     {
+        bool MatchItem23(ST_INTERFACE_DATA item)
+        {
+            return item.Number == number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem23);
         if (data is null)
         {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PicoMotor interface {number} is not registered.");
@@ -2112,8 +2229,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         int count,
         CancellationToken cancellationToken = default)
     {
+        int GetItemSortKey24(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey24)
             .FirstOrDefault();
         if (data is null)
         {
@@ -2130,8 +2252,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         int count,
         CancellationToken cancellationToken = default)
     {
+        bool MatchItem25(ST_INTERFACE_DATA item)
+        {
+            return item.Number == number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem25);
         if (data is null)
         {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PicoMotor interface {number} is not registered.");
@@ -2288,11 +2415,20 @@ public sealed class CInterfaceManager : IInterfaceManager
         Dictionary<int, T> statusMap,
         EN_EQP_MODULE module)
     {
-        var validNumbers = GetInterfaceList(module)
-            .Select(data => data.Number)
-            .ToHashSet();
+        int SelectData26(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
 
-        foreach (var number in statusMap.Keys.Where(number => !validNumbers.Contains(number)).ToArray())
+        var validNumbers = GetInterfaceList(module)
+            .Select(SelectData26)
+            .ToHashSet();
+        bool FilterNumber27(int number)
+        {
+            return !validNumbers.Contains(number);
+        }
+
+        foreach (var number in statusMap.Keys.Where(FilterNumber27).ToArray())
         {
             statusMap.Remove(number);
         }
@@ -2300,9 +2436,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetTalonInterfaceData()
     {
+        int GetDataSortKey28(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey29(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.TalonLaser)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey28)
+            .ThenBy(GetDataSortKey29, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2313,9 +2459,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetAttenuatorInterfaceData()
     {
+        int GetDataSortKey30(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey31(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.Attenuator)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey30)
+            .ThenBy(GetDataSortKey31, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2326,9 +2482,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetBETInterfaceData()
     {
+        int GetDataSortKey32(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey33(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.Bet)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey32)
+            .ThenBy(GetDataSortKey33, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2339,9 +2505,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetPowerMeterInterfaceData()
     {
+        int GetDataSortKey34(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey35(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.PowerMeter)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey34)
+            .ThenBy(GetDataSortKey35, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2352,9 +2528,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetChillerInterfaceData()
     {
+        int GetDataSortKey36(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey37(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.Chiller)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey36)
+            .ThenBy(GetDataSortKey37, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2587,8 +2773,13 @@ internal static class CInterfaceConnectOption
 {
     public static ST_INTERFACE_CONNECT_OPTION Parse(ST_INTERFACE_DATA data)
     {
+        string SelectArgument38(string argument)
+        {
+            return argument.Trim();
+        }
+
         var args = data.Arguments
-            .Select(argument => argument.Trim())
+            .Select(SelectArgument38)
             .Concat(Enumerable.Repeat("", 5))
             .Take(5)
             .ToArray();

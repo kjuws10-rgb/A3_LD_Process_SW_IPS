@@ -151,8 +151,13 @@ public sealed record ST_REVIEW_PLAN(
     {
         get
         {
+            bool FilterPoint1(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.Use;
+            }
+
             return Points
-        .Where(point => point.Use)
+        .Where(FilterPoint1)
         .ToArray();
         }
     }
@@ -169,7 +174,12 @@ public sealed record ST_REVIEW_PLAN(
     {
         get
         {
-            return Points.Count(point => point.Use);
+            bool CountPointCallback2(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.Use;
+            }
+
+            return Points.Count(CountPointCallback2);
         }
     }
 }
@@ -286,14 +296,23 @@ public sealed class CReviewManager(
         ST_RECIPE_DATA recipe,
         IReadOnlyCollection<string> selectedHoleKeys)
     {
+        bool FilterKey3(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
         var selectedSet = selectedHoleKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Where(FilterKey3)
             .Select(NormalizeHoleKey)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        bool CreatePlanCorePointCallback4(ST_REVIEW_PLAN_POINT point)
+        {
+            return selectedSet.Contains(point.HoleKey);
+        }
 
         return CreatePlanCore(
             recipe,
-            point => selectedSet.Contains(point.HoleKey));
+CreatePlanCorePointCallback4);
     }
 
     public ST_REVIEW_PLAN CreatePlan(
@@ -430,8 +449,12 @@ public sealed class CReviewManager(
 
         lock (_stateLock)
         {
-            var point = _currentPlan?.ReviewPoints.FirstOrDefault(item =>
-                item.HoleKey.Equals(normalizedHoleKey, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem5(ST_REVIEW_PLAN_POINT item)
+            {
+                return item.HoleKey.Equals(normalizedHoleKey, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var point = _currentPlan?.ReviewPoints.FirstOrDefault(MatchItem5);
             if (point is null || point.State is not (EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng))
             {
                 return null;
@@ -469,9 +492,13 @@ public sealed class CReviewManager(
 
         plan = SetWaitingPointsReady(plan);
         SetCurrentPlan(plan, progress);
+        bool FilterPoint6(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State == EN_REVIEW_POINT_STATE.Ready;
+        }
 
         var points = plan.ReviewPoints
-            .Where(point => point.State == EN_REVIEW_POINT_STATE.Ready);
+            .Where(FilterPoint6);
         var orderedPoints = OrderByReviewSequence(points)
             .ToArray();
 
@@ -502,18 +529,19 @@ public sealed class CReviewManager(
         var toleranceX = ReadDouble(recipe, 0.030, "REVIEW_TOLERANCE_X");
         var toleranceY = ReadDouble(recipe, 0.030, "REVIEW_TOLERANCE_Y");
         var coordinateSettings = LoadReviewCoordinateSettings();
-        var points = BuildHolePoints(recipe, headCount, cellCount, coordinateSettings.HeadLayout)
-            .Select(point =>
-            {
-                var use = useSelector(point);
+        ST_REVIEW_PLAN_POINT SelectPoint7(ST_REVIEW_PLAN_POINT point)
+        {
+            var use = useSelector(point);
 
-                return point with
-                {
-                    Use = use,
-                    State = use ? EN_REVIEW_POINT_STATE.Ready : EN_REVIEW_POINT_STATE.Skip,
-                    Judge = use ? "WAIT" : "-"
-                };
-            })
+            return point with
+            {
+                Use = use,
+                State = use ? EN_REVIEW_POINT_STATE.Ready : EN_REVIEW_POINT_STATE.Skip,
+                Judge = use ? "WAIT" : "-"
+            };
+        }
+        var points = BuildHolePoints(recipe, headCount, cellCount, coordinateSettings.HeadLayout)
+            .Select(SelectPoint7)
             .ToArray();
 
         return new ST_REVIEW_PLAN(
@@ -538,19 +566,19 @@ public sealed class CReviewManager(
             ReadSettingText(optionSettings, "", "VisionXFlip"),
             ReadSettingText(optionSettings, "", "VisionYFlip"),
             ReadSettingText(optionSettings, "", "VisionXyFlip"));
-
+        ST_REVIEW_HEAD_FIELD SelectHeadNo8(int headNo)
+        {
+            var position = ReadHeadPositionX(optionSettings, headNo);
+            const double fallbackWidthX = 110.0;
+            var widthX = ReadSettingDouble(
+                optionSettings,
+                fallbackWidthX,
+                $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
+                $"H{headNo:00}_HEAD_FIELD_WIDTH_X");
+            return new ST_REVIEW_HEAD_FIELD(headNo, position, widthX > 0.0 ? widthX : fallbackWidthX);
+        }
         var headFields = Enumerable.Range(1, 8)
-            .Select(headNo =>
-            {
-                var position = ReadHeadPositionX(optionSettings, headNo);
-                const double fallbackWidthX = 110.0;
-                var widthX = ReadSettingDouble(
-                    optionSettings,
-                    fallbackWidthX,
-                    $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
-                    $"H{headNo:00}_HEAD_FIELD_WIDTH_X");
-                return new ST_REVIEW_HEAD_FIELD(headNo, position, widthX > 0.0 ? widthX : fallbackWidthX);
-            })
+            .Select(SelectHeadNo8)
             .ToArray();
 
         return new ST_REVIEW_COORDINATE_SETTINGS(
@@ -582,9 +610,13 @@ public sealed class CReviewManager(
     {
         foreach (var setting in settings)
         {
-            if (!keys.Any(key =>
-                    key.Equals(setting.Key, StringComparison.OrdinalIgnoreCase) ||
-                    key.Equals(setting.Name, StringComparison.OrdinalIgnoreCase)))
+            bool CheckKey9(string key)
+            {
+                return key.Equals(setting.Key, StringComparison.OrdinalIgnoreCase) ||
+                                    key.Equals(setting.Name, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!keys.Any(CheckKey9))
             {
                 continue;
             }
@@ -605,9 +637,13 @@ public sealed class CReviewManager(
     {
         foreach (var setting in settings)
         {
-            if (!keys.Any(key =>
-                    key.Equals(setting.Key, StringComparison.OrdinalIgnoreCase) ||
-                    key.Equals(setting.Name, StringComparison.OrdinalIgnoreCase)))
+            bool CheckKey10(string key)
+            {
+                return key.Equals(setting.Key, StringComparison.OrdinalIgnoreCase) ||
+                                    key.Equals(setting.Name, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!keys.Any(CheckKey10))
             {
                 continue;
             }
@@ -825,18 +861,38 @@ public sealed class CReviewManager(
     {
         if (rule.RuleType is EN_REVIEW_RULE_TYPE.SamplePoint && rule.HoleKeys.Count > 0)
         {
+            bool FilterKey11(string key)
+            {
+                bool CheckPoint1(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.HoleKey.Equals(key, StringComparison.OrdinalIgnoreCase);
+                }
+
+                return allPlan.Points.Any(CheckPoint1);
+            }
+
             return rule.HoleKeys
                 .Select(NormalizeHoleKey)
-                .Where(key => allPlan.Points.Any(point => point.HoleKey.Equals(key, StringComparison.OrdinalIgnoreCase)))
+                .Where(FilterKey11)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
 
         if (rule.HoleKeys.Count > 0 && rule.RuleType is not EN_REVIEW_RULE_TYPE.AllPoint)
         {
+            bool FilterKey12(string key)
+            {
+                bool CheckPoint2(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.HoleKey.Equals(key, StringComparison.OrdinalIgnoreCase);
+                }
+
+                return allPlan.Points.Any(CheckPoint2);
+            }
+
             return rule.HoleKeys
                 .Select(NormalizeHoleKey)
-                .Where(key => allPlan.Points.Any(point => point.HoleKey.Equals(key, StringComparison.OrdinalIgnoreCase)))
+                .Where(FilterKey12)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         }
@@ -846,20 +902,45 @@ public sealed class CReviewManager(
             switch (switchValue)
             {
                 case EN_REVIEW_RULE_TYPE.AllPoint:
-                    return allPlan.Points.Select(point => point.HoleKey).ToArray();
+                    string SelectPoint13(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HoleKey;
+                    }
+
+                    return allPlan.Points.Select(SelectPoint13).ToArray();
                 case EN_REVIEW_RULE_TYPE.Edge:
                     return SelectEdgeKeys(allPlan);
                 case EN_REVIEW_RULE_TYPE.Center:
                     return SelectCenterKeys(allPlan);
                 case EN_REVIEW_RULE_TYPE.HeadPoint:
+                    bool FilterPoint14(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HeadNo == Math.Clamp(rule.HeadNo, 1, Math.Max(1, allPlan.HeadCount));
+                    }
+
+                    string SelectPoint15(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HoleKey;
+                    }
+
                     return allPlan.Points
-                        .Where(point => point.HeadNo == Math.Clamp(rule.HeadNo, 1, Math.Max(1, allPlan.HeadCount)))
-                        .Select(point => point.HoleKey)
+                        .Where(FilterPoint14)
+                        .Select(SelectPoint15)
                         .ToArray();
                 case EN_REVIEW_RULE_TYPE.CellPoint:
+                    bool FilterPoint16(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.CellNo == Math.Clamp(rule.CellNo, 1, Math.Max(1, allPlan.CellCount));
+                    }
+
+                    string SelectPoint17(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HoleKey;
+                    }
+
                     return allPlan.Points
-                        .Where(point => point.CellNo == Math.Clamp(rule.CellNo, 1, Math.Max(1, allPlan.CellCount)))
-                        .Select(point => point.HoleKey)
+                        .Where(FilterPoint16)
+                        .Select(SelectPoint17)
                         .ToArray();
                 case EN_REVIEW_RULE_TYPE.ZeroLine:
                     return SelectZeroLineKeys(allPlan, rule.ZeroPointCount);
@@ -889,15 +970,38 @@ public sealed class CReviewManager(
         {
             return [];
         }
+        double HandleTargetY18(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignY;
+        }
 
-        var targetY = (plan.Points.Min(point => point.DesignY) + plan.Points.Max(point => point.DesignY)) / 2.0;
+        double HandleTargetY19(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignY;
+        }
+
+        var targetY = (plan.Points.Min(HandleTargetY18) + plan.Points.Max(HandleTargetY19)) / 2.0;
         var count = zeroPointCount <= 0 ? Math.Min(5, plan.Points.Count) : Math.Min(zeroPointCount, plan.Points.Count);
+        double GetPointSortKey20(ST_REVIEW_PLAN_POINT point)
+        {
+            return Math.Abs(point.DesignY - targetY);
+        }
+
+        double GetPointSortKey21(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignX;
+        }
+
+        string SelectPoint22(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
 
         return plan.Points
-            .OrderBy(point => Math.Abs(point.DesignY - targetY))
-            .ThenBy(point => point.DesignX)
+            .OrderBy(GetPointSortKey20)
+            .ThenBy(GetPointSortKey21)
             .Take(count)
-            .Select(point => point.HoleKey)
+            .Select(SelectPoint22)
             .ToArray();
     }
 
@@ -1086,9 +1190,14 @@ public sealed class CReviewManager(
         string command,
         params (string Key, string Value)[] arguments)
     {
+        string SelectArgument23((string Key, string Value) argument)
+        {
+            return $"{argument.Key}={argument.Value}";
+        }
+
         return string.Join(
             ";",
-            new[] { command }.Concat(arguments.Select(argument => $"{argument.Key}={argument.Value}")));
+            new[] { command }.Concat(arguments.Select(SelectArgument23)));
     }
 
     private static string FormatDouble(double value)
@@ -1110,37 +1219,51 @@ public sealed class CReviewManager(
 
     private static ST_REVIEW_PLAN ResetPlanForRun(ST_REVIEW_PLAN plan)
     {
+        string SelectPoint24(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
+
         var firstHoleKey = OrderByReviewSequence(plan.ReviewPoints)
-            .Select(point => point.HoleKey)
+            .Select(SelectPoint24)
             .FirstOrDefault();
+        ST_REVIEW_PLAN_POINT SelectPoint25(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.Use
+                            ? point with
+                            {
+                                ErrorX = 0.0,
+                                ErrorY = 0.0,
+                                State = point.HoleKey.Equals(firstHoleKey, StringComparison.OrdinalIgnoreCase)
+                                    ? EN_REVIEW_POINT_STATE.Current
+                                    : EN_REVIEW_POINT_STATE.Ready,
+                                Judge = "WAIT"
+                            }
+                            : point with
+                            {
+                                State = EN_REVIEW_POINT_STATE.Skip,
+                                Judge = "-"
+                            };
+        }
 
         return plan with
         {
-            Points = plan.Points.Select(point => point.Use
-                ? point with
-                {
-                    ErrorX = 0.0,
-                    ErrorY = 0.0,
-                    State = point.HoleKey.Equals(firstHoleKey, StringComparison.OrdinalIgnoreCase)
-                        ? EN_REVIEW_POINT_STATE.Current
-                        : EN_REVIEW_POINT_STATE.Ready,
-                    Judge = "WAIT"
-                }
-                : point with
-                {
-                    State = EN_REVIEW_POINT_STATE.Skip,
-                    Judge = "-"
-                }).ToArray()
+            Points = plan.Points.Select(SelectPoint25).ToArray()
         };
     }
 
     private static ST_REVIEW_PLAN SetWaitingPointsReady(ST_REVIEW_PLAN plan)
     {
+        ST_REVIEW_PLAN_POINT SelectPoint26(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State == EN_REVIEW_POINT_STATE.Current
+                            ? point with { State = EN_REVIEW_POINT_STATE.Ready }
+                            : point;
+        }
+
         return plan with
         {
-            Points = plan.Points.Select(point => point.State == EN_REVIEW_POINT_STATE.Current
-                ? point with { State = EN_REVIEW_POINT_STATE.Ready }
-                : point).ToArray()
+            Points = plan.Points.Select(SelectPoint26).ToArray()
         };
     }
 
@@ -1148,9 +1271,14 @@ public sealed class CReviewManager(
         ST_REVIEW_PLAN plan,
         ST_REVIEW_PLAN_POINT point)
     {
+        ST_REVIEW_PLAN_POINT SelectItem27(ST_REVIEW_PLAN_POINT item)
+        {
+            return item.HoleKey.Equals(point.HoleKey, StringComparison.OrdinalIgnoreCase) ? point : item;
+        }
+
         return plan with
         {
-            Points = plan.Points.Select(item => item.HoleKey.Equals(point.HoleKey, StringComparison.OrdinalIgnoreCase) ? point : item).ToArray()
+            Points = plan.Points.Select(SelectItem27).ToArray()
         };
     }
 
@@ -1160,8 +1288,18 @@ public sealed class CReviewManager(
         string message)
     {
         var reviewPoints = plan.ReviewPoints;
-        var completedCount = reviewPoints.Count(point => point.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng);
-        var ngCount = reviewPoints.Count(point => point.State == EN_REVIEW_POINT_STATE.Ng);
+        bool HandleCompletedCount28(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng;
+        }
+
+        var completedCount = reviewPoints.Count(HandleCompletedCount28);
+        bool HandleNgCount29(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State == EN_REVIEW_POINT_STATE.Ng;
+        }
+
+        var ngCount = reviewPoints.Count(HandleNgCount29);
 
         return new ST_REVIEW_SEQUENCE_STATUS(
             state,
@@ -1258,11 +1396,31 @@ public sealed class CReviewManager(
     private static IReadOnlyList<ST_REVIEW_PLAN_POINT> OrderByReviewSequence(
         IEnumerable<ST_REVIEW_PLAN_POINT> points)
     {
+        double GetPointSortKey30(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignY;
+        }
+
+        double GetPointSortKey31(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignX;
+        }
+
+        int GetPointSortKey32(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo;
+        }
+
+        int GetPointSortKey33(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleNo;
+        }
+
         var source = points
-            .OrderBy(point => point.DesignY)
-            .ThenBy(point => point.DesignX)
-            .ThenBy(point => point.CellNo)
-            .ThenBy(point => point.HoleNo)
+            .OrderBy(GetPointSortKey30)
+            .ThenBy(GetPointSortKey31)
+            .ThenBy(GetPointSortKey32)
+            .ThenBy(GetPointSortKey33)
             .ToArray();
         var rows = new List<List<ST_REVIEW_PLAN_POINT>>();
 
@@ -1282,15 +1440,45 @@ public sealed class CReviewManager(
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
             var row = rows[rowIndex];
+            double GetPointSortKey34(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.DesignX;
+            }
+
+            int GetPointSortKey35(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.CellNo;
+            }
+
+            int GetPointSortKey36(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleNo;
+            }
+
+            double GetPointSortKey37(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.DesignX;
+            }
+
+            int GetPointSortKey38(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.CellNo;
+            }
+
+            int GetPointSortKey39(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleNo;
+            }
+
             var orderedRow = rowIndex % 2 == 0
                 ? row
-                    .OrderBy(point => point.DesignX)
-                    .ThenBy(point => point.CellNo)
-                    .ThenBy(point => point.HoleNo)
+                    .OrderBy(GetPointSortKey34)
+                    .ThenBy(GetPointSortKey35)
+                    .ThenBy(GetPointSortKey36)
                 : row
-                    .OrderByDescending(point => point.DesignX)
-                    .ThenBy(point => point.CellNo)
-                    .ThenBy(point => point.HoleNo);
+                    .OrderByDescending(GetPointSortKey37)
+                    .ThenBy(GetPointSortKey38)
+                    .ThenBy(GetPointSortKey39);
 
             orderedPoints.AddRange(orderedRow);
         }
@@ -1311,7 +1499,12 @@ public sealed class CReviewManager(
 
         for (var headNo = 1; headNo <= headCount; headNo++)
         {
-            var field = headLayout.Fields.First(item => item.HeadNo == headNo);
+            bool MatchItem40(ST_REVIEW_HEAD_FIELD item)
+            {
+                return item.HeadNo == headNo;
+            }
+
+            var field = headLayout.Fields.First(MatchItem40);
             var centerX = akMarginX + field.PositionX;
             var halfWidth = field.ScanFieldWidthX / 2.0;
             var startX = centerX - halfWidth;
@@ -1426,9 +1619,13 @@ public sealed class CReviewManager(
     {
         foreach (var key in keys)
         {
-            var parameter = recipe.Parameters.FirstOrDefault(item =>
-                item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
-                item.Name.Equals(key, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem41(ST_RECIPE_PARAM item)
+            {
+                return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                                item.Name.Equals(key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var parameter = recipe.Parameters.FirstOrDefault(MatchItem41);
 
             if (parameter is not null && !string.IsNullOrWhiteSpace(parameter.Value))
             {

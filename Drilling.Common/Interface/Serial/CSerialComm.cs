@@ -99,7 +99,7 @@ internal class CSerialComm(
 
         try
         {
-            LastReceived = await Task.Run(() =>
+            string RunTask1()
             {
                 SerialPort.WriteLine(LastSent);
 
@@ -111,7 +111,8 @@ internal class CSerialComm(
                 {
                     return SerialPort.ReadExisting().Trim();
                 }
-            }, cancellationToken);
+            }
+            LastReceived = await Task.Run(RunTask1, cancellationToken);
 
             LastError = string.IsNullOrWhiteSpace(LastReceived)
                 ? "Serial response timeout."

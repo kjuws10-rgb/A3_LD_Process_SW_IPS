@@ -233,7 +233,12 @@ public sealed class CPicoMotorCommandSession : IDisposable
     public string GetIdentification()
     {
         var id = string.Empty;
-        return Execute(command => command.GetIdentification(_deviceKey, ref id))
+        bool ExecuteCommandCallback1(CmdLib8742 command)
+        {
+            return command.GetIdentification(_deviceKey, ref id);
+        }
+
+        return Execute(ExecuteCommandCallback1)
             ? id
             : string.Empty;
     }
@@ -241,35 +246,60 @@ public sealed class CPicoMotorCommandSession : IDisposable
     public int GetPositionStep(int motorNo)
     {
         var position = 0;
-        ExecuteOrThrow(command => command.GetPosition(_deviceKey, ClampMotorNo(motorNo), ref position), "GetPosition");
+        bool ExecuteOrThrowCommandCallback2(CmdLib8742 command)
+        {
+            return command.GetPosition(_deviceKey, ClampMotorNo(motorNo), ref position);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback2, "GetPosition");
         return position;
     }
 
     public int GetVelocityStep(int motorNo)
     {
         var velocity = 0;
-        ExecuteOrThrow(command => command.GetVelocity(_deviceKey, ClampMotorNo(motorNo), ref velocity), "GetVelocity");
+        bool ExecuteOrThrowCommandCallback3(CmdLib8742 command)
+        {
+            return command.GetVelocity(_deviceKey, ClampMotorNo(motorNo), ref velocity);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback3, "GetVelocity");
         return velocity;
     }
 
     public int GetAccelerationStep(int motorNo)
     {
         var acceleration = 0;
-        ExecuteOrThrow(command => command.GetAcceleration(_deviceKey, ClampMotorNo(motorNo), ref acceleration), "GetAcceleration");
+        bool ExecuteOrThrowCommandCallback4(CmdLib8742 command)
+        {
+            return command.GetAcceleration(_deviceKey, ClampMotorNo(motorNo), ref acceleration);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback4, "GetAcceleration");
         return acceleration;
     }
 
     public bool GetMotionDone(int motorNo)
     {
         var isDone = false;
-        ExecuteOrThrow(command => command.GetMotionDone(_deviceKey, ClampMotorNo(motorNo), ref isDone), "GetMotionDone");
+        bool ExecuteOrThrowCommandCallback5(CmdLib8742 command)
+        {
+            return command.GetMotionDone(_deviceKey, ClampMotorNo(motorNo), ref isDone);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback5, "GetMotionDone");
         return isDone;
     }
 
     public int GetErrorCode()
     {
         var error = string.Empty;
-        ExecuteOrThrow(command => command.GetErrorNum(_deviceKey, ref error), "GetErrorNum");
+        bool ExecuteOrThrowCommandCallback6(CmdLib8742 command)
+        {
+            return command.GetErrorNum(_deviceKey, ref error);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback6, "GetErrorNum");
         return int.TryParse(CPicoMotor.NormalizeResponse(error), NumberStyles.Integer, CultureInfo.InvariantCulture, out var errorCode)
             ? errorCode
             : (int)EN_PICO_MOTOR_ERROR.InvalidResponse;
@@ -278,7 +308,12 @@ public sealed class CPicoMotorCommandSession : IDisposable
     public long GetHomePositionStep(int motorNo)
     {
         var home = string.Empty;
-        ExecuteOrThrow(command => command.Query(_deviceKey, $"{ClampMotorNo(motorNo)}DH?", ref home), "GetHomePosition");
+        bool ExecuteOrThrowCommandCallback7(CmdLib8742 command)
+        {
+            return command.Query(_deviceKey, $"{ClampMotorNo(motorNo)}DH?", ref home);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback7, "GetHomePosition");
         return long.TryParse(CPicoMotor.NormalizeResponse(home), NumberStyles.Integer, CultureInfo.InvariantCulture, out var homeStep)
             ? homeStep
             : 0L;
@@ -286,22 +321,42 @@ public sealed class CPicoMotorCommandSession : IDisposable
 
     public void SetVelocity(int motorNo, int velocityStep)
     {
-        ExecuteOrThrow(command => command.SetVelocity(_deviceKey, ClampMotorNo(motorNo), velocityStep), "SetVelocity");
+        bool ExecuteOrThrowCommandCallback8(CmdLib8742 command)
+        {
+            return command.SetVelocity(_deviceKey, ClampMotorNo(motorNo), velocityStep);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback8, "SetVelocity");
     }
 
     public void SetAcceleration(int motorNo, int accelerationStep)
     {
-        ExecuteOrThrow(command => command.SetAcceleration(_deviceKey, ClampMotorNo(motorNo), accelerationStep), "SetAcceleration");
+        bool ExecuteOrThrowCommandCallback9(CmdLib8742 command)
+        {
+            return command.SetAcceleration(_deviceKey, ClampMotorNo(motorNo), accelerationStep);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback9, "SetAcceleration");
     }
 
     public void StopMotion(int motorNo)
     {
-        ExecuteOrThrow(command => command.StopMotion(_deviceKey, ClampMotorNo(motorNo)), "StopMotion");
+        bool ExecuteOrThrowCommandCallback10(CmdLib8742 command)
+        {
+            return command.StopMotion(_deviceKey, ClampMotorNo(motorNo));
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback10, "StopMotion");
     }
 
     public void AbortMotion()
     {
-        ExecuteOrThrow(command => command.AbortMotion(_deviceKey), "AbortMotion");
+        bool ExecuteOrThrowCommandCallback11(CmdLib8742 command)
+        {
+            return command.AbortMotion(_deviceKey);
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback11, "AbortMotion");
     }
 
     public void MoveHome(int motorNo)
@@ -312,22 +367,42 @@ public sealed class CPicoMotorCommandSession : IDisposable
 
     public void JogNegative(int motorNo)
     {
-        ExecuteOrThrow(command => command.JogNegative(_deviceKey, ClampMotorNo(motorNo)), "JogNegative");
+        bool ExecuteOrThrowCommandCallback12(CmdLib8742 command)
+        {
+            return command.JogNegative(_deviceKey, ClampMotorNo(motorNo));
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback12, "JogNegative");
     }
 
     public void JogPositive(int motorNo)
     {
-        ExecuteOrThrow(command => command.JogPositive(_deviceKey, ClampMotorNo(motorNo)), "JogPositive");
+        bool ExecuteOrThrowCommandCallback13(CmdLib8742 command)
+        {
+            return command.JogPositive(_deviceKey, ClampMotorNo(motorNo));
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback13, "JogPositive");
     }
 
     public void RelativeMove(int motorNo, long step)
     {
-        ExecuteOrThrow(command => command.RelativeMove(_deviceKey, ClampMotorNo(motorNo), ToInt32Step(step)), "RelativeMove");
+        bool ExecuteOrThrowCommandCallback14(CmdLib8742 command)
+        {
+            return command.RelativeMove(_deviceKey, ClampMotorNo(motorNo), ToInt32Step(step));
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback14, "RelativeMove");
     }
 
     public void AbsoluteMove(int motorNo, long step)
     {
-        ExecuteOrThrow(command => command.AbsoluteMove(_deviceKey, ClampMotorNo(motorNo), ToInt32Step(step)), "AbsoluteMove");
+        bool ExecuteOrThrowCommandCallback15(CmdLib8742 command)
+        {
+            return command.AbsoluteMove(_deviceKey, ClampMotorNo(motorNo), ToInt32Step(step));
+        }
+
+        ExecuteOrThrow(ExecuteOrThrowCommandCallback15, "AbsoluteMove");
     }
 
     public void Dispose()

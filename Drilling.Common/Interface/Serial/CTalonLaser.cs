@@ -321,12 +321,16 @@ internal sealed class CTalonLaser(
 
     private static string ReadLeadingNumber(string value)
     {
+        bool HandleChars1(char character)
+        {
+            return char.IsDigit(character) ||
+                            character == '-' ||
+                            character == '+' ||
+                            character == '.';
+        }
+
         var chars = value.Trim()
-            .TakeWhile(character =>
-                char.IsDigit(character) ||
-                character == '-' ||
-                character == '+' ||
-                character == '.')
+            .TakeWhile(HandleChars1)
             .ToArray();
 
         return chars.Length == 0 ? "0" : new string(chars);

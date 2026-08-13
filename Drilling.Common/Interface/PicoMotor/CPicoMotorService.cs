@@ -28,8 +28,7 @@ public sealed class CPicoMotorService : IDisposable
         {
             return GetStatus(number) with { CommOk = true, UpdatedAt = DateTimeOffset.Now };
         }
-
-        return await Task.Run(() =>
+        ST_PICO_MOTOR_STATUS RunTask1()
         {
             cancellationToken.ThrowIfCancellationRequested();
             var session = GetSession(number, requireConnected: true);
@@ -56,7 +55,8 @@ public sealed class CPicoMotorService : IDisposable
             };
             SetStatus(number, status);
             return status;
-        }, cancellationToken);
+        }
+        return await Task.Run(RunTask1, cancellationToken);
     }
 
     public async Task<ST_DEVICE_COMMAND_RESULT> Execute(
@@ -110,8 +110,12 @@ public sealed class CPicoMotorService : IDisposable
                 }
                 return new ST_DEVICE_COMMAND_RESULT(true, $"SIM:PICO_MOTOR:{command}:MOTOR={motorNo}:VALUE={parameter:0.###}");
             }
+            void RunTask2()
+            {
+                ExecuteLive(number, command, motorNo, parameter);
+            }
 
-            await Task.Run(() => ExecuteLive(number, command, motorNo, parameter), cancellationToken);
+            await Task.Run(RunTask2, cancellationToken);
             return new ST_DEVICE_COMMAND_RESULT(true, $"PICO_MOTOR {command} OK. MOTOR={motorNo}");
         }
         catch (OperationCanceledException)
@@ -138,10 +142,20 @@ public sealed class CPicoMotorService : IDisposable
         int count,
         CancellationToken cancellationToken = default)
     {
+        bool FilterValue3(int value)
+        {
+            return value is >= 1 and <= 4;
+        }
+
+        int GetValueSortKey4(int value)
+        {
+            return value;
+        }
+
         var motors = motorNos
-            .Where(value => value is >= 1 and <= 4)
+            .Where(FilterValue3)
             .Distinct()
-            .OrderBy(value => value)
+            .OrderBy(GetValueSortKey4)
             .ToArray();
         if (motors.Length == 0)
         {
@@ -198,14 +212,15 @@ public sealed class CPicoMotorService : IDisposable
                 {
                     var session = GetSession(number, requireConnected: true);
                     var moveStep = CPicoMotor.MillimeterToStep(positionMm);
-                    await Task.Run(() =>
+                    void RunTask5()
                     {
                         foreach (var motorNo in motors)
                         {
                             linked.Token.ThrowIfCancellationRequested();
                             session.RelativeMove(motorNo, moveStep);
                         }
-                    }, linked.Token);
+                    }
+                    await Task.Run(RunTask5, linked.Token);
                     await WaitAllMotorsDone(session, motors, linked.Token);
                     await Refresh(number, false, linked.Token);
                 }
@@ -319,9 +334,19 @@ public sealed class CPicoMotorService : IDisposable
         CancellationToken cancellationToken)
     {
         var start = GetStatus(number);
+        int HandleTargets6(int motorNo)
+        {
+            return motorNo;
+        }
+
+        double HandleTargets7(int motorNo)
+        {
+            return GetPosition(start, motorNo) + deltaPosition;
+        }
+
         var targets = motorNos.ToDictionary(
-            motorNo => motorNo,
-            motorNo => GetPosition(start, motorNo) + deltaPosition);
+HandleTargets6,
+HandleTargets7);
 
         while (true)
         {
@@ -372,8 +397,13 @@ public sealed class CPicoMotorService : IDisposable
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            bool RunTask8()
+            {
+                return motorNos.All(session.GetMotionDone);
+            }
+
             var completed = await Task.Run(
-                () => motorNos.All(session.GetMotionDone),
+RunTask8,
                 cancellationToken);
             if (completed)
             {

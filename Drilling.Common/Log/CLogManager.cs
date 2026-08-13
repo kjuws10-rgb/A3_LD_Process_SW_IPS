@@ -101,14 +101,28 @@ public sealed class CLogManager : ILogManager
             recipeName,
             recipeId
         };
+        bool FilterItem1(ST_RECIPE_HISTORY? item)
+        {
+            return item is not null;
+        }
+
+        bool FilterItem2(ST_RECIPE_HISTORY item)
+        {
+            return names.Contains(item.RecipeName);
+        }
+
+        DateTimeOffset GetItemSortKey3(ST_RECIPE_HISTORY item)
+        {
+            return item.ChangedAt;
+        }
 
         return EnumerateRecentLogFiles(_recipeLogRoot, days)
             .SelectMany(ReadLogFile)
             .Select(ParseRecipeLine)
-            .Where(item => item is not null)
+            .Where(FilterItem1)
             .Cast<ST_RECIPE_HISTORY>()
-            .Where(item => names.Contains(item.RecipeName))
-            .OrderByDescending(item => item.ChangedAt)
+            .Where(FilterItem2)
+            .OrderByDescending(GetItemSortKey3)
             .Take(maxRows)
             .ToArray();
     }
@@ -158,13 +172,28 @@ public sealed class CLogManager : ILogManager
         int maxRows = DefaultSettingReadRows,
         int days = DefaultReadDays)
     {
+        bool FilterItem4(ST_SETTING_HISTORY? item)
+        {
+            return item is not null;
+        }
+
+        bool FilterItem5(ST_SETTING_HISTORY item)
+        {
+            return item.Section == section;
+        }
+
+        DateTimeOffset GetItemSortKey6(ST_SETTING_HISTORY item)
+        {
+            return item.ChangedAt;
+        }
+
         return EnumerateRecentLogFiles(_settingLogRoot, days)
             .SelectMany(ReadLogFile)
             .Select(ParseSettingLine)
-            .Where(item => item is not null)
+            .Where(FilterItem4)
             .Cast<ST_SETTING_HISTORY>()
-            .Where(item => item.Section == section)
-            .OrderByDescending(item => item.ChangedAt)
+            .Where(FilterItem5)
+            .OrderByDescending(GetItemSortKey6)
             .Take(maxRows)
             .ToArray();
     }
@@ -239,15 +268,29 @@ public sealed class CLogManager : ILogManager
         int days = DefaultReadDays)
     {
         var normalizedNickName = nickName.Trim();
+        bool FilterItem7(ST_INTERFACE_HISTORY? item)
+        {
+            return item is not null;
+        }
+
+        bool FilterItem8(ST_INTERFACE_HISTORY item)
+        {
+            return string.IsNullOrWhiteSpace(normalizedNickName) ||
+                            item.NickName.Equals(normalizedNickName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        DateTimeOffset GetItemSortKey9(ST_INTERFACE_HISTORY item)
+        {
+            return item.OccurredAt;
+        }
 
         return EnumerateInterfaceLogFiles(module, days)
             .SelectMany(ReadLogFile)
             .Select(ParseInterfaceLine)
-            .Where(item => item is not null)
+            .Where(FilterItem7)
             .Cast<ST_INTERFACE_HISTORY>()
-            .Where(item => string.IsNullOrWhiteSpace(normalizedNickName) ||
-                item.NickName.Equals(normalizedNickName, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(item => item.OccurredAt)
+            .Where(FilterItem8)
+            .OrderByDescending(GetItemSortKey9)
             .Take(Math.Max(1, maxRows))
             .ToArray();
     }
@@ -383,10 +426,14 @@ public sealed class CLogManager : ILogManager
         {
             return [];
         }
+        IEnumerable<string> SelectDirectory10(string directory)
+        {
+            return EnumerateRecentLogFiles(directory, days);
+        }
 
         return Directory
             .EnumerateDirectories(_interfaceLogRoot)
-            .SelectMany(directory => EnumerateRecentLogFiles(directory, days))
+            .SelectMany(SelectDirectory10)
             .ToArray();
     }
 

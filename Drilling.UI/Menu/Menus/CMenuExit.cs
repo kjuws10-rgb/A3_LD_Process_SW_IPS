@@ -7,9 +7,9 @@ using Drilling.Common.Station;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuExit : IMenu
+public sealed class CMenuExit : CMenuBase
 {
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -17,7 +17,7 @@ public sealed class CMenuExit : IMenu
         }
     }
 
-    public Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

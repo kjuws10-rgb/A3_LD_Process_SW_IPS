@@ -26,7 +26,7 @@ public sealed class CMenuMain(
     Func<IReadOnlySet<int>> selectedPreviewHeadNosProvider,
     CButtonCommand togglePreviewHeadCommand,
     Action<string> statusReporter,
-    Func<Task> refreshCurrentScreen) : CBindingBase, IMenu
+    Func<Task> refreshCurrentScreen) : CMenuBase
 {
     private const string AutoStepPowerCheck = "POWER_CHECK";
     private const string AutoStepAlign = "ALIGN";
@@ -87,7 +87,7 @@ public sealed class CMenuMain(
     private readonly CScannerStatusPollingService _scannerStatusPollingService =
         new(automationManager, settingManager);
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -526,7 +526,7 @@ public sealed class CMenuMain(
         }
     }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var snapshot = await stationManager.GetStatus(cancellationToken);
         var selectedHeadNos = selectedPreviewHeadNosProvider().ToHashSet();

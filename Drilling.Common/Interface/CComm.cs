@@ -52,11 +52,6 @@ internal sealed record ST_COMM_RECEIVED_MESSAGE(
     string Message,
     DateTimeOffset ReceivedAt);
 
-internal interface ICommMessageSource
-{
-    event Func<ST_COMM_RECEIVED_MESSAGE, CancellationToken, Task<string>>? MessageReceived;
-}
-
 internal static class CComm
 {
     private static readonly IReadOnlyList<CCommRegistration> CommTypes = LoadCommTypes();

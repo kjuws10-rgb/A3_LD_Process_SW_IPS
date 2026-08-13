@@ -9,7 +9,7 @@ using Drilling.UI.Popup;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuReview : IMenu
+public sealed class CMenuReview : CMenuBase
 {
     private const int DefaultHeadCount = 8;
     private const int MaxHeadCount = 8;
@@ -136,7 +136,7 @@ HandleStartCommand5);
         SaveRuleCommand = new CButtonCommand(HandleSaveRuleCommand9);
     }
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -567,7 +567,7 @@ HandleStartCommand5);
         _isSampleCellDetailVisible = false;
     }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

@@ -11,7 +11,7 @@ using System.Windows.Media;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuSetting : CBindingBase, IMenu
+public sealed class CMenuSetting : CMenuBase
 {
     private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedTabProvider;
@@ -117,7 +117,7 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         ReloadCommand = new CButtonCommand(HandleReloadCommand9);
     }
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -222,7 +222,7 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         }
     }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var displaySections = new List<ST_SCREEN_SECTION>();
 

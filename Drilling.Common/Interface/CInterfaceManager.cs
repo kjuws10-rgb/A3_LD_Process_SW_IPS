@@ -2329,7 +2329,8 @@ public sealed class CInterfaceManager {
     }
 }
 
-public sealed class CInterfaceDevice {
+public sealed class CInterfaceDevice
+{
     private bool _simulationMode;
     private readonly CCommBase _comm;
     private string _simulationLastSent = "";
@@ -2348,7 +2349,7 @@ public sealed class CInterfaceDevice {
         _simulationMode = simulationMode;
         _comm = CComm.Create(Data, ConnectOption);
 
-        if (_comm is ICommMessageSource messageSource)
+        if (_comm is CSocketServerComm messageSource)
         {
             messageSource.MessageReceived += OnCommMessageReceived;
         }

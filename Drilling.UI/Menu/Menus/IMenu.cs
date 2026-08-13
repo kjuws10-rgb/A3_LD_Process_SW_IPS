@@ -23,11 +23,11 @@ public enum EN_MENU
     Exit
 }
 
-public interface IMenu
+public abstract class CMenuBase : CBindingBase
 {
-    EN_MENU Menu { get; }
+    public abstract EN_MENU Menu { get; }
 
-    Task<CScreenViewModel> Build(CancellationToken cancellationToken = default);
+    public abstract Task<CScreenViewModel> Build(CancellationToken cancellationToken = default);
 }
 
 public sealed record ST_DISPLAY_ITEM(

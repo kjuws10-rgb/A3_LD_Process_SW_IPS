@@ -9,7 +9,7 @@ using Drilling.UI.Popup;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuManual : CBindingBase, IMenu
+public sealed class CMenuManual : CMenuBase
 {
     private const int ManualTaskIndex = 1;
 
@@ -191,7 +191,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
         ];
     }
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -517,7 +517,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public CButtonCommand VisionShotCommand { get; }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var settingNames = await _scanFile.List(cancellationToken);
         var formItems = await _scanFile.LoadForm(cancellationToken);

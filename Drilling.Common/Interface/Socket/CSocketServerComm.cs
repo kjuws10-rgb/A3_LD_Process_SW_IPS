@@ -8,7 +8,7 @@ namespace Drilling.Common.Interface;
 [CCommType("SocketServer")]
 internal sealed class CSocketServerComm(
     ST_INTERFACE_DATA data,
-    ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option), ICommMessageSource
+    ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option)
 {
     private const int MaxMessageLength = 8192;
 

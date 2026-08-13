@@ -9,9 +9,9 @@ namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuPm(
     Func<ST_PM_LOCK_STATUS> lockStatusProvider,
-    Action enterLock) : IMenu
+    Action enterLock) : CMenuBase
 {
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -25,7 +25,7 @@ public sealed class CMenuPm(
 
     public IReadOnlyList<ST_DISPLAY_ITEM> BlockedItems { get; private set; } = [];
 
-    public Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

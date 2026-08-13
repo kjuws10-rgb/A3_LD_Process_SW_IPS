@@ -15,7 +15,7 @@ using System.Windows.Media;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuRecipe : CBindingBase, IMenu
+public sealed class CMenuRecipe : CMenuBase
 {
     private static readonly string[] CellParameterKeys =
     [
@@ -194,7 +194,7 @@ HandleApplyPointPatternCommand10);
         DeleteCommand = new CButtonCommand(HandleDeleteCommand14);
     }
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -380,7 +380,7 @@ HandleApplyPointPatternCommand10);
 
     public CButtonCommand DeleteCommand { get; }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var recipes = await _recipeManager.LoadRecipes(cancellationToken);
         var optionSettings = await _settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);

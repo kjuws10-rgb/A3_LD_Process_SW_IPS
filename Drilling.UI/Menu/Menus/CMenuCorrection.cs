@@ -8,7 +8,7 @@ using Microsoft.Win32;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuCorrection : IMenu
+public sealed class CMenuCorrection : CMenuBase
 {
     private static readonly string[] CorrectionTabs =
     [
@@ -62,7 +62,7 @@ public sealed class CMenuCorrection : IMenu
         ExecuteCommand = new CButtonCommand(HandleExecuteCommand1);
     }
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -176,7 +176,7 @@ public sealed class CMenuCorrection : IMenu
 
     public CButtonCommand ExecuteCommand { get; }
 
-    public Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

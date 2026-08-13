@@ -16,9 +16,9 @@ public sealed class CMenuAlarm(
     CStationManager stationManager,
     Action<string> setStatusMessage,
     Action refreshShellStatus,
-    Func<Task> refreshCurrentScreen) : IMenu
+    Func<Task> refreshCurrentScreen) : CMenuBase
 {
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -72,7 +72,7 @@ public sealed class CMenuAlarm(
 
     public IReadOnlyList<ST_ALARM_SUMMARY_ITEM> SummaryItems { get; private set; } = [];
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var alarms = await GetCurrentAlarms(cancellationToken);
         ST_DISPLAY_ITEM SelectItem3(ST_ALARM_DATA item)

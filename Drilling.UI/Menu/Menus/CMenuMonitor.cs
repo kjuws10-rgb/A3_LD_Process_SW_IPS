@@ -17,7 +17,7 @@ using System.Windows.Media;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuMonitor : CBindingBase, IMenu
+public sealed class CMenuMonitor : CMenuBase
 {
     private readonly CInterfaceManager _interfaceManager;
     private readonly CMotionManager _motionManager;
@@ -191,7 +191,7 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         BackToCoordinateGlassPreviewCommand = new CButtonCommand(HandleBackToCoordinateGlassPreviewCommand13);
     }
 
-    public EN_MENU Menu
+    public override EN_MENU Menu
     {
         get
         {
@@ -689,7 +689,7 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
     }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var selectedTab = NormalizeMonitorTab(_selectedTabAccessor());
         _selectedLaserNumber = Math.Clamp(_selectedLaserNumber, 0, LaserHeadCount - 1);

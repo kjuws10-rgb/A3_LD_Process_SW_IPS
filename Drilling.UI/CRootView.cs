@@ -59,7 +59,7 @@ public sealed class CRootView : CBindingBase
     private readonly CAlarmManager _alarmManager;
     private readonly CInterLockManager _interLockManager;
     private readonly CRecipeManager _recipeManager;
-    private readonly IReadOnlyDictionary<EN_MENU, IMenu> _menus;
+    private readonly IReadOnlyDictionary<EN_MENU, CMenuBase> _menus;
     private readonly Dictionary<EN_EQP_MODULE, int> _selectedHeaderModuleIndexes = new();
 
     private CMenuItem _selectedMenu;
@@ -1125,7 +1125,7 @@ HandleParameters20,
         timer.Start();
     }
 
-    private IReadOnlyDictionary<EN_MENU, IMenu> CreateMenus(
+    private IReadOnlyDictionary<EN_MENU, CMenuBase> CreateMenus(
         CStationManager stationManager,
         CInterfaceManager interfaceManager,
         CMotionManager motionManager,
@@ -1294,7 +1294,7 @@ HandleParameters20,
             StatusMessage = message;
         }
 
-        IMenu[] menus =
+        CMenuBase[] menus =
         [
             new CMenuMain(
                 stationManager,
@@ -1381,7 +1381,7 @@ HandleMenus54,
             new CMenuPm(GetPMLockStatus, EnterPMLock),
             new CMenuExit()
         ];
-        EN_MENU ToDictionaryMenuCallback55(IMenu menu)
+        EN_MENU ToDictionaryMenuCallback55(CMenuBase menu)
         {
             return menu.Menu;
         }

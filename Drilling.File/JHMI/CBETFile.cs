@@ -47,14 +47,29 @@ public sealed class CBETFile(string configRoot) : IBETFile
 
     private List<ST_BET_TABLE_DATA> ReadTable(string path)
     {
+        bool FilterRow1(IReadOnlyDictionary<string, string> row)
+        {
+            return !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "INDEX"));
+        }
+
+        ST_BET_TABLE_DATA SelectRow2(IReadOnlyDictionary<string, string> row, int order)
+        {
+            return new ST_BET_TABLE_DATA(
+                            ReadInt(CCsvParser.Get(row, "INDEX"), order),
+                            ReadDouble(CCsvParser.Get(row, "MAG"), 0.0),
+                            ReadDouble(CCsvParser.Get(row, "DIV"), 0.0),
+                            CCsvParser.Get(row, "DESCRIPTION"));
+        }
+
+        int GetRowSortKey3(ST_BET_TABLE_DATA row)
+        {
+            return row.Index;
+        }
+
         return CCsvParser.Read(path)
-            .Where(row => !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "INDEX")))
-            .Select((row, order) => new ST_BET_TABLE_DATA(
-                ReadInt(CCsvParser.Get(row, "INDEX"), order),
-                ReadDouble(CCsvParser.Get(row, "MAG"), 0.0),
-                ReadDouble(CCsvParser.Get(row, "DIV"), 0.0),
-                CCsvParser.Get(row, "DESCRIPTION")))
-            .OrderBy(row => row.Index)
+            .Where(FilterRow1)
+            .Select(SelectRow2)
+            .OrderBy(GetRowSortKey3)
             .ToList();
     }
 
@@ -62,16 +77,26 @@ public sealed class CBETFile(string configRoot) : IBETFile
         string path,
         IReadOnlyList<ST_BET_TABLE_DATA> table)
     {
-        var rows = table
-            .OrderBy(row => row.Index)
-            .Select(row => new Dictionary<string, string>
+        int GetRowSortKey4(ST_BET_TABLE_DATA row)
+        {
+            return row.Index;
+        }
+
+        Dictionary<string, string> SelectRow5(ST_BET_TABLE_DATA row)
+        {
+            return new Dictionary<string, string>
             {
                 ["INDEX"] = row.Index.ToString(CultureInfo.InvariantCulture),
                 ["DESCRIPTION"] = row.Description,
                 ["DIV"] = row.Divergence.ToString("F3", CultureInfo.InvariantCulture),
                 ["MAG"] = row.Magnification.ToString("F3", CultureInfo.InvariantCulture),
                 ["SPOTSIZE"] = row.SpotSize.ToString("F6", CultureInfo.InvariantCulture)
-            });
+            };
+        }
+
+        var rows = table
+            .OrderBy(GetRowSortKey4)
+            .Select(SelectRow5);
 
         CCsvParser.Write(path, Headers, rows);
     }

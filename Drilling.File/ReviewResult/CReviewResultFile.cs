@@ -36,23 +36,36 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        string[] SelectHeader1(string header)
+        {
+            return new[] { header };
+        }
 
         CCsvParser.ValidateRequiredHeaders(
             path,
             "Review Result",
-            Headers.Select(header => new[] { header }));
+            Headers.Select(SelectHeader1));
 
         var sourceRows = CCsvParser.Read(path);
         if (sourceRows.Count == 0)
         {
             throw new InvalidDataException("Review Result validation failed. Result row is empty.");
         }
+        ST_REVIEW_RESULT_FILE_ROW SelectRow2(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return ToResultRow(row, index + 2);
+        }
 
         var rows = sourceRows
-            .Select((row, index) => ToResultRow(row, index + 2))
+            .Select(SelectRow2)
             .ToArray();
+        string SelectRow3(ST_REVIEW_RESULT_FILE_ROW row)
+        {
+            return row.RecipeId;
+        }
+
         var recipeIds = rows
-            .Select(row => row.RecipeId)
+            .Select(SelectRow3)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -63,11 +76,16 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
         }
 
         var fullPath = Path.GetFullPath(path);
+        DateTimeOffset MaxRowCallback4(ST_REVIEW_RESULT_FILE_ROW row)
+        {
+            return row.SavedAt;
+        }
+
         return Task.FromResult(new ST_REVIEW_RESULT_FILE_DATA(
             fullPath,
             Path.GetFileName(fullPath),
             recipeIds[0],
-            rows.Max(row => row.SavedAt),
+            rows.Max(MaxRowCallback4),
             rows));
     }
 
@@ -80,11 +98,15 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
         var rows = result.Results.Count > 0
             ? result.Results
             : result.Plan.ReviewPoints;
+        IReadOnlyDictionary<string, string> SelectPoint5(ST_REVIEW_PLAN_POINT point)
+        {
+            return ToRow(result, point);
+        }
 
         CCsvParser.Write(
             GetResultPath(result),
             Headers,
-            rows.Select(point => ToRow(result, point)));
+            rows.Select(SelectPoint5));
 
         return Task.CompletedTask;
     }
@@ -200,8 +222,13 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
     private static string SanitizeFileName(string value)
     {
         var invalidChars = Path.GetInvalidFileNameChars();
+        char SelectCharacter6(char character)
+        {
+            return invalidChars.Contains(character) ? '_' : character;
+        }
+
         var sanitized = new string(value
-            .Select(character => invalidChars.Contains(character) ? '_' : character)
+            .Select(SelectCharacter6)
             .ToArray());
 
         return string.IsNullOrWhiteSpace(sanitized) ? "RECIPE" : sanitized;

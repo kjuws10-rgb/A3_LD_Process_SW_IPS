@@ -323,11 +323,16 @@ public sealed class CConfigStructureFile(string configRoot) : IConfigStructureFi
 
     private ST_CONFIG_FILE_STATUS CheckRecipeValueFiles(CancellationToken cancellationToken)
     {
+        bool CheckLineValueFilesLineFieldsCallback1(IReadOnlyList<string> lineFields)
+        {
+            return lineFields.Count >= 3;
+        }
+
         return CheckLineValueFiles(
             "Recipe Value Files",
             "RECIPE",
             "*.csv",
-            lineFields => lineFields.Count >= 3,
+CheckLineValueFilesLineFieldsCallback1,
             "Each recipe line must be TAB,NAME,VALUE.",
             cancellationToken);
     }
@@ -385,9 +390,13 @@ public sealed class CConfigStructureFile(string configRoot) : IConfigStructureFi
                 true,
                 "Optional value directory is not created yet.");
         }
+        string GetPathSortKey2(string path)
+        {
+            return path;
+        }
 
         var files = Directory.EnumerateFiles(directory, pattern)
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetPathSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         if (files.Length == 0)
@@ -453,9 +462,13 @@ public sealed class CConfigStructureFile(string configRoot) : IConfigStructureFi
                 true,
                 "Optional value directory is not created yet.");
         }
+        string GetPathSortKey3(string path)
+        {
+            return path;
+        }
 
         var files = Directory.EnumerateFiles(directory, pattern)
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetPathSortKey3, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         if (files.Length == 0)
@@ -530,77 +543,112 @@ public sealed class CConfigStructureFile(string configRoot) : IConfigStructureFi
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback4(IReadOnlyDictionary<string, string> row)
+        {
+            return $"{CCsvParser.Get(row, "TAB").Trim().ToUpperInvariant()}|{CCsvParser.Get(row, "NAME").Trim().ToUpperInvariant()}";
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["TAB", "NAME"],
-            row => $"{CCsvParser.Get(row, "TAB").Trim().ToUpperInvariant()}|{CCsvParser.Get(row, "NAME").Trim().ToUpperInvariant()}");
+ValidateUniqueKeyRowCallback4);
     }
 
     private static void ValidateDeviceNumberKey(
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback5(IReadOnlyDictionary<string, string> row)
+        {
+            return $"{CCsvParser.Get(row, "DEVICE").Trim().ToUpperInvariant()}|{GetFirstValue(row, "NUMBER", "NO").Trim().ToUpperInvariant()}";
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["DEVICE", "NUMBER"],
-            row => $"{CCsvParser.Get(row, "DEVICE").Trim().ToUpperInvariant()}|{GetFirstValue(row, "NUMBER", "NO").Trim().ToUpperInvariant()}");
+ValidateUniqueKeyRowCallback5);
     }
 
     private static void ValidateNameKey(
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback6(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "NAME").Trim().ToUpperInvariant();
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["NAME"],
-            row => CCsvParser.Get(row, "NAME").Trim().ToUpperInvariant());
+ValidateUniqueKeyRowCallback6);
     }
 
     private static void ValidateGroupKey(
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback7(IReadOnlyDictionary<string, string> row)
+        {
+            return $"{CCsvParser.Get(row, "GROUP").Trim().ToUpperInvariant()}|{CCsvParser.Get(row, "KEY").Trim().ToUpperInvariant()}";
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["GROUP", "KEY"],
-            row => $"{CCsvParser.Get(row, "GROUP").Trim().ToUpperInvariant()}|{CCsvParser.Get(row, "KEY").Trim().ToUpperInvariant()}");
+ValidateUniqueKeyRowCallback7);
     }
 
     private static void ValidateIdKey(
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback8(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "ID").Trim().ToUpperInvariant();
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["ID"],
-            row => CCsvParser.Get(row, "ID").Trim().ToUpperInvariant());
+ValidateUniqueKeyRowCallback8);
     }
 
     private static void ValidateIndexKey(
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback9(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "INDEX").Trim().ToUpperInvariant();
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["INDEX"],
-            row => CCsvParser.Get(row, "INDEX").Trim().ToUpperInvariant());
+ValidateUniqueKeyRowCallback9);
     }
 
     private static void ValidateStepKey(
         string tableName,
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows)
     {
+        string ValidateUniqueKeyRowCallback10(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "STEP").Trim().ToUpperInvariant();
+        }
+
         ValidateUniqueKey(
             tableName,
             rows,
             ["STEP"],
-            row => CCsvParser.Get(row, "STEP").Trim().ToUpperInvariant());
+ValidateUniqueKeyRowCallback10);
     }
 
     private static void ValidateUniqueKey(

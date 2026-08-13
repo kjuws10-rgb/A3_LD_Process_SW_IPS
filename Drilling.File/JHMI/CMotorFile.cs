@@ -73,12 +73,31 @@ public sealed class CMotorFile(string configRoot) : IMotorFile
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
         CCsvParser.ValidateRequiredHeaders(GetMotorPath(), "JHMI_MOTOR", RequiredHeaderGroups);
+        ST_MOTOR_DATA SelectRow1(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return Parse(row, index + 2);
+        }
+
+        bool FilterAxis2(ST_MOTOR_DATA axis)
+        {
+            return !string.IsNullOrWhiteSpace(axis.Name);
+        }
+
+        int GetAxisSortKey3(ST_MOTOR_DATA axis)
+        {
+            return axis.Axis;
+        }
+
+        string GetAxisSortKey4(ST_MOTOR_DATA axis)
+        {
+            return axis.Name;
+        }
 
         var rows = CCsvParser.Read(GetMotorPath())
-            .Select((row, index) => Parse(row, index + 2))
-            .Where(axis => !string.IsNullOrWhiteSpace(axis.Name))
-            .OrderBy(axis => axis.Axis)
-            .ThenBy(axis => axis.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectRow1)
+            .Where(FilterAxis2)
+            .OrderBy(GetAxisSortKey3)
+            .ThenBy(GetAxisSortKey4, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         Validate(rows);
@@ -160,8 +179,12 @@ public sealed class CMotorFile(string configRoot) : IMotorFile
     {
         var usedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var usedControllerAxes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool FilterAxis5(ST_MOTOR_DATA axis)
+        {
+            return axis.Use;
+        }
 
-        foreach (var axis in motors.Where(axis => axis.Use))
+        foreach (var axis in motors.Where(FilterAxis5))
         {
             if (string.IsNullOrWhiteSpace(axis.Name))
             {

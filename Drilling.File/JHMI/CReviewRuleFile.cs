@@ -22,13 +22,22 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureDefaultRuleFile();
+        bool FilterName1(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name);
+        }
+
+        string GetNameSortKey2(string name)
+        {
+            return name;
+        }
 
         var ruleNames = Directory
             .EnumerateFiles(_ruleDirectory, "*.csv")
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Where(FilterName1)
             .Cast<string>()
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<string>>(ruleNames);
@@ -79,6 +88,15 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
 
         var ruleType = ReadRuleType(ReadValue(values, "RULE_TYPE", "ALL_POINT"));
         var ruleName = ReadValue(values, "RULE_NAME", Path.GetFileNameWithoutExtension(normalizedName));
+        bool FilterKey3(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        string GetKeySortKey4(string key)
+        {
+            return key;
+        }
 
         return Task.FromResult(new ST_REVIEW_RULE_DATA(
             normalizedName,
@@ -88,9 +106,9 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
             ReadInt(values, "CELL_NO", 1),
             ReadInt(values, "ZERO_POINT_COUNT", 0),
             holeKeys
-                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Where(FilterKey3)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(GetKeySortKey4, StringComparer.OrdinalIgnoreCase)
                 .ToArray()));
     }
 
@@ -109,13 +127,27 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
             Row("COMMON", "CELL_NO", rule.CellNo.ToString(CultureInfo.InvariantCulture), "Target cell number for CELL_POINT"),
             Row("COMMON", "ZERO_POINT_COUNT", rule.ZeroPointCount.ToString(CultureInfo.InvariantCulture), "Zero line review point count")
         };
+        bool FilterKey5(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        bool FilterKey6(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        string GetKeySortKey7(string key)
+        {
+            return key;
+        }
 
         foreach (var holeKey in rule.HoleKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Where(FilterKey5)
             .Select(CReviewManager.NormalizeHoleKey)
-            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Where(FilterKey6)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(GetKeySortKey7, StringComparer.OrdinalIgnoreCase))
         {
             rows.Add(Row("HOLE", holeKey, "1", "Selected review hole"));
         }

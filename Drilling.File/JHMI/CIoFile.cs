@@ -36,12 +36,31 @@ public sealed class CIoFile(string configRoot) : IIoFile
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
         CCsvParser.ValidateRequiredHeaders(GetIoPath(), "JHMI_IO", RequiredHeaderGroups);
+        ST_IO_DATA SelectRow1(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return Parse(row, index + 2);
+        }
+
+        bool FilterIo2(ST_IO_DATA io)
+        {
+            return !string.IsNullOrWhiteSpace(io.Id);
+        }
+
+        int GetIoSortKey3(ST_IO_DATA io)
+        {
+            return io.DisplayOrder;
+        }
+
+        string GetIoSortKey4(ST_IO_DATA io)
+        {
+            return io.Id;
+        }
 
         var rows = CCsvParser.Read(GetIoPath())
-            .Select((row, index) => Parse(row, index + 2))
-            .Where(io => !string.IsNullOrWhiteSpace(io.Id))
-            .OrderBy(io => io.DisplayOrder)
-            .ThenBy(io => io.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectRow1)
+            .Where(FilterIo2)
+            .OrderBy(GetIoSortKey3)
+            .ThenBy(GetIoSortKey4, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         Validate(rows);
@@ -89,8 +108,12 @@ public sealed class CIoFile(string configRoot) : IIoFile
     {
         var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var usedAddresses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool FilterRow5(ST_IO_DATA row)
+        {
+            return row.Use;
+        }
 
-        foreach (var row in rows.Where(row => row.Use))
+        foreach (var row in rows.Where(FilterRow5))
         {
             if (string.IsNullOrWhiteSpace(row.Id))
             {

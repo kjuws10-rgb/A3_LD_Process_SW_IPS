@@ -46,13 +46,37 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
         CCsvParser.ValidateRequiredHeaders(GetMapPath(), TableName, RequiredHeaderGroups);
+        ST_MELSEC_MAP_DATA SelectRow1(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return Parse(row, index + 2);
+        }
+
+        bool FilterData2(ST_MELSEC_MAP_DATA data)
+        {
+            return !string.IsNullOrWhiteSpace(data.Id);
+        }
+
+        string GetDataSortKey3(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Group;
+        }
+
+        int GetDataSortKey4(ST_MELSEC_MAP_DATA data)
+        {
+            return data.DeviceNo;
+        }
+
+        string GetDataSortKey5(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Id;
+        }
 
         var rows = CCsvParser.Read(GetMapPath())
-            .Select((row, index) => Parse(row, index + 2))
-            .Where(data => !string.IsNullOrWhiteSpace(data.Id))
-            .OrderBy(data => data.Group, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(data => data.DeviceNo)
-            .ThenBy(data => data.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectRow1)
+            .Where(FilterData2)
+            .OrderBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(GetDataSortKey4)
+            .ThenBy(GetDataSortKey5, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         Validate(rows);
@@ -99,8 +123,12 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
     private static void Validate(IReadOnlyList<ST_MELSEC_MAP_DATA> rows)
     {
         var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool FilterRow6(ST_MELSEC_MAP_DATA row)
+        {
+            return row.Use;
+        }
 
-        foreach (var row in rows.Where(row => row.Use))
+        foreach (var row in rows.Where(FilterRow6))
         {
             if (string.IsNullOrWhiteSpace(row.Id))
             {

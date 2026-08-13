@@ -46,25 +46,40 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
         cancellationToken.ThrowIfCancellationRequested();
 
         var values = LoadSettingValues();
+        bool FilterItem1(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Use && item.Tab.Equals(ToTabText(section), StringComparison.OrdinalIgnoreCase);
+        }
+
+        int GetItemSortKey2(ST_SETTING_FORM_ITEM item)
+        {
+            return item.DisplayOrder;
+        }
+
+        ST_SYSTEM_PARAMETER SelectItem3(ST_SETTING_FORM_ITEM item)
+        {
+            return new ST_SYSTEM_PARAMETER(
+                            section,
+                            item.DisplayName,
+                            GetValue(values, item.Tab, item.Name, item.DefaultValue),
+                            item.Unit,
+                            item.Description,
+                            item.Group,
+                            item.Name,
+                            item.DefaultValue,
+                            item.DataType,
+                            item.Min,
+                            item.Max,
+                            item.Show,
+                            item.Use,
+                            item.DisplayOrder,
+                            item.Extra);
+        }
+
         var parameters = LoadFormItems()
-            .Where(item => item.Use && item.Tab.Equals(ToTabText(section), StringComparison.OrdinalIgnoreCase))
-            .OrderBy(item => item.DisplayOrder)
-            .Select(item => new ST_SYSTEM_PARAMETER(
-                section,
-                item.DisplayName,
-                GetValue(values, item.Tab, item.Name, item.DefaultValue),
-                item.Unit,
-                item.Description,
-                item.Group,
-                item.Name,
-                item.DefaultValue,
-                item.DataType,
-                item.Min,
-                item.Max,
-                item.Show,
-                item.Use,
-                item.DisplayOrder,
-                item.Extra))
+            .Where(FilterItem1)
+            .OrderBy(GetItemSortKey2)
+            .Select(SelectItem3)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<ST_SYSTEM_PARAMETER>>(parameters);
@@ -82,39 +97,79 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
         var formItems = LoadFormItems();
         var values = LoadSettingValues();
         var sectionTab = ToTabText(section);
+        bool FilterItem4(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Use && item.Tab.Equals(sectionTab, StringComparison.OrdinalIgnoreCase);
+        }
+
+        string HandleOldValues5(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Name;
+        }
+
+        string HandleOldValues6(ST_SETTING_FORM_ITEM item)
+        {
+            return GetValue(values, item.Tab, item.Name, item.DefaultValue);
+        }
+
         var oldValues = formItems
-            .Where(item => item.Use && item.Tab.Equals(sectionTab, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterItem4)
             .ToDictionary(
-                item => item.Name,
-                item => GetValue(values, item.Tab, item.Name, item.DefaultValue),
+HandleOldValues5,
+HandleOldValues6,
                 StringComparer.OrdinalIgnoreCase);
+        bool FilterParameter7(ST_SYSTEM_PARAMETER parameter)
+        {
+            return !string.IsNullOrWhiteSpace(GetParameterKey(parameter));
+        }
+
+        string HandleEditedValues8(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Value;
+        }
+
         var editedValues = parameters
-            .Where(parameter => !string.IsNullOrWhiteSpace(GetParameterKey(parameter)))
+            .Where(FilterParameter7)
             .ToDictionary(
                 GetParameterKey,
-                parameter => parameter.Value,
+HandleEditedValues8,
                 StringComparer.OrdinalIgnoreCase);
+        bool FilterItem9(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Use && item.Tab.Equals(sectionTab, StringComparison.OrdinalIgnoreCase);
+        }
+
+        int GetItemSortKey10(ST_SETTING_FORM_ITEM item)
+        {
+            return item.DisplayOrder;
+        }
+
+        ST_SYSTEM_PARAMETER SelectItem11(ST_SETTING_FORM_ITEM item)
+        {
+            return new ST_SYSTEM_PARAMETER(
+                            section,
+                            item.DisplayName,
+                            editedValues.TryGetValue(item.Name, out var editedValue)
+                                ? editedValue
+                                : GetValue(values, item.Tab, item.Name, item.DefaultValue),
+                            item.Unit,
+                            item.Description,
+                            item.Group,
+                            item.Name,
+                            item.DefaultValue,
+                            item.DataType,
+                            item.Min,
+                            item.Max,
+                            item.Show,
+                            item.Use,
+                            item.DisplayOrder,
+                            item.Extra);
+        }
+
         var normalizedParameters = formItems
-            .Where(item => item.Use && item.Tab.Equals(sectionTab, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(item => item.DisplayOrder)
-            .Select(item => new ST_SYSTEM_PARAMETER(
-                section,
-                item.DisplayName,
-                editedValues.TryGetValue(item.Name, out var editedValue)
-                    ? editedValue
-                    : GetValue(values, item.Tab, item.Name, item.DefaultValue),
-                item.Unit,
-                item.Description,
-                item.Group,
-                item.Name,
-                item.DefaultValue,
-                item.DataType,
-                item.Min,
-                item.Max,
-                item.Show,
-                item.Use,
-                item.DisplayOrder,
-                item.Extra))
+            .Where(FilterItem9)
+            .OrderBy(GetItemSortKey10)
+            .Select(SelectItem11)
             .ToArray();
 
         ValidateSectionParameters(sectionTab, normalizedParameters, formItems);
@@ -152,28 +207,42 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
 
     private IReadOnlyList<ST_SETTING_FORM_ITEM> LoadFormItems()
     {
+        string[] SelectHeader12(string header)
+        {
+            return new[] { header };
+        }
+
         CCsvParser.ValidateRequiredHeaders(
             GetFormPath(),
             "JHMI_SETTING",
-            FormHeaders.Select(header => new[] { header }));
+            FormHeaders.Select(SelectHeader12));
+        ST_SETTING_FORM_ITEM SelectRow13(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return new ST_SETTING_FORM_ITEM(
+                            NormalizeTab(CCsvParser.Get(row, "TAB")),
+                            NormalizeSettingText(CCsvParser.Get(row, "GROUP"), "COMMON"),
+                            CCsvParser.Get(row, "NAME"),
+                            GetOrDefault(CCsvParser.Get(row, "DISPLAY NAME"), CCsvParser.Get(row, "NAME")),
+                            ReadDataType(CCsvParser.Get(row, "DATA TYPE")),
+                            CCsvParser.Get(row, "UNIT"),
+                            ReadBool(CCsvParser.Get(row, "SHOW"), true),
+                            ReadBool(CCsvParser.Get(row, "USE"), true),
+                            CCsvParser.Get(row, "VALUE"),
+                            ReadDouble(CCsvParser.Get(row, "MIN"), 0.0),
+                            ReadDouble(CCsvParser.Get(row, "MAX"), 0.0),
+                            CCsvParser.Get(row, "DESCRIPTION"),
+                            ReadInt(CCsvParser.Get(row, "ORDER"), index + 1),
+                            CCsvParser.GetExtra(row, FormHeaders));
+        }
+
+        bool FilterItem14(ST_SETTING_FORM_ITEM item)
+        {
+            return !string.IsNullOrWhiteSpace(item.Tab) && !string.IsNullOrWhiteSpace(item.Name);
+        }
 
         return CCsvParser.Read(GetFormPath())
-            .Select((row, index) => new ST_SETTING_FORM_ITEM(
-                NormalizeTab(CCsvParser.Get(row, "TAB")),
-                NormalizeSettingText(CCsvParser.Get(row, "GROUP"), "COMMON"),
-                CCsvParser.Get(row, "NAME"),
-                GetOrDefault(CCsvParser.Get(row, "DISPLAY NAME"), CCsvParser.Get(row, "NAME")),
-                ReadDataType(CCsvParser.Get(row, "DATA TYPE")),
-                CCsvParser.Get(row, "UNIT"),
-                ReadBool(CCsvParser.Get(row, "SHOW"), true),
-                ReadBool(CCsvParser.Get(row, "USE"), true),
-                CCsvParser.Get(row, "VALUE"),
-                ReadDouble(CCsvParser.Get(row, "MIN"), 0.0),
-                ReadDouble(CCsvParser.Get(row, "MAX"), 0.0),
-                CCsvParser.Get(row, "DESCRIPTION"),
-                ReadInt(CCsvParser.Get(row, "ORDER"), index + 1),
-                CCsvParser.GetExtra(row, FormHeaders)))
-            .Where(item => !string.IsNullOrWhiteSpace(item.Tab) && !string.IsNullOrWhiteSpace(item.Name))
+            .Select(SelectRow13)
+            .Where(FilterItem14)
             .ToArray();
     }
 
@@ -182,19 +251,43 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
         var valuePath = GetValuePath();
         if (System.IO.File.Exists(valuePath))
         {
+            string[] SelectHeader15(string header)
+            {
+                return new[] { header };
+            }
+
             CCsvParser.ValidateRequiredHeaders(
                 valuePath,
                 "Setting.csv",
-                ValueHeaders.Select(header => new[] { header }));
+                ValueHeaders.Select(SelectHeader15));
+        }
+        bool FilterRow16(IReadOnlyDictionary<string, string> row)
+        {
+            return !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "TAB")) &&
+                            !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "NAME"));
+        }
+
+        string GroupByRowCallback17(IReadOnlyDictionary<string, string> row)
+        {
+            return CreateKey(CCsvParser.Get(row, "TAB"), CCsvParser.Get(row, "NAME"));
+        }
+
+        string ToDictionaryGroupCallback18(IGrouping<string, IReadOnlyDictionary<string, string>> group)
+        {
+            return group.Key;
+        }
+
+        string ToDictionaryGroupCallback19(IGrouping<string, IReadOnlyDictionary<string, string>> group)
+        {
+            return CCsvParser.Get(group.Last(), "VALUE");
         }
 
         return CCsvParser.Read(GetValuePath())
-            .Where(row => !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "TAB")) &&
-                !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "NAME")))
-            .GroupBy(row => CreateKey(CCsvParser.Get(row, "TAB"), CCsvParser.Get(row, "NAME")), StringComparer.OrdinalIgnoreCase)
+            .Where(FilterRow16)
+            .GroupBy(GroupByRowCallback17, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => CCsvParser.Get(group.Last(), "VALUE"),
+ToDictionaryGroupCallback18,
+ToDictionaryGroupCallback19,
                 StringComparer.OrdinalIgnoreCase);
     }
 
@@ -202,14 +295,24 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
         IReadOnlyList<ST_SETTING_FORM_ITEM> formItems,
         IReadOnlyDictionary<string, string> values)
     {
-        var rows = formItems
-            .Where(item => item.Use)
-            .Select(item => new Dictionary<string, string>
+        bool FilterItem20(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Use;
+        }
+
+        Dictionary<string, string> SelectItem21(ST_SETTING_FORM_ITEM item)
+        {
+            return new Dictionary<string, string>
             {
                 ["TAB"] = item.Tab,
                 ["NAME"] = item.Name,
                 ["VALUE"] = GetValue(values, item.Tab, item.Name, item.DefaultValue)
-            });
+            };
+        }
+
+        var rows = formItems
+            .Where(FilterItem20)
+            .Select(SelectItem21);
 
         CCsvParser.Write(GetValuePath(), ValueHeaders, rows);
     }
@@ -244,9 +347,19 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
         IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
         IReadOnlyList<ST_SETTING_FORM_ITEM> formItems)
     {
+        bool FilterItem22(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Use && item.Tab.Equals(sectionTab, StringComparison.OrdinalIgnoreCase);
+        }
+
+        string HandleFormItemsByName23(ST_SETTING_FORM_ITEM item)
+        {
+            return item.Name;
+        }
+
         var formItemsByName = formItems
-            .Where(item => item.Use && item.Tab.Equals(sectionTab, StringComparison.OrdinalIgnoreCase))
-            .ToDictionary(item => item.Name, StringComparer.OrdinalIgnoreCase);
+            .Where(FilterItem22)
+            .ToDictionary(HandleFormItemsByName23, StringComparer.OrdinalIgnoreCase);
 
         foreach (var parameter in parameters)
         {

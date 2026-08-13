@@ -56,8 +56,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
 
         var createdAt = DateTimeOffset.Now;
         var headScripts = new List<ST_AUTOMATION1_HEAD_SCRIPT>();
+        bool FilterHead1(ST_HEAD_PROCESS_DATA head)
+        {
+            return head.ProcessPoints.Count > 0;
+        }
 
-        foreach (var head in processModel.Heads.Where(head => head.ProcessPoints.Count > 0))
+        foreach (var head in processModel.Heads.Where(FilterHead1))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var headLines = BuildHeadLines(processModel, head, createdAt, isBufferedRun);
@@ -79,12 +83,16 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         var filePath = Path.Combine(targetDirectory, ScriptFileName);
 
         await System.IO.File.WriteAllLinesAsync(filePath, lines, Encoding.UTF8, cancellationToken);
+        int SumScriptCallback2(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return script.TotalPoints;
+        }
 
         return new ST_AUTOMATION1_SCRIPT(
             ScriptFileName,
             filePath,
             lines,
-            headScripts.Sum(script => script.TotalPoints),
+            headScripts.Sum(SumScriptCallback2),
             processModel.Heads.Count,
             createdAt)
         {
@@ -334,8 +342,17 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
     {
         lines.Add($"// HoleCount={head.ProcessPoints.Count}");
         lines.Add("// HoleList:");
+        int GroupByPointCallback3(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.CellNo;
+        }
 
-        foreach (var cell in head.ProcessPoints.GroupBy(point => point.CellNo).OrderBy(cell => cell.Key))
+        int GetCellSortKey4(IGrouping<int, ST_RECIPE_HOLE_POINT> cell)
+        {
+            return cell.Key;
+        }
+
+        foreach (var cell in head.ProcessPoints.GroupBy(GroupByPointCallback3).OrderBy(GetCellSortKey4))
         {
             foreach (var holeNames in cell.Select(FormatHoleName).Chunk(12))
             {
@@ -631,7 +648,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         double defaultSeconds,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey5(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey5))
         {
             if (!parameters.TryGetValue(key, out var value) ||
                 !double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
@@ -652,8 +674,13 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         int headNo,
         params string[] names)
     {
+        string SelectName6(string name)
+        {
+            return $"H{headNo:00}_{name}";
+        }
+
         return names
-            .Select(name => $"H{headNo:00}_{name}")
+            .Select(SelectName6)
             .ToArray();
     }
 
@@ -662,7 +689,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         string defaultValue,
         IEnumerable<string> keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey7(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey7))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 !string.IsNullOrWhiteSpace(value))
@@ -687,7 +719,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         double defaultValue,
         IEnumerable<string> keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey8(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey8))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
@@ -712,7 +749,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         int defaultValue,
         IEnumerable<string> keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey9(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey9))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
@@ -737,7 +779,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         bool defaultValue,
         IEnumerable<string> keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey10(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey10))
         {
             if (!parameters.TryGetValue(key, out var value) ||
                 string.IsNullOrWhiteSpace(value))

@@ -68,11 +68,25 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
 
         var loadedRows = LoadInterfaceRows();
         Validate(loadedRows);
+        EN_EQP_MODULE GetDataSortKey1(ST_INTERFACE_DATA data)
+        {
+            return data.Device;
+        }
+
+        int GetDataSortKey2(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey3(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
 
         var rows = loadedRows
-            .OrderBy(data => data.Device)
-            .ThenBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey1)
+            .ThenBy(GetDataSortKey2)
+            .ThenBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<ST_INTERFACE_DATA>>(rows);
@@ -88,10 +102,25 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
 
         var oldRows = LoadInterfaceRows()
             .ToDictionary(CreateInterfaceKey, StringComparer.OrdinalIgnoreCase);
+        EN_EQP_MODULE GetDataSortKey4(ST_INTERFACE_DATA data)
+        {
+            return data.Device;
+        }
+
+        int GetDataSortKey5(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey6(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         var rows = interfaces
-            .OrderBy(data => data.Device)
-            .ThenBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey4)
+            .ThenBy(GetDataSortKey5)
+            .ThenBy(GetDataSortKey6, StringComparer.OrdinalIgnoreCase)
             .Select(ToRow)
             .ToArray();
 
@@ -106,9 +135,13 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
     private IReadOnlyList<ST_INTERFACE_DATA> LoadInterfaceRows()
     {
         CCsvParser.ValidateRequiredHeaders(GetInterfacePath(), "JHMI_INTERFACE", RequiredHeaderGroups);
+        ST_INTERFACE_DATA SelectRow7(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return Parse(row, index + 2);
+        }
 
         return CCsvParser.Read(GetInterfacePath())
-            .Select((row, index) => Parse(row, index + 2))
+            .Select(SelectRow7)
             .ToArray();
     }
 
@@ -141,8 +174,13 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
 
     private static IReadOnlyList<string> ReadArguments(IReadOnlyDictionary<string, string> row)
     {
+        string SelectIndex8(int index)
+        {
+            return CCsvParser.Get(row, $"ARG{index}").Trim();
+        }
+
         return Enumerable.Range(1, 5)
-            .Select(index => CCsvParser.Get(row, $"ARG{index}").Trim())
+            .Select(SelectIndex8)
             .ToArray();
     }
 
@@ -205,10 +243,15 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
 
     private static void ValidateConnectionArguments(ST_INTERFACE_DATA data)
     {
+        string SelectArgument9(string argument)
+        {
+            return argument.Trim();
+        }
+
         var args = data.Arguments
             .Concat(Enumerable.Repeat("", 5))
             .Take(5)
-            .Select(argument => argument.Trim())
+            .Select(SelectArgument9)
             .ToArray();
 
         if (data.IsSimulation)
@@ -292,8 +335,12 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
 
             WriteFieldModifyLog(label, CreateFieldMap(oldRow), CreateFieldMap(row));
         }
+        bool FilterRow10(ST_INTERFACE_DATA row)
+        {
+            return !newMap.ContainsKey(CreateInterfaceKey(row));
+        }
 
-        foreach (var oldRow in oldRows.Values.Where(row => !newMap.ContainsKey(CreateInterfaceKey(row))))
+        foreach (var oldRow in oldRows.Values.Where(FilterRow10))
         {
             _logManager.WriteSettingModify(EN_SETTING_TAB.Interface, $"{FormatInterfaceLabel(oldRow)}.ROW", "EXIST", "DELETED");
         }
@@ -320,7 +367,17 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
 
     private static IReadOnlyDictionary<string, string> CreateEmptyFieldMap()
     {
-        return FieldNames.ToDictionary(fieldName => fieldName, _ => "", StringComparer.OrdinalIgnoreCase);
+        string ToDictionaryFieldNameCallback11(string fieldName)
+        {
+            return fieldName;
+        }
+
+        string ToDictionaryValueCallback12(string _)
+        {
+            return "";
+        }
+
+        return FieldNames.ToDictionary(ToDictionaryFieldNameCallback11, ToDictionaryValueCallback12, StringComparer.OrdinalIgnoreCase);
     }
 
     private static IReadOnlyDictionary<string, string> CreateFieldMap(ST_INTERFACE_DATA data)

@@ -34,6 +34,7 @@ internal static class Program
             RunSettingRoundTrip(testRoot, snapshot);
             RunProcessPlanAndScript(testRoot, snapshot);
             RunSimulationFlow(snapshot);
+            RunProtocolFlow(testRoot, snapshot);
             RunAlarmFlow(snapshot);
             RunLogFlow(testRoot, snapshot);
 
@@ -445,6 +446,141 @@ internal static class Program
         }
 
         snapshot.Add($"RepeatedOccurredAtStable={occurredAtStable}");
+    }
+
+    private static void RunProtocolFlow(string testRoot, ICollection<string> snapshot)
+    {
+        string configRoot = Path.Combine(testRoot, "Protocol", "Config");
+        Directory.CreateDirectory(configRoot);
+        CLogManager logManager = new CLogManager(configRoot);
+        List<ST_MELSEC_MAP_DATA> melsecMap = new List<ST_MELSEC_MAP_DATA>();
+        melsecMap.Add(new ST_MELSEC_MAP_DATA(
+            "WORD_TEST",
+            true,
+            "REGRESSION",
+            "Word Test",
+            0,
+            "D100",
+            EN_MELSEC_DATA_TYPE.Word,
+            EN_MELSEC_DIRECTION.InOut,
+            EN_MELSEC_ACCESS.ReadWrite,
+            1.0,
+            1,
+            100,
+            "Protocol regression word"));
+
+        CInterfaceManager manager = new CInterfaceManager(true, logManager, null, null, melsecMap);
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.TalonLaser, 1, "TALON_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.Chiller, 2, "CHILLER_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.Attenuator, 3, "ATT_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.Bet, 4, "BET_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.PowerMeter, 5, "POWER_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.PicoMotor, EN_EQP_MODULE.PicoMotor, 6, "PICO_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.SocketClient, EN_EQP_MODULE.Melsec, 0, "MELSEC_TEST"));
+
+        manager.Initialize().GetAwaiter().GetResult();
+        int connectedCount = 0;
+        foreach (CInterfaceDevice device in manager.Devices)
+        {
+            if (device.ConnectionState == EN_COMM_STATE.Simulation)
+            {
+                connectedCount++;
+            }
+        }
+        ST_DEVICE_COMMAND_RESULT talon = manager.ExecuteTalonLaserCommand(
+            1,
+            EN_TALON_COMMAND.SetDiodeCurrent,
+            12.5).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT chiller = manager.ExecuteChillerCommand(
+            2,
+            EN_CHILLER_COMMAND.SetTemperature,
+            21.5).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT attenuator = manager.ExecuteAttenuatorCommand(
+            3,
+            EN_ATTENUATOR_COMMAND.MoveAbs,
+            33.125).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT bet = manager.ExecuteBETCommand(
+            4,
+            EN_BET_COMMAND.MoveManual,
+            2.25,
+            -1.5).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT power = manager.ExecutePowerMeterCommand(
+            5,
+            EN_POWER_METER_COMMAND.SetWaveLength,
+            355.0).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT picoConnect = manager.ExecutePicoMotorCommand(
+            6,
+            EN_PICO_MOTOR_COMMAND.Connect,
+            3,
+            0.0).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT picoVelocity = manager.ExecutePicoMotorCommand(
+            6,
+            EN_PICO_MOTOR_COMMAND.SetVelocity,
+            3,
+            1.25).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT picoAcceleration = manager.ExecutePicoMotorCommand(
+            6,
+            EN_PICO_MOTOR_COMMAND.SetAcceleration,
+            3,
+            2.5).GetAwaiter().GetResult();
+        ST_DEVICE_COMMAND_RESULT pico = manager.ExecutePicoMotorCommand(
+            6,
+            EN_PICO_MOTOR_COMMAND.MoveAbsolute,
+            3,
+            0.125).GetAwaiter().GetResult();
+        manager.Melsec.WriteWord("WORD_TEST", 4660).GetAwaiter().GetResult();
+        int melsecValue = manager.Melsec.ReadWord("WORD_TEST").GetAwaiter().GetResult();
+        manager.Destroy().GetAwaiter().GetResult();
+
+        snapshot.Add("[Protocol]");
+        snapshot.Add($"Connected={connectedCount}");
+        snapshot.Add($"Talon={talon.IsSuccess}|{Escape(talon.Message)}");
+        snapshot.Add($"Chiller={chiller.IsSuccess}|{Escape(chiller.Message)}");
+        snapshot.Add($"Attenuator={attenuator.IsSuccess}|{Escape(attenuator.Message)}");
+        snapshot.Add($"BET={bet.IsSuccess}|{Escape(bet.Message)}");
+        snapshot.Add($"PowerMeter={power.IsSuccess}|{Escape(power.Message)}");
+        snapshot.Add($"PicoConnect={picoConnect.IsSuccess}|{Escape(picoConnect.Message)}");
+        snapshot.Add($"PicoVelocity={picoVelocity.IsSuccess}|{Escape(picoVelocity.Message)}");
+        snapshot.Add($"PicoAcceleration={picoAcceleration.IsSuccess}|{Escape(picoAcceleration.Message)}");
+        snapshot.Add($"PicoMotor={pico.IsSuccess}|{Escape(pico.Message)}");
+        snapshot.Add($"PicoAxisCommand={Escape(CPicoMotor.BuildAxisCommand(3, "PA", 6250))}");
+        snapshot.Add($"PicoQueryCommand={Escape(CPicoMotor.BuildAxisCommand(3, "TP", null, true))}");
+        snapshot.Add($"MelsecWord={melsecValue}");
+
+        string interfaceLogRoot = Path.Combine(testRoot, "Protocol", "Log", "Interface");
+        string[] logFiles = Directory.GetFiles(interfaceLogRoot, "*.txt", SearchOption.AllDirectories);
+        Array.Sort(logFiles, StringComparer.OrdinalIgnoreCase);
+        int logIndex = 0;
+        foreach (string logFile in logFiles)
+        {
+            string[] lines = System.IO.File.ReadAllLines(logFile);
+            foreach (string line in lines)
+            {
+                int payloadStart = line.IndexOf("\\INTERFACE\\", StringComparison.Ordinal);
+                Assert(payloadStart >= 0, "Protocol interface log payload marker was not found.");
+                snapshot.Add($"ProtocolLog[{logIndex}]={Escape(line.Substring(payloadStart))}");
+                logIndex++;
+            }
+        }
+
+        snapshot.Add($"ProtocolLogCount={logIndex}");
+    }
+
+    private static ST_INTERFACE_DATA CreateSimulatedInterface(
+        EN_INTERFACE_TYPE interfaceType,
+        EN_EQP_MODULE module,
+        int number,
+        string nickName)
+    {
+        return new ST_INTERFACE_DATA(
+            interfaceType,
+            module,
+            number,
+            nickName,
+            "COMMON",
+            true,
+            true,
+            Array.Empty<string>());
     }
 
     private static void RunLogFlow(string testRoot, ICollection<string> snapshot)

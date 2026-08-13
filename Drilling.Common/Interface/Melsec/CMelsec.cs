@@ -50,7 +50,7 @@ public abstract class CMelsecMapFileBase
     public abstract Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
 
-public sealed class CMelsec : IDisposable
+public sealed class CMelsec
 {
     private const ushort McCommandBatchRead = 0x0401;
     private const ushort McCommandBatchWrite = 0x1401;

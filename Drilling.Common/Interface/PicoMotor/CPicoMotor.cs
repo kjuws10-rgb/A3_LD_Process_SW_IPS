@@ -157,7 +157,7 @@ public static class CPicoMotor
     }
 }
 
-public sealed class CPicoMotorCommandSession : IDisposable
+public sealed class CPicoMotorCommandSession
 {
     private readonly object _syncRoot = new();
     private CmdLib8742? _cmdLib;

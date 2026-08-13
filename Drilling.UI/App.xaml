@@ -9,8 +9,6 @@
             </ResourceDictionary.MergedDictionaries>
 
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
-            <local:CPreviewCoordinateConverter x:Key="PreviewCoordinateConverter" />
-
             <Style TargetType="TextBlock">
                 <Setter Property="FontFamily" Value="Segoe UI" />
             </Style>
@@ -87,30 +85,14 @@
                 <Setter Property="ItemContainerStyle">
                     <Setter.Value>
                         <Style TargetType="ContentPresenter">
-                            <Setter Property="Canvas.Left">
-                                <Setter.Value>
-                                    <MultiBinding Converter="{StaticResource PreviewCoordinateConverter}" ConverterParameter="CENTER_X">
-                                        <Binding Path="CanvasCenterX" />
-                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualWidth" />
-                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualHeight" />
-                                        <Binding Path="DesignWidth" />
-                                        <Binding Path="DesignHeight" />
-                                        <Binding Path="Width" />
-                                    </MultiBinding>
-                                </Setter.Value>
-                            </Setter>
-                            <Setter Property="Canvas.Top">
-                                <Setter.Value>
-                                    <MultiBinding Converter="{StaticResource PreviewCoordinateConverter}" ConverterParameter="CENTER_Y">
-                                        <Binding Path="CanvasCenterY" />
-                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualWidth" />
-                                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualHeight" />
-                                        <Binding Path="DesignWidth" />
-                                        <Binding Path="DesignHeight" />
-                                        <Binding Path="Height" />
-                                    </MultiBinding>
-                                </Setter.Value>
-                            </Setter>
+                            <Setter Property="local:CPreviewCoordinateBehavior.PositionX" Value="{Binding CanvasCenterX}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.PositionY" Value="{Binding CanvasCenterY}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.ContainerWidth" Value="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=ActualWidth}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.ContainerHeight" Value="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=ActualHeight}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.DesignWidth" Value="{Binding DesignWidth}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.DesignHeight" Value="{Binding DesignHeight}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.ElementWidth" Value="{Binding Width}" />
+                            <Setter Property="local:CPreviewCoordinateBehavior.ElementHeight" Value="{Binding Height}" />
                         </Style>
                     </Setter.Value>
                 </Setter>

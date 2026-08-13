@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO;
-using System.ComponentModel;
 using System.Windows;
 using Drilling.UI.Popup;
 using Drilling.Common.Managers;
@@ -910,23 +909,18 @@ HandleRecipeId31);
     {
         foreach (var item in _previewTrackedItems)
         {
-            item.PropertyChanged -= OnPreviewItemPropertyChanged;
+            item.ValueChanged -= OnPreviewItemValueChanged;
         }
 
         _previewTrackedItems = items;
         foreach (var item in _previewTrackedItems)
         {
-            item.PropertyChanged += OnPreviewItemPropertyChanged;
+            item.ValueChanged += OnPreviewItemValueChanged;
         }
     }
 
-    private void OnPreviewItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnPreviewItemValueChanged(object? sender, EventArgs eventArgs)
     {
-        if (e.PropertyName != nameof(ST_RECIPE_MANAGED_ITEM.Value))
-        {
-            return;
-        }
-
         if (IsHeadCategory)
         {
             ScheduleHeadPreviewRefresh();

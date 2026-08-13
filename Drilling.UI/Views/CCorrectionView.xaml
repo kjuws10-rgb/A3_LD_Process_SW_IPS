@@ -1,6 +1,7 @@
 <UserControl x:Class="Drilling.UI.Views.CCorrectionView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menu="clr-namespace:Drilling.UI.Menu"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -94,26 +95,26 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center">
                 <Button Content="LOAD"
-                        Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
+                        menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
                         CommandParameter="LOAD"
                         Style="{StaticResource CorrectionCommandButton}"
                         Background="{DynamicResource ButtonSecondaryBrush}"
                         BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}"
                         Foreground="{DynamicResource TextSecondaryBrush}" />
                 <Button Content="CALCULATE"
-                        Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
+                        menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
                         CommandParameter="CALCULATE"
                         Style="{StaticResource CorrectionCommandButton}"
                         Background="{DynamicResource ButtonPrimaryBrush}"
                         BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}" />
                 <Button Content="APPLY"
-                        Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
+                        menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
                         CommandParameter="APPLY"
                         Style="{StaticResource CorrectionCommandButton}"
                         Background="{DynamicResource ButtonSuccessBrush}"
                         BorderBrush="{DynamicResource ButtonSuccessBorderBrush}" />
                 <Button Content="SAVE"
-                        Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
+                        menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Correction.ExecuteCommand}"
                         CommandParameter="SAVE"
                         Style="{StaticResource CorrectionCommandButton}"
                         Background="{DynamicResource ButtonWarningBrush}"
@@ -133,7 +134,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Button Content="{Binding Name}"
-                            Command="{Binding DataContext.CurrentScreen.Correction.SelectTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Correction.SelectTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding Name}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource CorrectionTabButton}">

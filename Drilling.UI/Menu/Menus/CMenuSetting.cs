@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO;
-using System.ComponentModel;
 using Drilling.Common.Managers;
 using Drilling.Common.Interface;
 using Drilling.Common.Motion;
@@ -190,14 +189,14 @@ public sealed class CMenuSetting : CMenuBase
         {
             if (_selectedInterfaceRow is not null)
             {
-                _selectedInterfaceRow.PropertyChanged -= SelectedInterfaceRowChanged;
+                UnsubscribeSelectedInterfaceRow(_selectedInterfaceRow);
             }
 
             if (!SetProperty(ref _selectedInterfaceRow, value))
             {
                 if (_selectedInterfaceRow is not null)
                 {
-                    _selectedInterfaceRow.PropertyChanged += SelectedInterfaceRowChanged;
+                    SubscribeSelectedInterfaceRow(_selectedInterfaceRow);
                 }
 
                 return;
@@ -205,7 +204,7 @@ public sealed class CMenuSetting : CMenuBase
 
             if (_selectedInterfaceRow is not null)
             {
-                _selectedInterfaceRow.PropertyChanged += SelectedInterfaceRowChanged;
+                SubscribeSelectedInterfaceRow(_selectedInterfaceRow);
             }
 
             RefreshInterfaceCommandState();
@@ -584,14 +583,23 @@ public sealed class CMenuSetting : CMenuBase
             left.Number.Trim().Equals(right.Number.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
-    private void SelectedInterfaceRowChanged(object? sender, PropertyChangedEventArgs e)
+    private void SubscribeSelectedInterfaceRow(ST_SETTING_INTERFACE_ROW row)
     {
-        if (e.PropertyName is nameof(ST_SETTING_INTERFACE_ROW.Simul) or
-            nameof(ST_SETTING_INTERFACE_ROW.IsSimulation) or
-            nameof(ST_SETTING_INTERFACE_ROW.IsModified))
-        {
-            RefreshInterfaceCommandState();
-        }
+        row.SimulChanged += SelectedInterfaceRowValueChanged;
+        row.IsSimulationChanged += SelectedInterfaceRowValueChanged;
+        row.IsModifiedChanged += SelectedInterfaceRowValueChanged;
+    }
+
+    private void UnsubscribeSelectedInterfaceRow(ST_SETTING_INTERFACE_ROW row)
+    {
+        row.SimulChanged -= SelectedInterfaceRowValueChanged;
+        row.IsSimulationChanged -= SelectedInterfaceRowValueChanged;
+        row.IsModifiedChanged -= SelectedInterfaceRowValueChanged;
+    }
+
+    private void SelectedInterfaceRowValueChanged(object? sender, EventArgs eventArgs)
+    {
+        RefreshInterfaceCommandState();
     }
 
     private void RefreshInterfaceCommandState()

@@ -1,10 +1,8 @@
-using System.Windows.Input;
-
 namespace Drilling.UI.Menu;
 
 public sealed class CButtonCommand(
     Action<object?> execute,
-    Predicate<object?>? canExecute = null) : ICommand
+    Predicate<object?>? canExecute = null)
 {
     public static CButtonCommand NoOp { get; } = new(DoNothing);
 

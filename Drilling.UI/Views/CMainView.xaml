@@ -1,6 +1,7 @@
-﻿<UserControl x:Class="Drilling.UI.Views.CMainView"
+<UserControl x:Class="Drilling.UI.Views.CMainView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menu="clr-namespace:Drilling.UI.Menu"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d">
@@ -91,7 +92,7 @@
             </Setter>
         </Style>
         <DataTemplate x:Key="HeadSelectItemTemplate">
-            <Button Command="{Binding DataContext.CurrentScreen.MainOperating.TogglePreviewHeadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+            <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.MainOperating.TogglePreviewHeadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                     CommandParameter="{Binding HeadNo}"
                     Style="{StaticResource HeadSelectButton}">
                 <Border Margin="2"
@@ -269,7 +270,7 @@
                             Orientation="Horizontal"
                             VerticalAlignment="Center"
                             HorizontalAlignment="Right">
-                    <Button Command="{Binding StartCommand}"
+                    <Button menu:CButtonCommandBehavior.Command="{Binding StartCommand}"
                             Style="{StaticResource MainStartButton}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text=">"
@@ -278,7 +279,7 @@
                             <TextBlock Text="START" />
                         </StackPanel>
                     </Button>
-                    <Button Command="{Binding StopCommand}"
+                    <Button menu:CButtonCommandBehavior.Command="{Binding StopCommand}"
                             Style="{StaticResource MainStopButton}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="[]"
@@ -403,7 +404,7 @@
                                                         Opacity="0.75" />
                                                 <Button Grid.Column="4"
                                                         Content="{Binding OptionText}"
-                                                        Command="{Binding DataContext.CurrentScreen.MainOperating.ToggleSequenceStepUseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.MainOperating.ToggleSequenceStepUseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding OptionSettingKey}"
                                                         Visibility="{Binding OptionVisibility}"
                                                         IsEnabled="{Binding CanToggleOption}"
@@ -467,7 +468,7 @@
                                     HorizontalAlignment="Right"
                                     VerticalAlignment="Center">
                             <Button Content="ALL"
-                                    Command="{Binding CurrentScreen.MainOperating.TogglePreviewHeadCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.MainOperating.TogglePreviewHeadCommand}"
                                     CommandParameter="ALL"
                                     Style="{StaticResource MainSequenceButton}"
                                     Width="48"
@@ -478,7 +479,7 @@
                                     Background="{DynamicResource ButtonSecondaryBrush}"
                                     BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}" />
                             <Button Content="CLEAR"
-                                    Command="{Binding CurrentScreen.MainOperating.TogglePreviewHeadCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.MainOperating.TogglePreviewHeadCommand}"
                                     CommandParameter="CLEAR"
                                     Style="{StaticResource MainSequenceButton}"
                                     Width="54"
@@ -681,7 +682,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Button Content="{Binding Name}"
-                                        Command="{Binding DataContext.CurrentScreen.MainOperating.SelectParameterTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.MainOperating.SelectParameterTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                         CommandParameter="{Binding Key}"
                                         Background="{Binding BackgroundBrush}"
                                         BorderBrush="{Binding BorderBrush}"

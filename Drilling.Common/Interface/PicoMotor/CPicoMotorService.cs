@@ -1,6 +1,6 @@
 namespace Drilling.Common.Interface;
 
-public sealed class CPicoMotorService : IDisposable
+public sealed class CPicoMotorService
 {
     private readonly object _syncRoot = new();
     private readonly Dictionary<int, CPicoMotorCommandSession> _sessions = [];

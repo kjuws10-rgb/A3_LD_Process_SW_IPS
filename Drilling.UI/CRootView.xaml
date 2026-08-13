@@ -1,5 +1,6 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:menu="clr-namespace:Drilling.UI.Menu"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:views="clr-namespace:Drilling.UI.Views"
@@ -129,11 +130,8 @@
                                     Padding="8,5,8,0"
                                     Background="{DynamicResource HeaderCardBackgroundBrush}"
                                     BorderBrush="{DynamicResource HeaderCardBorderBrush}"
-                                    BorderThickness="1">
-                                <Border.InputBindings>
-                                    <MouseBinding MouseAction="LeftClick"
-                                                  Command="{Binding Open}" />
-                                </Border.InputBindings>
+                                    BorderThickness="1"
+                                    menu:CButtonCommandBehavior.Command="{Binding Open}">
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto" />
@@ -163,7 +161,7 @@
                                         </Grid.ColumnDefinitions>
 
                                         <Button Style="{StaticResource HeaderStatusNavButton}"
-                                                Command="{Binding Previous}"
+                                                menu:CButtonCommandBehavior.Command="{Binding Previous}"
                                                 Content="&lt;" />
                                         <TextBlock Grid.Column="1"
                                                    Text="{Binding PageText}"
@@ -174,7 +172,7 @@
                                                    FontWeight="SemiBold" />
                                         <Button Grid.Column="2"
                                                 Style="{StaticResource HeaderStatusNavButton}"
-                                                Command="{Binding Next}"
+                                                menu:CButtonCommandBehavior.Command="{Binding Next}"
                                                 Content="&gt;" />
                                     </Grid>
                                     <Border Grid.Row="3"
@@ -198,7 +196,7 @@
                                Foreground="{DynamicResource TextPrimaryBrush}"
                                FontSize="15" />
                     <Button Content="{Binding ThemeToggleText}"
-                            Command="{Binding ToggleThemeCommand}"
+                            menu:CButtonCommandBehavior.Command="{Binding ToggleThemeCommand}"
                             Style="{StaticResource ThemeToggleButton}"
                             HorizontalAlignment="Right"
                             Margin="0,2,0,0" />

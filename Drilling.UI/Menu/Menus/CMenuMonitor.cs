@@ -1,7 +1,5 @@
 using System.Globalization;
-using System.ComponentModel;
 using System.IO;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using Drilling.Common.Managers;
 using Drilling.Common.Interface;
@@ -6923,7 +6921,7 @@ public sealed record ST_MONITOR_COMMAND_HISTORY_ROW(
     }
 }
 
-public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
+public sealed class ST_MONITOR_BET_TABLE_ROW : CBindingBase
 {
     private const double DefaultRowBeamSize = 32.64;
     private string _mag;
@@ -6944,8 +6942,6 @@ public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
         State = state;
         IsSelected = isSelected;
     }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string No { get; set; }
 
@@ -7054,10 +7050,6 @@ public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
         return (DefaultRowBeamSize / value / 1000.0).ToString("F6", CultureInfo.InvariantCulture);
     }
 
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
 }
 
 public sealed record ST_PWM_PROCESS_ROW(
@@ -7177,11 +7169,9 @@ public sealed record ST_PWM_STEP_ROW(
 public sealed class ST_PWM_SETTING_ROW(
     string parameter,
     string value,
-    string unit) : INotifyPropertyChanged
+    string unit) : CBindingBase
 {
     private string _value = value;
-
-    public event PropertyChangedEventHandler? PropertyChanged;
 
     public string Parameter { get; } = parameter;
 
@@ -7200,7 +7190,7 @@ public sealed class ST_PWM_SETTING_ROW(
             }
 
             _value = value;
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+            OnPropertyChanged(nameof(Value));
         }
     }
 

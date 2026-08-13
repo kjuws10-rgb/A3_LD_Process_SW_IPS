@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Drilling.Common\Drilling.Common.csproj" />
+    <ProjectReference Include="..\Drilling.File\Drilling.File.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Drilling.Common\Interface\PicoMotor\Sdk\CmdLib.dll" Link="CmdLib.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Drilling.Common\Interface\PicoMotor\Sdk\CmdLib8742.dll" Link="CmdLib8742.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Drilling.Common\Interface\PicoMotor\Sdk\DeviceIOLib.dll" Link="DeviceIOLib.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Drilling.Common\Interface\PicoMotor\Sdk\NpEthernet.dll" Link="NpEthernet.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Drilling.Common\Interface\PicoMotor\Sdk\NpSerial.dll" Link="NpSerial.dll" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\Drilling.Common\Interface\PicoMotor\Sdk\UsbDllWrap.dll" Link="UsbDllWrap.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>

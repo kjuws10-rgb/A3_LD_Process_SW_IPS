@@ -1,0 +1,1312 @@
+﻿<UserControl x:Class="Drilling.UI.Views.CMainView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+    <UserControl.Resources>
+        <Style x:Key="MainSmallText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style x:Key="MainValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="MainSequenceButton" TargetType="Button">
+            <Setter Property="Width" Value="132" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Margin" Value="8,0,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MainStartButton" TargetType="Button" BasedOn="{StaticResource MainSequenceButton}">
+            <Setter Property="Background" Value="{DynamicResource ButtonSuccessBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusReadyBrush}" />
+        </Style>
+        <Style x:Key="MainStopButton" TargetType="Button" BasedOn="{StaticResource MainSequenceButton}">
+            <Setter Property="Background" Value="{DynamicResource ButtonDangerBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonDangerBorderBrush}" />
+        </Style>
+        <Style x:Key="MainStepOptionButton" TargetType="Button">
+            <Setter Property="Width" Value="42" />
+            <Setter Property="Height" Value="21" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="MainParameterTabButton" TargetType="Button" BasedOn="{StaticResource MainSequenceButton}">
+            <Setter Property="Width" Value="140" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="BorderThickness" Value="1" />
+        </Style>
+        <Style x:Key="HeadSelectButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="HeadSelectItemTemplate">
+            <Button Command="{Binding DataContext.CurrentScreen.MainOperating.TogglePreviewHeadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                    CommandParameter="{Binding HeadNo}"
+                    Style="{StaticResource HeadSelectButton}">
+                <Border Margin="2"
+                        Padding="7"
+                        BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource MenuItemSelectedBackgroundBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel>
+                        <TextBlock Text="{Binding HeadName}"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="11"
+                                   FontWeight="SemiBold" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,5,0,0">
+                            <Ellipse Width="7"
+                                     Height="7"
+                                     Fill="{Binding StatusBrush}"
+                                     VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Status}"
+                                       Margin="4,0,0,0"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       FontSize="10" />
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Button>
+        </DataTemplate>
+        <Style x:Key="MainDataGrid" TargetType="DataGrid" BasedOn="{StaticResource PlainDataGrid}">
+            <Setter Property="MinRowHeight" Value="32" />
+            <Setter Property="ColumnHeaderHeight" Value="34" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        </Style>
+        <Style x:Key="MainGridText" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="None" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+        </Style>
+        <Style x:Key="MainOpticCard" TargetType="Border">
+            <Setter Property="Height" Value="146" />
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+        <Style x:Key="MainOpticItemCard" TargetType="Border">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0,5,0,0" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="Background" Value="{DynamicResource PanelAltBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="3" />
+        </Style>
+        <Style x:Key="MainOpticLabelText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+            <Setter Property="FontSize" Value="8" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="MainOpticValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="MainOpticSummaryCard" TargetType="Border">
+            <Setter Property="MinHeight" Value="64" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+        <Style x:Key="MainOpticHeadCard" TargetType="Border">
+            <Setter Property="MinHeight" Value="150" />
+            <Setter Property="Margin" Value="3" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+        <Style x:Key="MainOpticRowLabelText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}" />
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="MainOpticCompactValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="MainOpticSubValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="TextWrapping" Value="NoWrap" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="MainOpticBadge" TargetType="Border">
+            <Setter Property="Height" Value="18" />
+            <Setter Property="MinWidth" Value="45" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+        </Style>
+        <Style x:Key="MainOpticSectionCard" TargetType="Border">
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="5" />
+        </Style>
+        <Style x:Key="MainOpticHeadMiniCard" TargetType="Border">
+            <Setter Property="Margin" Value="4" />
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Background" Value="{DynamicResource PanelAltBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+        <Style x:Key="MainOpticStatusChip" TargetType="Border">
+            <Setter Property="Height" Value="18" />
+            <Setter Property="MinWidth" Value="46" />
+            <Setter Property="Padding" Value="5,0" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="58" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="314" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel>
+                <TextBlock Text="MAIN / AUTO PROCESS"
+                           Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="28"
+                           FontWeight="SemiBold" />
+                <TextBlock Text="Scan path preview, script lifecycle status"
+                           Foreground="{DynamicResource TextMutedBrush}"
+                           FontSize="14" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            HorizontalAlignment="Right">
+                    <Button Command="{Binding StartCommand}"
+                            Style="{StaticResource MainStartButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text=">"
+                                       FontSize="15"
+                                       Margin="0,0,8,0" />
+                            <TextBlock Text="START" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding StopCommand}"
+                            Style="{StaticResource MainStopButton}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="[]"
+                                       FontSize="13"
+                                       Margin="0,0,8,0" />
+                            <TextBlock Text="STOP" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="315" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="560" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="76" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="1" Margin="0,8,0,0" Style="{StaticResource PanelBorder}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0" Text="Process Sequence" Style="{StaticResource PanelTitle}" />
+
+                        <Grid Grid.Row="1" Margin="0,8,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="28" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="58" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="48" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="No"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="9"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="1"
+                                       Text="Step"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="9"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="2"
+                                       Text="State"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="9"
+                                       FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="4"
+                                       Text="Use"
+                                       HorizontalAlignment="Center"
+                                       Foreground="{DynamicResource TextMutedBrush}"
+                                       FontSize="9"
+                                       FontWeight="SemiBold" />
+                        </Grid>
+
+                        <ScrollViewer Grid.Row="2"
+                                      Margin="0,0,0,0"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ItemsControl ItemsSource="{Binding CurrentScreen.MainOperating.ProcessSequenceItems}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,5"
+                                                Padding="8,4"
+                                                Background="{DynamicResource PanelBackgroundBrush}"
+                                                BorderBrush="{DynamicResource PanelBorderBrush}"
+                                                BorderThickness="1"
+                                                MinHeight="32">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="28" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="58" />
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="48" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border Width="19"
+                                                        Height="19"
+                                                        BorderBrush="{DynamicResource TextMutedBrush}"
+                                                        BorderThickness="1"
+                                                        HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Order}"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                                               FontSize="10"
+                                                               FontWeight="SemiBold" />
+                                                </Border>
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{Binding StepName}"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                                           FontSize="11"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="2"
+                                                           Text="{Binding State}"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="{Binding StateBrush}"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <Border Grid.Column="3"
+                                                        Width="1"
+                                                        Height="18"
+                                                        HorizontalAlignment="Center"
+                                                        VerticalAlignment="Center"
+                                                        Background="{DynamicResource PanelBorderBrush}"
+                                                        Opacity="0.75" />
+                                                <Button Grid.Column="4"
+                                                        Content="{Binding OptionText}"
+                                                        Command="{Binding DataContext.CurrentScreen.MainOperating.ToggleSequenceStepUseCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding OptionSettingKey}"
+                                                        Visibility="{Binding OptionVisibility}"
+                                                        IsEnabled="{Binding CanToggleOption}"
+                                                        Opacity="{Binding OptionOpacity}"
+                                                        Background="{Binding OptionBrush}"
+                                                        BorderBrush="{Binding OptionBorderBrush}"
+                                                        Style="{StaticResource MainStepOptionButton}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Row="0" Style="{StaticResource PanelBorder}">
+                    <ItemsControl ItemsSource="{Binding CurrentScreen.MainOperating.ProcessSummaryItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="2" Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Margin="4,0">
+                                    <TextBlock Text="{Binding Name}"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="11"
+                                               HorizontalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding Value}"
+                                               Margin="0,4,0,0"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                               FontSize="13"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+            </Grid>
+
+            <Border Grid.Column="1" Margin="12,0" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="54" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="54" />
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0">
+                        <TextBlock Text="Head Assignment / Glass Preview"
+                                   Style="{StaticResource PanelTitle}" />
+                        <StackPanel Orientation="Horizontal"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center">
+                            <Button Content="ALL"
+                                    Command="{Binding CurrentScreen.MainOperating.TogglePreviewHeadCommand}"
+                                    CommandParameter="ALL"
+                                    Style="{StaticResource MainSequenceButton}"
+                                    Width="48"
+                                    Height="24"
+                                    Margin="4,0,0,0"
+                                    Padding="0"
+                                    FontSize="10"
+                                    Background="{DynamicResource ButtonSecondaryBrush}"
+                                    BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}" />
+                            <Button Content="CLEAR"
+                                    Command="{Binding CurrentScreen.MainOperating.TogglePreviewHeadCommand}"
+                                    CommandParameter="CLEAR"
+                                    Style="{StaticResource MainSequenceButton}"
+                                    Width="54"
+                                    Height="24"
+                                    Margin="4,0,0,0"
+                                    Padding="0"
+                                    FontSize="10"
+                                    Background="{DynamicResource ButtonSecondaryBrush}"
+                                    BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ItemsControl Grid.Column="0"
+                                      Grid.ColumnSpan="8"
+                                      ItemsSource="{Binding CurrentScreen.MainOperating.OddHeadPreviews}"
+                                      ItemTemplate="{StaticResource HeadSelectItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" Columns="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Grid>
+
+                    <Grid Grid.Row="2" Margin="0,10">
+                        <Viewbox Stretch="Uniform">
+                            <Canvas Width="860" Height="520" Background="{DynamicResource GridBackgroundBrush}">
+                                 <Rectangle Canvas.Left="{Binding CurrentScreen.MainOperating.GlassFrame.CanvasLeft}"
+                                            Canvas.Top="{Binding CurrentScreen.MainOperating.GlassFrame.CanvasTop}"
+                                            Width="{Binding CurrentScreen.MainOperating.GlassFrame.Width}"
+                                            Height="{Binding CurrentScreen.MainOperating.GlassFrame.Height}"
+                                            Stroke="{DynamicResource PanelBorderBrush}"
+                                            StrokeThickness="1.4"
+                                            Fill="{DynamicResource PanelAltBackgroundBrush}" />
+
+                                <Image Canvas.Left="0"
+                                       Canvas.Top="0"
+                                       Width="860"
+                                       Height="520"
+                                       Source="{Binding CurrentScreen.MainOperating.RecipePreviewImage}"
+                                       Stretch="None"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Top" />
+
+                                <ItemsControl Canvas.Left="0"
+                                              Canvas.Top="0"
+                                              Width="860"
+                                              Height="520"
+                                              ItemsSource="{Binding CurrentScreen.MainOperating.HeadAssignmentAreas}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <Canvas Width="860" Height="520" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Canvas.Left" Value="{Binding CanvasLeft}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding CanvasTop}" />
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Rectangle Width="{Binding Width}"
+                                                       Height="{Binding Height}"
+                                                       Fill="{Binding FillBrush}"
+                                                       Stroke="{Binding StrokeBrush}"
+                                                       StrokeThickness="{Binding BorderThicknessValue.Left}"
+                                                       StrokeDashArray="5,3"
+                                                       StrokeDashCap="Flat"
+                                                       Opacity="{Binding Opacity}"
+                                                       Visibility="{Binding RangeVisibility}"
+                                                       SnapsToDevicePixels="True" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <ItemsControl Canvas.Left="0"
+                                              Canvas.Top="0"
+                                              Width="860"
+                                              Height="520"
+                                              ItemsSource="{Binding CurrentScreen.MainOperating.HeadAssignmentAreas}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <Canvas Width="860" Height="520" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Canvas.Left" Value="{Binding LabelCanvasLeft}" />
+                                            <Setter Property="Canvas.Top" Value="{Binding LabelCanvasTop}" />
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                             <Border Width="{Binding LabelWidth}"
+                                                     Height="20"
+                                                     Background="{DynamicResource PanelBackgroundBrush}"
+                                                     BorderBrush="{Binding StrokeBrush}"
+                                                     BorderThickness="0,0,0,1"
+                                                     Visibility="{Binding RangeVisibility}">
+                                                <TextBlock Text="{Binding DisplayLabel}"
+                                                           Foreground="{Binding StrokeBrush}"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                 <!-- The physical Glass uses the same restrained accent as the rest of the HMI. -->
+                                 <Rectangle Canvas.Left="{Binding CurrentScreen.MainOperating.GlassFrame.CanvasLeft}"
+                                            Canvas.Top="{Binding CurrentScreen.MainOperating.GlassFrame.CanvasTop}"
+                                            Width="{Binding CurrentScreen.MainOperating.GlassFrame.Width}"
+                                            Height="{Binding CurrentScreen.MainOperating.GlassFrame.Height}"
+                                            Fill="Transparent"
+                                            Stroke="{DynamicResource MenuItemSelectedBorderBrush}"
+                                            StrokeThickness="1.8"
+                                            Opacity="0.9"
+                                            IsHitTestVisible="False"
+                                            SnapsToDevicePixels="True" />
+
+                                 <TextBlock Canvas.Left="54"
+                                           Canvas.Top="14"
+                                           Text="GLASS AREA"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"
+                                           FontSize="14"
+                                           FontWeight="SemiBold" />
+                                <TextBlock Canvas.Right="54"
+                                           Canvas.Top="4"
+                                           Width="320"
+                                           Text="{Binding CurrentScreen.MainOperating.GlassPreviewSummary}"
+                                           Foreground="{DynamicResource AccentTextBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           TextAlignment="Right"
+                                           TextTrimming="CharacterEllipsis"
+                                           TextWrapping="NoWrap" />
+                            </Canvas>
+                        </Viewbox>
+                        <ItemsControl ItemsSource="{Binding CurrentScreen.MainOperating.CellPreviewLabels}"
+                                      Style="{StaticResource CellPreviewLabelItemsControl}" />
+                    </Grid>
+
+                    <Grid Grid.Row="3">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ItemsControl Grid.Column="1"
+                                      Grid.ColumnSpan="8"
+                                      ItemsSource="{Binding CurrentScreen.MainOperating.EvenHeadPreviews}"
+                                      ItemTemplate="{StaticResource HeadSelectItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" Columns="4" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <ItemsControl Grid.Row="0"
+                                  ItemsSource="{Binding CurrentScreen.MainOperating.ParameterTabs}"
+                                  Margin="0,0,0,8">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Name}"
+                                        Command="{Binding DataContext.CurrentScreen.MainOperating.SelectParameterTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding Key}"
+                                        Background="{Binding BackgroundBrush}"
+                                        BorderBrush="{Binding BorderBrush}"
+                                        Foreground="{Binding TextBrush}"
+                                        Style="{StaticResource MainParameterTabButton}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Grid Grid.Row="1">
+                        <DataGrid ItemsSource="{Binding CurrentScreen.MainOperating.HeadParameters}"
+                                  Visibility="{Binding CurrentScreen.MainOperating.HeadParameterVisibility}"
+                                  IsReadOnly="True"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  Style="{StaticResource MainDataGrid}"
+                                  FontSize="11">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Head" Binding="{Binding Head}" Width="58" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="Power (W)" Binding="{Binding Power, StringFormat=F2}" Width="82" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="Freq (kHz)" Binding="{Binding Frequency, StringFormat=F1}" Width="82" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="Shot Count" Binding="{Binding Shot}" Width="82" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="Jump Speed (mm/sec)" Binding="{Binding JumpSpeed, StringFormat=F0}" Width="132" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="DOE Z (mm)" Binding="{Binding DoeZPosition, StringFormat=F3}" Width="86" ElementStyle="{StaticResource MainGridText}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+
+                        <Grid Visibility="{Binding CurrentScreen.MainOperating.OpticParameterVisibility}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <ItemsControl ItemsSource="{Binding CurrentScreen.MainOperating.OpticParameterGroups}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource MainOpticSummaryCard}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="92" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="{Binding Device}"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               FontSize="13"
+                                                               FontWeight="SemiBold"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="COMMON"
+                                                               Foreground="{DynamicResource TextMutedBrush}"
+                                                               FontSize="8"
+                                                               FontWeight="SemiBold" />
+                                                </StackPanel>
+                                                <ItemsControl Grid.Column="1"
+                                                              ItemsSource="{Binding Items}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Orientation="Horizontal" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <StackPanel Orientation="Horizontal"
+                                                                        Margin="0,0,12,0"
+                                                                        VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding Item}"
+                                                                           Style="{StaticResource MainOpticRowLabelText}"
+                                                                           Margin="0,0,6,0" />
+                                                                <TextBlock Text="{Binding Current}"
+                                                                           Style="{StaticResource MainOpticValueText}"
+                                                                           Margin="0,0,6,0" />
+                                                                <TextBlock Text="{Binding RecipeTarget}"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                                                           FontSize="10"
+                                                                           FontWeight="SemiBold"
+                                                                           VerticalAlignment="Center" />
+                                                            </StackPanel>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                <Border Grid.Column="2"
+                                                        Style="{StaticResource MainOpticBadge}"
+                                                        Background="{Binding StateBrush}">
+                                                    <TextBlock Text="{Binding State}"
+                                                               Foreground="White"
+                                                               FontSize="9"
+                                                               FontWeight="Bold"
+                                                               HorizontalAlignment="Center"
+                                                               VerticalAlignment="Center" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <Grid Grid.Row="1" Margin="0,8,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="*" />
+                                </Grid.RowDefinitions>
+
+                                <Border Grid.Row="0" Style="{StaticResource MainOpticSectionCard}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="LASER CURRENT"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold" />
+                                        <ItemsControl Grid.Row="1"
+                                                      Margin="0,8,0,0"
+                                                      ItemsSource="{Binding CurrentScreen.MainOperating.OpticHeadParameters}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Rows="2" Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Style="{StaticResource MainOpticHeadMiniCard}">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="*" />
+                                                            </Grid.RowDefinitions>
+                                                            <TextBlock Text="{Binding Head}"
+                                                                       Foreground="{DynamicResource AccentTextBrush}"
+                                                                       FontSize="11"
+                                                                       FontWeight="SemiBold"
+                                                                       HorizontalAlignment="Left" />
+                                                            <Grid Grid.Row="1"
+                                                                  Margin="0,6,0,0"
+                                                                  VerticalAlignment="Center">
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="*" />
+                                                                    <RowDefinition Height="*" />
+                                                                    <RowDefinition Height="*" />
+                                                                </Grid.RowDefinitions>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="64" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <TextBlock Text="POWER"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding LaserPower}"
+                                                                           Foreground="{Binding LaserPowerBrush}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Text="SHUTTER"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Grid.Column="1"
+                                                                           Text="{Binding LaserShutter}"
+                                                                           Foreground="{Binding LaserShutterBrush}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}" />
+                                                                <TextBlock Grid.Row="2"
+                                                                           Text="GATE"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Row="2"
+                                                                           Grid.Column="1"
+                                                                           Text="{Binding LaserGate}"
+                                                                           Foreground="{Binding LaserGateBrush}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}" />
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Row="1" Style="{StaticResource MainOpticSectionCard}">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="ATT POSITION"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold" />
+                                        <ItemsControl Grid.Row="1"
+                                                      Margin="0,8,0,0"
+                                                      ItemsSource="{Binding CurrentScreen.MainOperating.OpticHeadParameters}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Rows="2" Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Style="{StaticResource MainOpticHeadMiniCard}">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="*" />
+                                                            </Grid.RowDefinitions>
+                                                            <TextBlock Text="{Binding Head}"
+                                                                       Foreground="{DynamicResource AccentTextBrush}"
+                                                                       FontSize="11"
+                                                                       FontWeight="SemiBold"
+                                                                       HorizontalAlignment="Left" />
+                                                            <Grid Grid.Row="1"
+                                                                  Margin="0,8,0,0"
+                                                                  VerticalAlignment="Center">
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="*" />
+                                                                    <RowDefinition Height="*" />
+                                                                </Grid.RowDefinitions>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="32" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <TextBlock Text="CUR"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="{Binding AttenuatorCurrent}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}"
+                                                                           Foreground="{Binding AttenuatorStateBrush}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Text="TGT"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Grid.Column="1"
+                                                                           Text="{Binding AttenuatorTarget}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Border>
+
+                                <Border Grid.Row="2" Style="{StaticResource MainOpticSectionCard}" Margin="0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="BET"
+                                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold" />
+                                        <ItemsControl Grid.Row="1"
+                                                      Margin="0,8,0,0"
+                                                      ItemsSource="{Binding CurrentScreen.MainOperating.OpticHeadParameters}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Rows="2" Columns="4" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Style="{StaticResource MainOpticHeadMiniCard}">
+                                                        <Grid>
+                                                            <Grid.RowDefinitions>
+                                                                <RowDefinition Height="Auto" />
+                                                                <RowDefinition Height="*" />
+                                                            </Grid.RowDefinitions>
+                                                            <TextBlock Text="{Binding Head}"
+                                                                       Foreground="{DynamicResource AccentTextBrush}"
+                                                                       FontSize="11"
+                                                                       FontWeight="SemiBold"
+                                                                       HorizontalAlignment="Left" />
+                                                            <Grid Grid.Row="1"
+                                                                  Margin="0,6,0,0"
+                                                                  VerticalAlignment="Center">
+                                                                <Grid.RowDefinitions>
+                                                                    <RowDefinition Height="Auto" />
+                                                                    <RowDefinition Height="*" />
+                                                                    <RowDefinition Height="*" />
+                                                                </Grid.RowDefinitions>
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="34" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+
+                                                                <TextBlock Grid.Column="1"
+                                                                           Text="CUR"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Column="2"
+                                                                           Text="TGT"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Text="MAG"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Grid.Column="1"
+                                                                           Text="{Binding BetMagnificationCurrentStep}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}"
+                                                                           Foreground="{Binding BetStateBrush}" />
+                                                                <TextBlock Grid.Row="1"
+                                                                           Grid.Column="2"
+                                                                           Text="{Binding BetMagnificationTargetStep}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                                <TextBlock Grid.Row="2"
+                                                                           Text="DIV"
+                                                                           Style="{StaticResource MainOpticSubValueText}" />
+                                                                <TextBlock Grid.Row="2"
+                                                                           Grid.Column="1"
+                                                                           Text="{Binding BetDivergenceCurrentStep}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}"
+                                                                           Foreground="{Binding BetStateBrush}" />
+                                                                <TextBlock Grid.Row="2"
+                                                                           Grid.Column="2"
+                                                                           Text="{Binding BetDivergenceTargetStep}"
+                                                                           Style="{StaticResource MainOpticCompactValueText}"
+                                                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                </Border>
+                            </Grid>
+                        </Grid>
+
+                        <DataGrid ItemsSource="{Binding CurrentScreen.MainOperating.ScannerStatusItems}"
+                                  Visibility="{Binding CurrentScreen.MainOperating.ScannerStatusVisibility}"
+                                  IsReadOnly="True"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  Style="{StaticResource MainDataGrid}"
+                                  FontSize="10">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Head" Binding="{Binding Head}" Width="48" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="A1" Binding="{Binding Automation}" Width="42" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="Axis" Binding="{Binding Axis}" Width="42" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="No." Binding="{Binding AxisNo}" Width="38" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTemplateColumn Header="Able" Width="62">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Able}"
+                                                       Foreground="{Binding AbleBrush}"
+                                                       FontWeight="SemiBold"
+                                                       Style="{StaticResource MainGridText}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Pos" Binding="{Binding Position}" Width="72" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTextColumn Header="Aux" Binding="{Binding AuxFeedback}" Width="72" ElementStyle="{StaticResource MainGridText}" />
+                                <DataGridTemplateColumn Header="Home" Width="58">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Home}"
+                                                       Foreground="{Binding HomeBrush}"
+                                                       FontWeight="SemiBold"
+                                                       Style="{StaticResource MainGridText}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTemplateColumn Header="Error" Width="*">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Error}"
+                                                       Foreground="{Binding ErrorBrush}"
+                                                       FontWeight="SemiBold"
+                                                       Style="{StaticResource MainGridText}" />
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="620" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Automation Script Status" Style="{StaticResource PanelTitle}" />
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="Lifecycle"
+                               Style="{StaticResource MainValueText}"
+                               Margin="0,12,0,8" />
+                    <Border DockPanel.Dock="Top"
+                            Padding="8"
+                            BorderBrush="{DynamicResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            Background="{DynamicResource PanelAltBackgroundBrush}">
+                        <ItemsControl ItemsSource="{Binding CurrentScreen.MainOperating.LifecycleItems}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Rows="1" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <Ellipse Width="14"
+                                                 Height="14"
+                                                 Stroke="{Binding StateBrush}"
+                                                 StrokeThickness="3"
+                                                 Fill="{DynamicResource PanelBackgroundBrush}" />
+                                        <TextBlock Text="{Binding Name}"
+                                                   Margin="0,6,0,0"
+                                                   Foreground="{DynamicResource TextSecondaryBrush}"
+                                                   FontSize="9"
+                                                   TextAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Text="{Binding Value}"
+                                                   Foreground="{Binding StateBrush}"
+                                                   FontSize="9"
+                                                   FontWeight="SemiBold"
+                                                   TextAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                    <ItemsControl Margin="0,10,0,0"
+                                  ItemsSource="{Binding CurrentScreen.MainOperating.ScriptTaskStatusItems}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="2" Columns="4" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="3"
+                                        Padding="7"
+                                        Background="{DynamicResource PanelAltBackgroundBrush}"
+                                        BorderBrush="{DynamicResource PanelBorderBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="4">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="*" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Task}"
+                                                       Foreground="{DynamicResource AccentTextBrush}"
+                                                       FontSize="11"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding Head}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold" />
+                                        </Grid>
+                                        <TextBlock Grid.Row="1"
+                                                   Margin="0,6,0,0"
+                                                   Text="{Binding State}"
+                                                   Foreground="{Binding StateBrush}"
+                                                   FontSize="13"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <StackPanel Grid.Row="2"
+                                                    Margin="0,6,0,0"
+                                                    VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding ControllerTaskText}"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       FontSize="10"
+                                                       FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding FileText}"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       FontSize="9"
+                                                       TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                        <Grid Grid.Row="3" Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding DetailText}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       FontSize="8"
+                                                       TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Grid.Column="1"
+                                                       Text="{Binding PointText}"
+                                                       Foreground="{DynamicResource TextMutedBrush}"
+                                                       FontSize="8"
+                                                       FontWeight="SemiBold" />
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="1" Margin="12,0,6,0" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Inspection Status" Style="{StaticResource PanelTitle}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding CurrentScreen.MainOperating.InspectionSummary}"
+                                   Foreground="{DynamicResource ButtonPrimaryBorderBrush}"
+                                   FontWeight="SemiBold"
+                                   FontSize="12"
+                                   VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Padding="10,5"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                Background="{DynamicResource PanelAltBackgroundBrush}">
+                            <TextBlock Text="{Binding CurrentScreen.MainOperating.InspectionModeText}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
+                        </Border>
+                        <Border Grid.Column="1"
+                                Margin="8,0,0,0"
+                                Padding="10,5"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                Background="{DynamicResource PanelAltBackgroundBrush}"
+                                Visibility="{Binding CurrentScreen.MainOperating.InspectionRuleVisibility}">
+                            <TextBlock Text="{Binding CurrentScreen.MainOperating.InspectionRuleText}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold" />
+                        </Border>
+                    </Grid>
+                    <DataGrid ItemsSource="{Binding CurrentScreen.MainOperating.InspectionStatusItems}"
+                              IsReadOnly="True"
+                              Style="{StaticResource MainDataGrid}"
+                              FontSize="11"
+                              HorizontalScrollBarVisibility="Disabled">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="No." Binding="{Binding No}" Width="38" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="Head" Binding="{Binding Head}" Width="48" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="Cell" Binding="{Binding Cell}" Width="56" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="Hole" Binding="{Binding Hole}" Width="56" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="Err X" Binding="{Binding ErrorX}" Width="68" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="Err Y" Binding="{Binding ErrorY}" Width="68" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="State" Binding="{Binding State}" Width="62">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource MainGridText}">
+                                        <Setter Property="Foreground" Value="{Binding StateBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Judge" Binding="{Binding Judge}" Width="52">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource MainGridText}">
+                                        <Setter Property="Foreground" Value="{Binding JudgeBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <Border Grid.Column="2" Margin="6,0,0,0" Style="{StaticResource PanelBorder}">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="Interlock / Safety" Style="{StaticResource PanelTitle}" />
+                    <Border DockPanel.Dock="Bottom"
+                            BorderBrush="{DynamicResource PanelBorderBrush}"
+                            BorderThickness="1,0,0,0"
+                            Padding="0,10,0,0"
+                            Margin="0,10,0,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="96" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Process Result" Style="{StaticResource MainValueText}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding CurrentScreen.MainOperating.ProcessResultValue}"
+                                       Foreground="{Binding CurrentScreen.MainOperating.ProcessResultBrush}"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Right" />
+                        </Grid>
+                    </Border>
+                    <DataGrid ItemsSource="{Binding CurrentScreen.MainOperating.InterlockItems}"
+                              IsReadOnly="True"
+                              Style="{StaticResource MainDataGrid}"
+                              FontSize="11"
+                              HorizontalScrollBarVisibility="Disabled">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Signal" Binding="{Binding Signal}" Width="128" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="State" Binding="{Binding State}" Width="86" ElementStyle="{StaticResource MainGridText}" />
+                            <DataGridTextColumn Header="Detail" Binding="{Binding Detail}" Width="*" MinWidth="220" ElementStyle="{StaticResource MainGridText}" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
+
+

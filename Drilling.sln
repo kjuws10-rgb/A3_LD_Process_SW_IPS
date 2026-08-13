@@ -1,0 +1,34 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Drilling.UI", "Drilling.UI\Drilling.UI.csproj", "{D19F8791-8DF2-4F80-B9B7-B9D5BCC75203}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Drilling.Common", "Drilling.Common\Drilling.Common.csproj", "{C4EC1F87-71B9-412C-974B-96D8CB833D3F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Drilling.File", "Drilling.File\Drilling.File.csproj", "{68597CB0-AD14-4B77-B4FB-A6E872C480C7}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D19F8791-8DF2-4F80-B9B7-B9D5BCC75203}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D19F8791-8DF2-4F80-B9B7-B9D5BCC75203}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D19F8791-8DF2-4F80-B9B7-B9D5BCC75203}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D19F8791-8DF2-4F80-B9B7-B9D5BCC75203}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4EC1F87-71B9-412C-974B-96D8CB833D3F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4EC1F87-71B9-412C-974B-96D8CB833D3F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4EC1F87-71B9-412C-974B-96D8CB833D3F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4EC1F87-71B9-412C-974B-96D8CB833D3F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68597CB0-AD14-4B77-B4FB-A6E872C480C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68597CB0-AD14-4B77-B4FB-A6E872C480C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68597CB0-AD14-4B77-B4FB-A6E872C480C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68597CB0-AD14-4B77-B4FB-A6E872C480C7}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

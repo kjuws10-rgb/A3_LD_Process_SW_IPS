@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ACS.SPiiPlusNET7">
+      <HintPath>Motion\ACS\ACS.SPiiPlusNET7.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="CmdLib">
+      <HintPath>Interface\PicoMotor\Sdk\CmdLib.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Newport.XPS.CommandInterface">
+      <HintPath>Motion\XPS\Newport.XPS.CommandInterface.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Aerotech.Automation1.Communication">
+      <HintPath>Interface\Automation1\Sdk\Aerotech.Automation1.Communication.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Aerotech.Automation1.DotNet">
+      <HintPath>Interface\Automation1\Sdk\Aerotech.Automation1.DotNet.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Interface\Automation1\Sdk\Automation1Compiler.dll">
+      <Link>Interface\Automation1\Sdk\Automation1Compiler.dll</Link>
+      <TargetPath>Automation1Compiler.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Interface\Automation1\Sdk\Automation1Compiler64.dll">
+      <Link>Interface\Automation1\Sdk\Automation1Compiler64.dll</Link>
+      <TargetPath>Automation1Compiler64.dll</TargetPath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

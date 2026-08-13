@@ -1,0 +1,33 @@
+﻿<UserControl x:Class="Drilling.UI.Views.CExitView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d">
+            <Grid Visibility="{Binding CurrentScreen.IsGenericLayout, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Border Style="{StaticResource PanelBorder}"
+                        Width="480"
+                        Height="240"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="{Binding CurrentScreen.Title}"
+                                   Foreground="{DynamicResource TextPrimaryBrush}"
+                                   FontSize="28"
+                                   FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding CurrentScreen.Subtitle}"
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   FontSize="14"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"
+                                   Margin="0,12,0,22" />
+                        <Button Content="Close Application"
+                                Style="{StaticResource SecondaryButton}"
+                                HorizontalAlignment="Center"
+                                MinWidth="160" />
+                    </StackPanel>
+                </Border>
+            </Grid>
+</UserControl>
+

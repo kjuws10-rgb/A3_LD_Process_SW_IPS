@@ -1,0 +1,1152 @@
+using Drilling.Common.Interface;
+using Drilling.Common.Alarm;
+using Drilling.Common.InterLock;
+using Drilling.Common.Managers;
+using Drilling.Common.Motion;
+using Drilling.Common.Station;
+using System.Reflection;
+
+namespace Drilling.Common.Motion;
+
+public enum EN_MOTION_COMMAND
+{
+    ServoOn,
+    ServoOff,
+    Home,
+    MoveAbs,
+    MoveRel,
+    Stop,
+    ResetAlarm,
+    Refresh
+}
+
+public sealed record ST_IO_STATUS(
+    string Id,
+    string Address,
+    string Name,
+    bool IsOn,
+    bool IsOutput);
+
+public sealed record ST_IO_DATA(
+    string Id,
+    bool Use,
+    string Address,
+    string Name,
+    bool IsOutput,
+    string DevType,
+    int DevNo,
+    bool InitialState,
+    int DisplayOrder,
+    string Description);
+
+public sealed record ST_MOTOR_AXIS_STATUS(
+    string AxisId,
+    string Name,
+    double CurrentPosition,
+    double TargetPosition,
+    double CommandPosition,
+    bool ServoOn,
+    bool HomeCompleted,
+    bool LimitPlusOn,
+    bool LimitMinusOn,
+    bool AlarmOn);
+
+public sealed record ST_MOTOR_DATA(
+    string Name,
+    bool Use,
+    int Axis,
+    int VirtureAxis,
+    string DevType,
+    int DevNo,
+    int CoordinateNo,
+    int MotorType,
+    double Scale,
+    string System,
+    string StationName,
+    string Subordinate,
+    string DisplayName,
+    string AxisDir,
+    bool AlignReverse,
+    bool ProcessReverse,
+    string Dir,
+    string ProductIndex,
+    string AxisColor,
+    bool ReverseDir,
+    double CorrectionAngle,
+    double OffsetX,
+    double OffsetY,
+    double OffsetZ,
+    double OffsetXT,
+    double OffsetYT,
+    double OffsetZT,
+    string Unit,
+    double MaxVel,
+    double InterlockMaxVel,
+    double MaxAcc,
+    double Min,
+    double Max,
+    int HomePlc,
+    int HomeTimeout,
+    string HomePlcFlag,
+    string Description,
+    double LoadAlarmValue,
+    string PreCheckIo);
+
+public sealed record ST_MOTION_STATION_STATUS(
+    string StationName,
+    string SystemName,
+    bool HasAlarm,
+    IReadOnlyList<ST_MOTOR_AXIS_STATUS> Axes);
+
+public sealed record ST_MOTION_CONTROLLER_STATUS(
+    string DevType,
+    int DevNo,
+    bool IsRegistered,
+    bool IsSimulation,
+    int AxisCount,
+    IReadOnlyList<string> AxisIds);
+
+public interface IMotionManager
+{
+    bool IsSimulation { get; }
+
+    void SetSimulationMode(bool enabled);
+
+    Task Initialize(CancellationToken cancellationToken = default);
+
+    Task Destroy(CancellationToken cancellationToken = default);
+
+    Task RefreshStatus(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ST_MOTOR_AXIS_STATUS>> GetAxisStatus(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ST_IO_STATUS>> GetIoStatus(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ST_MOTION_STATION_STATUS>> GetStationStatus(
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>> GetControllerStatus(
+        CancellationToken cancellationToken = default);
+
+    Task ServoOn(
+        string axisId,
+        CancellationToken cancellationToken = default);
+
+    Task ServoOff(
+        string axisId,
+        CancellationToken cancellationToken = default);
+
+    Task Home(
+        string axisId,
+        CancellationToken cancellationToken = default);
+
+    Task Move(
+        string axisId,
+        double targetPosition,
+        CancellationToken cancellationToken = default);
+
+    Task MoveRel(
+        string axisId,
+        double distance,
+        CancellationToken cancellationToken = default);
+
+    Task Stop(
+        string axisId,
+        CancellationToken cancellationToken = default);
+
+    Task ResetAlarm(
+        string axisId,
+        CancellationToken cancellationToken = default);
+
+    Task MoveAxis(
+        string axisId,
+        double targetPosition,
+        CancellationToken cancellationToken = default);
+
+    Task ExecuteAxisCommand(
+        string axisId,
+        EN_MOTION_COMMAND command,
+        double parameter = 0.0,
+        CancellationToken cancellationToken = default);
+
+    Task StopMotion(
+        string axisId,
+        CancellationToken cancellationToken = default);
+
+    Task SetOutput(
+        string ioName,
+        bool isOn,
+        CancellationToken cancellationToken = default);
+
+    Task<ST_DEVICE_COMMAND_RESULT> ExecuteMotionCommand(
+        string axisId,
+        EN_MOTION_COMMAND command,
+        double parameter = 0.0,
+        CancellationToken cancellationToken = default);
+
+    Task<ST_DEVICE_COMMAND_RESULT> SetOutputCommand(
+        string ioName,
+        bool isOn,
+        CancellationToken cancellationToken = default);
+}
+
+public interface IMotorFile
+{
+    Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default);
+}
+
+public interface IIoFile
+{
+    Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default);
+}
+public sealed class CMotionManager : IMotionManager
+{
+    private const string DefaultControllerName = "XPS";
+
+    private static readonly IReadOnlyDictionary<string, Type> MotionControllerTypes =
+        LoadMotionControllerTypes();
+
+    private readonly IInterfaceManager? _interfaceManager;
+    private readonly IReadOnlyList<ST_MOTOR_DATA> _motors;
+    private readonly Dictionary<string, ST_MOTOR_DATA> _axisData;
+    private readonly Dictionary<string, ST_AXIS_STATE> _axes;
+    private readonly Dictionary<string, ST_IO_STATE> _io;
+    private readonly Dictionary<string, CMotionController> _controllers = new(StringComparer.OrdinalIgnoreCase);
+    private bool _simulationMode;
+
+    public CMotionManager(bool isSimulation = true)
+        : this(null, null, null, isSimulation)
+    {
+    }
+
+    public CMotionManager(
+        IInterfaceManager? interfaceManager,
+        IReadOnlyList<ST_MOTOR_DATA>? motors = null,
+        IReadOnlyList<ST_IO_DATA>? ioData = null,
+        bool isSimulation = true)
+    {
+        _interfaceManager = interfaceManager;
+        _simulationMode = isSimulation;
+        _motors = NormalizeMotors(motors);
+        _axisData = _motors
+            .Where(axis => axis.Use)
+            .ToDictionary(axis => NormalizeAxisId(axis.Name), StringComparer.OrdinalIgnoreCase);
+        _axes = CreateAxes(_motors);
+        _io = CreateIo(ioData);
+
+        var controllerRequests = _axisData.Values
+            .Select(axis => (axis.DevType, axis.DevNo))
+            .Concat(_io.Values.Select(channel => (channel.DevType, channel.DevNo)))
+            .GroupBy(item => GetControllerKey(item.DevType, item.DevNo));
+
+        foreach (var group in controllerRequests)
+        {
+            var controllerData = group.First();
+            var controller = CreateMotionController(controllerData.DevType, controllerData.DevNo);
+
+            if (controller is not null)
+            {
+                _controllers[group.Key] = controller;
+            }
+        }
+    }
+
+    public bool IsSimulation => _simulationMode || _controllers.Values.All(controller => controller.IsSimulation());
+
+    public void SetSimulationMode(bool enabled)
+    {
+        _simulationMode = enabled;
+    }
+
+    public async Task Initialize(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (var group in _axisData.Values.GroupBy(axis => GetControllerKey(axis.DevType, axis.DevNo)))
+        {
+            if (_simulationMode)
+            {
+                continue;
+            }
+
+            var axis = group.First();
+
+            if (!_controllers.TryGetValue(group.Key, out var controller))
+            {
+                throw CreateMotionControllerNotRegisteredException(axis.DevType, axis.DevNo);
+            }
+
+            if (controller.IsSimulation())
+            {
+                continue;
+            }
+
+            await controller.Initialize(group.ToArray(), cancellationToken);
+        }
+    }
+
+    public async Task Destroy(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (var controller in _controllers.Values)
+        {
+            await controller.Destroy(cancellationToken);
+        }
+    }
+
+    public async Task RefreshStatus(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (_simulationMode)
+        {
+            return;
+        }
+
+        await RefreshAxisStatus(cancellationToken);
+        await RefreshIoStatus(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ST_MOTOR_AXIS_STATUS>> GetAxisStatus(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await RefreshStatus(cancellationToken);
+
+        var axes = _axes.Values
+            .OrderBy(axis => axis.DisplayOrder)
+            .Select(axis => new ST_MOTOR_AXIS_STATUS(
+                axis.AxisId,
+                axis.Name,
+                axis.CurrentPosition,
+                axis.TargetPosition,
+                axis.CommandPosition,
+                axis.ServoOn,
+                axis.HomeCompleted,
+                axis.LimitPlusOn,
+                axis.LimitMinusOn,
+                axis.AlarmOn))
+            .ToArray();
+
+        return axes;
+    }
+
+    public async Task<IReadOnlyList<ST_IO_STATUS>> GetIoStatus(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await RefreshStatus(cancellationToken);
+
+        var io = _io.Values
+            .OrderBy(channel => channel.DisplayOrder)
+            .Select(channel => new ST_IO_STATUS(
+                channel.Id,
+                channel.Address,
+                channel.Name,
+                channel.IsOn,
+                channel.IsOutput))
+            .ToArray();
+
+        return io;
+    }
+
+    public async Task<IReadOnlyList<ST_MOTION_STATION_STATUS>> GetStationStatus(
+        CancellationToken cancellationToken = default)
+    {
+        var axes = await GetAxisStatus(cancellationToken);
+        var statusMap = axes.ToDictionary(axis => axis.AxisId, StringComparer.OrdinalIgnoreCase);
+
+        return _axisData.Values
+            .GroupBy(axis => NormalizeStationName(axis.StationName))
+            .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(group =>
+            {
+                var stationAxes = group
+                    .Select(axis => statusMap.TryGetValue(NormalizeAxisId(axis.Name), out var status)
+                        ? status
+                        : null)
+                    .Where(status => status is not null)
+                    .Cast<ST_MOTOR_AXIS_STATUS>()
+                    .OrderBy(status => status.AxisId, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                return new ST_MOTION_STATION_STATUS(
+                    group.Key,
+                    group.Select(axis => axis.System).FirstOrDefault(system => !string.IsNullOrWhiteSpace(system)) ?? "",
+                    stationAxes.Any(axis => axis.AlarmOn),
+                    stationAxes);
+            })
+            .ToArray();
+    }
+
+    public Task<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>> GetControllerStatus(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var status = _axisData.Values
+            .GroupBy(axis => GetControllerKey(axis.DevType, axis.DevNo), StringComparer.OrdinalIgnoreCase)
+            .Select(group =>
+            {
+                var first = group.First();
+                var registered = _controllers.TryGetValue(group.Key, out var controller);
+                var axes = group
+                    .Select(axis => NormalizeAxisId(axis.Name))
+                    .OrderBy(axis => axis, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                return new ST_MOTION_CONTROLLER_STATUS(
+                    NormalizeControllerName(first.DevType),
+                    first.DevNo,
+                    registered,
+                    controller?.IsSimulation() ?? true,
+                    axes.Length,
+                    axes);
+            })
+            .OrderBy(item => item.DevType, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.DevNo)
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>>(status);
+    }
+
+    public async Task MoveAxis(
+        string axisId,
+        double targetPosition,
+        CancellationToken cancellationToken = default)
+    {
+        await Move(axisId, targetPosition, cancellationToken);
+    }
+
+    public Task ServoOn(
+        string axisId,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ServoOn, cancellationToken: cancellationToken);
+    }
+
+    public Task ServoOff(
+        string axisId,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ServoOff, cancellationToken: cancellationToken);
+    }
+
+    public Task Home(
+        string axisId,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.Home, cancellationToken: cancellationToken);
+    }
+
+    public Task Move(
+        string axisId,
+        double targetPosition,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.MoveAbs, targetPosition, cancellationToken);
+    }
+
+    public Task MoveRel(
+        string axisId,
+        double distance,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.MoveRel, distance, cancellationToken);
+    }
+
+    public Task Stop(
+        string axisId,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.Stop, cancellationToken: cancellationToken);
+    }
+
+    public Task ResetAlarm(
+        string axisId,
+        CancellationToken cancellationToken = default)
+    {
+        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ResetAlarm, cancellationToken: cancellationToken);
+    }
+
+    public async Task ExecuteAxisCommand(
+        string axisId,
+        EN_MOTION_COMMAND command,
+        double parameter = 0.0,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var normalizedAxisId = NormalizeAxisId(axisId);
+
+        if (!_axisData.TryGetValue(normalizedAxisId, out var axisData))
+        {
+            throw new InvalidOperationException($"Motion axis was not registered in JHMI_MOTOR.csv: {axisId}");
+        }
+
+        if (!_axes.TryGetValue(normalizedAxisId, out var axisState))
+        {
+            throw new InvalidOperationException($"Motion axis state was not registered: {axisId}");
+        }
+
+        ValidateAxisCommand(axisData, axisState, command, parameter);
+
+        if (!_simulationMode)
+        {
+            if (!_controllers.TryGetValue(GetControllerKey(axisData.DevType, axisData.DevNo), out var controller))
+            {
+                throw CreateMotionControllerNotRegisteredException(axisData.DevType, axisData.DevNo);
+            }
+
+            if (!controller.IsSimulation())
+            {
+                await controller.ExecuteAxisCommand(axisData, command, parameter, cancellationToken);
+            }
+        }
+
+        ApplyAxisCommand(normalizedAxisId, command, parameter);
+    }
+
+    public async Task StopMotion(string axisId, CancellationToken cancellationToken = default)
+    {
+        await Stop(axisId, cancellationToken);
+    }
+
+    public async Task SetOutput(
+        string ioName,
+        bool isOn,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var channel = GetIoChannelOrThrow(ioName);
+
+        if (!channel.IsOutput)
+        {
+            throw new InvalidOperationException($"Motion IO is input only: {FormatIoReference(channel)}");
+        }
+
+        var controller = GetMotionController(channel.DevType, channel.DevNo);
+
+        if (!_simulationMode && controller is null)
+        {
+            throw CreateMotionControllerNotRegisteredException(channel.DevType, channel.DevNo);
+        }
+
+        if (!_simulationMode && controller is not null && !controller.IsSimulation())
+        {
+            await controller.SetOutput(channel.Address, isOn, cancellationToken);
+        }
+
+        channel.IsOn = isOn;
+    }
+
+    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteMotionCommand(
+        string axisId,
+        EN_MOTION_COMMAND command,
+        double parameter = 0.0,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await ExecuteAxisCommand(axisId, command, parameter, cancellationToken);
+            return new ST_DEVICE_COMMAND_RESULT(
+                true,
+                $"Motion {axisId} {FormatMotionCommand(command)} OK.");
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or TimeoutException or IOException)
+        {
+            return new ST_DEVICE_COMMAND_RESULT(
+                false,
+                $"Motion {axisId} {FormatMotionCommand(command)} failed. {exception.Message}");
+        }
+    }
+
+    public async Task<ST_DEVICE_COMMAND_RESULT> SetOutputCommand(
+        string ioName,
+        bool isOn,
+        CancellationToken cancellationToken = default)
+    {
+        var command = isOn ? "ON" : "OFF";
+
+        try
+        {
+            var channel = GetIoChannelOrThrow(ioName);
+            await SetOutput(channel.Address, isOn, cancellationToken);
+
+            return new ST_DEVICE_COMMAND_RESULT(
+                true,
+                $"Motion IO {FormatIoReference(channel)} {command} OK.");
+        }
+        catch (Exception exception) when (
+            exception is InvalidOperationException or TimeoutException or IOException)
+        {
+            return new ST_DEVICE_COMMAND_RESULT(
+                false,
+                $"Motion IO {ioName} {command} failed. {exception.Message}");
+        }
+    }
+
+    private CMotionController? GetMotionController(
+        string devType,
+        int devNo)
+    {
+        return _controllers.TryGetValue(GetControllerKey(devType, devNo), out var controller)
+            ? controller
+            : null;
+    }
+
+    private async Task RefreshAxisStatus(CancellationToken cancellationToken)
+    {
+        foreach (var axisData in _axisData.Values)
+        {
+            if (!_controllers.TryGetValue(GetControllerKey(axisData.DevType, axisData.DevNo), out var controller) || controller.IsSimulation())
+            {
+                continue;
+            }
+
+            try
+            {
+                var status = await controller.ReadAxisStatus(axisData, cancellationToken);
+
+                if (status is not null)
+                {
+                    ApplyAxisStatus(status);
+                }
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException or TimeoutException or IOException)
+            {
+                MarkAxisAlarm(axisData.Name);
+            }
+        }
+    }
+
+    private async Task RefreshIoStatus(CancellationToken cancellationToken)
+    {
+        foreach (var channel in _io.Values)
+        {
+            var controller = GetMotionController(channel.DevType, channel.DevNo);
+
+            if (controller is null || controller.IsSimulation())
+            {
+                continue;
+            }
+
+            try
+            {
+                var isOn = await controller.ReadIo(channel.Address, channel.IsOutput, cancellationToken);
+
+                if (isOn.HasValue)
+                {
+                    channel.IsOn = isOn.Value;
+                }
+            }
+            catch (Exception exception) when (
+                exception is InvalidOperationException or TimeoutException or IOException)
+            {
+                // One IO read failure should not hide the rest of the monitor snapshot.
+            }
+        }
+    }
+
+    private void ApplyAxisStatus(ST_MOTOR_AXIS_STATUS status)
+    {
+        var axisId = NormalizeAxisId(status.AxisId);
+
+        if (!_axes.TryGetValue(axisId, out var axis))
+        {
+            return;
+        }
+
+        axis.CurrentPosition = status.CurrentPosition;
+        axis.TargetPosition = status.TargetPosition;
+        axis.CommandPosition = status.CommandPosition;
+        axis.ServoOn = status.ServoOn;
+        axis.HomeCompleted = status.HomeCompleted;
+        axis.LimitPlusOn = status.LimitPlusOn;
+        axis.LimitMinusOn = status.LimitMinusOn;
+        axis.AlarmOn = status.AlarmOn;
+    }
+
+    private void MarkAxisAlarm(string axisId)
+    {
+        var normalizedAxisId = NormalizeAxisId(axisId);
+
+        if (_axes.TryGetValue(normalizedAxisId, out var axis))
+        {
+            axis.AlarmOn = true;
+        }
+    }
+
+    private CMotionController? CreateMotionController(
+        string controller,
+        int deviceNo)
+    {
+        var controllerName = NormalizeControllerName(controller);
+
+        if (!MotionControllerTypes.TryGetValue(controllerName, out var controllerType))
+        {
+            return null;
+        }
+
+        return Activator.CreateInstance(controllerType, _interfaceManager, deviceNo) as CMotionController
+            ?? throw new InvalidOperationException($"Motion controller creation failed: {controllerName}");
+    }
+
+    private void ValidateAxisCommand(
+        ST_MOTOR_DATA axisData,
+        ST_AXIS_STATE axisState,
+        EN_MOTION_COMMAND command,
+        double parameter)
+    {
+        if (command is not (EN_MOTION_COMMAND.Home or EN_MOTION_COMMAND.MoveAbs or EN_MOTION_COMMAND.MoveRel))
+        {
+            return;
+        }
+
+        ValidatePreCheckIo(axisData);
+
+        var targetPosition = command == EN_MOTION_COMMAND.MoveRel
+            ? axisState.CurrentPosition + parameter
+            : parameter;
+
+        if (command == EN_MOTION_COMMAND.Home || axisData.Min >= axisData.Max)
+        {
+            return;
+        }
+
+        if (targetPosition < axisData.Min || targetPosition > axisData.Max)
+        {
+            throw new InvalidOperationException(
+                $"Motion target is out of range. Axis={axisData.Name}, Station={NormalizeStationName(axisData.StationName)}, Target={targetPosition:F3}, Range={axisData.Min:F3}~{axisData.Max:F3}");
+        }
+    }
+
+    private void ValidatePreCheckIo(ST_MOTOR_DATA axisData)
+    {
+        if (string.IsNullOrWhiteSpace(axisData.PreCheckIo))
+        {
+            return;
+        }
+
+        foreach (var condition in SplitPreCheckIo(axisData.PreCheckIo))
+        {
+            var channel = GetIoChannelOrThrow(condition.IoName);
+
+            if (channel.IsOn != condition.ExpectedOn)
+            {
+                throw new InvalidOperationException(
+                    $"Motion pre-check IO failed. Axis={axisData.Name}, IO={FormatIoReference(channel)}, Expected={(condition.ExpectedOn ? "ON" : "OFF")}, Current={(channel.IsOn ? "ON" : "OFF")}");
+            }
+        }
+    }
+
+    private static IEnumerable<ST_PRE_CHECK_IO> SplitPreCheckIo(string preCheckIo)
+    {
+        foreach (var token in preCheckIo.Split([';', ',', '|'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = token.Split(['=', ':'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            var ioName = parts[0].Trim();
+            var expectedOn = parts.Length < 2 || IsOnText(parts[1]);
+
+            yield return new ST_PRE_CHECK_IO(ioName, expectedOn);
+        }
+    }
+
+    private void ApplyAxisCommand(
+        string axisId,
+        EN_MOTION_COMMAND command,
+        double parameter)
+    {
+        if (!_axes.TryGetValue(axisId, out var axis))
+        {
+            return;
+        }
+
+        switch (command)
+        {
+            case EN_MOTION_COMMAND.ServoOn:
+                axis.ServoOn = true;
+                break;
+            case EN_MOTION_COMMAND.ServoOff:
+                axis.ServoOn = false;
+                break;
+            case EN_MOTION_COMMAND.Home:
+                axis.CurrentPosition = 0.0;
+                axis.TargetPosition = 0.0;
+                axis.CommandPosition = 0.0;
+                axis.HomeCompleted = true;
+                axis.AlarmOn = false;
+                break;
+            case EN_MOTION_COMMAND.MoveAbs:
+                UpdateAxisPosition(axis, parameter);
+                break;
+            case EN_MOTION_COMMAND.MoveRel:
+                UpdateAxisPosition(axis, axis.CurrentPosition + parameter);
+                break;
+            case EN_MOTION_COMMAND.Stop:
+                axis.CommandPosition = axis.CurrentPosition;
+                axis.TargetPosition = axis.CurrentPosition;
+                break;
+            case EN_MOTION_COMMAND.ResetAlarm:
+                axis.AlarmOn = false;
+                break;
+        }
+    }
+
+    private static void UpdateAxisPosition(
+        ST_AXIS_STATE axis,
+        double targetPosition)
+    {
+        axis.TargetPosition = targetPosition;
+        axis.CommandPosition = targetPosition;
+        axis.CurrentPosition = targetPosition;
+    }
+
+    private static IReadOnlyList<ST_MOTOR_DATA> NormalizeMotors(IReadOnlyList<ST_MOTOR_DATA>? motors)
+    {
+        var loaded = motors?
+            .Where(axis => !string.IsNullOrWhiteSpace(axis.Name))
+            .ToArray();
+
+        return loaded is { Length: > 0 } ? loaded : CreateDefaultMotorData();
+    }
+
+    private static Dictionary<string, ST_AXIS_STATE> CreateAxes(IReadOnlyList<ST_MOTOR_DATA> motors)
+    {
+        return motors
+            .Where(axis => axis.Use)
+            .Select(axis =>
+            {
+                var position = GetInitialPosition(axis.Name);
+                return new ST_AXIS_STATE(
+                    NormalizeAxisId(axis.Name),
+                    string.IsNullOrWhiteSpace(axis.DisplayName) ? axis.Name : axis.DisplayName,
+                    position,
+                    position,
+                    position,
+                    true,
+                    true,
+                    false,
+                    false,
+                    false,
+                    axis.Axis);
+            })
+            .ToDictionary(axis => axis.AxisId, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyList<ST_MOTOR_DATA> CreateDefaultMotorData()
+    {
+        return [];
+    }
+
+    private static ST_MOTOR_DATA Motor(
+        string name,
+        int axis,
+        string displayName,
+        double initialPosition,
+        string unit)
+    {
+        _ = initialPosition;
+
+        return new ST_MOTOR_DATA(
+            name,
+            true,
+            axis,
+            -1,
+            DefaultControllerName,
+            0,
+            0,
+            0,
+            1000.0,
+            "MOTION",
+            "DRILLING",
+            "",
+            displayName,
+            "",
+            false,
+            false,
+            "",
+            "",
+            "CYAN",
+            false,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            unit,
+            300.0,
+            300.0,
+            500.0,
+            -120.0,
+            120.0,
+            0,
+            30000,
+            "",
+            displayName,
+            0.0,
+            "");
+    }
+
+    private static double GetInitialPosition(string axisName)
+    {
+        return NormalizeAxisId(axisName) switch
+        {
+            "GX" => 12.340,
+            "GY" => -8.960,
+            "X" => 125.000,
+            "Y" => -75.000,
+            "Z" => 23.500,
+            "THETA" => 0.002,
+            "ATTENUATOR" => 55.000,
+            "BET_MAG" => 1.000,
+            "BET_DIV" => 1.000,
+            _ => 0.0
+        };
+    }
+
+    private static string NormalizeAxisId(string axisId)
+    {
+        return axisId.Trim().ToUpperInvariant();
+    }
+
+    private static string NormalizeAddress(string address)
+    {
+        return address.Trim().ToUpperInvariant();
+    }
+
+    private ST_IO_STATE GetIoChannelOrThrow(string ioName)
+    {
+        if (string.IsNullOrWhiteSpace(ioName))
+        {
+            throw new InvalidOperationException("Motion IO name is empty.");
+        }
+
+        // Existing UI may still pass the raw address. Process code should pass the logical ID.
+        var normalizedAddress = NormalizeAddress(ioName);
+
+        if (_io.TryGetValue(NormalizeIoName(ioName), out var channel))
+        {
+            return channel;
+        }
+
+        var addressMatches = _io.Values
+            .Where(item => item.Address.Equals(normalizedAddress, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (addressMatches.Length == 1)
+        {
+            return addressMatches[0];
+        }
+
+        var normalizedName = NormalizeIoName(ioName);
+        var matches = _io.Values
+            .Where(item => NormalizeIoName(item.Name).Equals(normalizedName, StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (matches.Length == 1)
+        {
+            return matches[0];
+        }
+
+        if (matches.Length > 1)
+        {
+            throw new InvalidOperationException(
+                $"Motion IO name is ambiguous: {ioName}. Matches={string.Join(", ", matches.Select(FormatIoReference))}");
+        }
+
+        throw new InvalidOperationException(
+            $"Motion IO was not registered: {ioName}. Available={string.Join(", ", _io.Values.OrderBy(item => item.DisplayOrder).Select(FormatIoReference))}");
+    }
+
+    private static string FormatIoReference(ST_IO_STATE channel)
+    {
+        return $"{channel.Id}({channel.Address})";
+    }
+
+    private static string NormalizeIoName(string value)
+    {
+        var chars = value
+            .Trim()
+            .ToUpperInvariant()
+            .Select(ch => char.IsLetterOrDigit(ch) ? ch : '_')
+            .ToArray();
+
+        var compact = new string(chars);
+
+        while (compact.Contains("__", StringComparison.Ordinal))
+        {
+            compact = compact.Replace("__", "_", StringComparison.Ordinal);
+        }
+
+        return compact.Trim('_');
+    }
+
+    private static Dictionary<string, ST_IO_STATE> CreateIo(IReadOnlyList<ST_IO_DATA>? ioData)
+    {
+        return (ioData ?? [])
+            .Where(channel => channel.Use)
+            .Select(channel => new ST_IO_STATE(
+                NormalizeIoName(channel.Id),
+                NormalizeAddress(channel.Address),
+                string.IsNullOrWhiteSpace(channel.Name) ? channel.Id : channel.Name.Trim(),
+                channel.InitialState,
+                channel.IsOutput,
+                NormalizeControllerName(channel.DevType),
+                channel.DevNo,
+                channel.DisplayOrder,
+                channel.Description))
+            .ToDictionary(channel => channel.Id, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeStationName(string stationName)
+    {
+        return string.IsNullOrWhiteSpace(stationName)
+            ? "DRILLING"
+            : stationName.Trim().ToUpperInvariant();
+    }
+
+    private static string GetControllerKey(
+        string controller,
+        int deviceNo)
+    {
+        return $"{NormalizeControllerName(controller)}:{deviceNo}";
+    }
+
+    private static IReadOnlyDictionary<string, Type> LoadMotionControllerTypes()
+    {
+        return typeof(CMotionController)
+            .Assembly
+            .GetTypes()
+            .Where(type => !type.IsAbstract && typeof(CMotionController).IsAssignableFrom(type))
+            .Select(type => new
+            {
+                Type = type,
+                Attribute = type.GetCustomAttribute<CMotionControllerTypeAttribute>()
+            })
+            .Where(item => item.Attribute is not null && item.Attribute.ControllerNames.Count > 0)
+            .SelectMany(item => item.Attribute!.ControllerNames.Select(controller => new
+            {
+                Controller = NormalizeControllerName(controller),
+                item.Type
+            }))
+            .GroupBy(item => item.Controller, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                group => group.Key,
+                group => group.First().Type,
+                StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static InvalidOperationException CreateMotionControllerNotRegisteredException(
+        string controller,
+        int deviceNo)
+    {
+        return new InvalidOperationException(
+            $"Motion controller is not registered. DevType={controller}, DevNo={deviceNo}. Add a C*Motion.cs class with CMotionControllerType.");
+    }
+
+    internal static string NormalizeControllerName(string value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? DefaultControllerName
+            : value.Trim().ToUpperInvariant().Replace(" ", "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FormatMotionCommand(EN_MOTION_COMMAND command)
+    {
+        return command switch
+        {
+            EN_MOTION_COMMAND.ServoOn => "SERVO ON",
+            EN_MOTION_COMMAND.ServoOff => "SERVO OFF",
+            EN_MOTION_COMMAND.MoveAbs => "ABS MOVE",
+            EN_MOTION_COMMAND.MoveRel => "REL MOVE",
+            EN_MOTION_COMMAND.ResetAlarm => "RESET ALARM",
+            _ => command.ToString().ToUpperInvariant()
+        };
+    }
+
+    private static bool IsOnText(string value)
+    {
+        return value.Trim().ToUpperInvariant() is "1" or "ON" or "TRUE" or "YES";
+    }
+
+    private sealed record ST_PRE_CHECK_IO(
+        string IoName,
+        bool ExpectedOn);
+
+    private sealed class ST_AXIS_STATE(
+        string axisId,
+        string name,
+        double currentPosition,
+        double targetPosition,
+        double commandPosition,
+        bool servoOn,
+        bool homeCompleted,
+        bool limitPlusOn,
+        bool limitMinusOn,
+        bool alarmOn,
+        int displayOrder)
+    {
+        public string AxisId { get; } = axisId;
+
+        public string Name { get; } = name;
+
+        public double CurrentPosition { get; set; } = currentPosition;
+
+        public double TargetPosition { get; set; } = targetPosition;
+
+        public double CommandPosition { get; set; } = commandPosition;
+
+        public bool ServoOn { get; set; } = servoOn;
+
+        public bool HomeCompleted { get; set; } = homeCompleted;
+
+        public bool LimitPlusOn { get; set; } = limitPlusOn;
+
+        public bool LimitMinusOn { get; set; } = limitMinusOn;
+
+        public bool AlarmOn { get; set; } = alarmOn;
+
+        public int DisplayOrder { get; } = displayOrder;
+    }
+
+    private sealed class ST_IO_STATE(
+        string id,
+        string address,
+        string name,
+        bool isOn,
+        bool isOutput,
+        string devType,
+        int devNo,
+        int displayOrder,
+        string description)
+    {
+        public string Id { get; } = id;
+
+        public string Address { get; } = address;
+
+        public string Name { get; } = name;
+
+        public bool IsOn { get; set; } = isOn;
+
+        public bool IsOutput { get; } = isOutput;
+
+        public string DevType { get; } = devType;
+
+        public int DevNo { get; } = devNo;
+
+        public int DisplayOrder { get; } = displayOrder;
+
+        public string Description { get; } = description;
+    }
+}
+
+

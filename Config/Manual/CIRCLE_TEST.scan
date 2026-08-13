@@ -1,0 +1,7 @@
+﻿NAME,VALUE
+LaserPower,1.00
+JumpSpeed,15.000
+MarkSpeed,9.000
+LaserFrequency,20.000
+LaserOnDelay,8.000
+LaserOffDelay,12.000

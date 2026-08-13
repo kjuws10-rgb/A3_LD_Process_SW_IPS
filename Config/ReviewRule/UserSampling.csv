@@ -1,0 +1,22 @@
+﻿GROUP,KEY,VALUE,DESCRIPTION
+COMMON,RULE_NAME,Manual Sample,Review rule display name
+COMMON,RULE_TYPE,SAMPLE_POINT,ALL_POINT / SAMPLE_POINT / EDGE / CENTER / HEAD_POINT / CELL_POINT / ZERO_LINE
+COMMON,HEAD_NO,1,Target head number for HEAD_POINT
+COMMON,CELL_NO,4,Target cell number for CELL_POINT
+COMMON,ZERO_POINT_COUNT,0,Zero line review point count
+HOLE,CELL001_HOLE0001,1,Selected review hole
+HOLE,CELL002_HOLE0001,1,Selected review hole
+HOLE,CELL003_HOLE0001,1,Selected review hole
+HOLE,CELL004_HOLE0001,1,Selected review hole
+HOLE,CELL005_HOLE0001,1,Selected review hole
+HOLE,CELL006_HOLE0001,1,Selected review hole
+HOLE,CELL007_HOLE0001,1,Selected review hole
+HOLE,CELL008_HOLE0001,1,Selected review hole
+HOLE,CELL009_HOLE0001,1,Selected review hole
+HOLE,CELL010_HOLE0001,1,Selected review hole
+HOLE,CELL011_HOLE0001,1,Selected review hole
+HOLE,CELL012_HOLE0001,1,Selected review hole
+HOLE,CELL013_HOLE0001,1,Selected review hole
+HOLE,CELL014_HOLE0001,1,Selected review hole
+HOLE,CELL015_HOLE0001,1,Selected review hole
+HOLE,CELL016_HOLE0001,1,Selected review hole

@@ -1,0 +1,1393 @@
+﻿<UserControl x:Class="Drilling.UI.Views.CManualView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             FontFamily="Segoe UI">
+    <UserControl.Resources>
+        <Style x:Key="ManualSmallText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+
+        <Style x:Key="ManualValueText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style x:Key="ManualInput" TargetType="TextBox">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Background" Value="{DynamicResource GridBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+
+        <Style x:Key="ManualInputButton" TargetType="Button">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="Background" Value="{DynamicResource GridBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" /></Border></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource MenuItemSelectedBackgroundBrush}" /><Setter Property="Foreground" Value="{DynamicResource MenuItemSelectedTextBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource MenuItemSelectedBorderBrush}" /></Trigger>
+                <Trigger Property="IsPressed" Value="True"><Setter Property="Background" Value="{DynamicResource HeaderNavPressedBackgroundBrush}" /><Setter Property="Foreground" Value="{DynamicResource MenuItemSelectedTextBrush}" /></Trigger>
+                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55" /></Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ManualHeadButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.42" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ManualCommandButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.42" />
+                    <Setter Property="Cursor" Value="Arrow" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ManualWorkspaceButton"
+               TargetType="Button"
+               BasedOn="{StaticResource ManualCommandButton}">
+            <Setter Property="Height" Value="42" />
+            <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+            <Setter Property="FontSize" Value="15" />
+        </Style>
+
+        <Style x:Key="LaserActionButton" TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+            <Setter Property="Height" Value="68" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="ManualCreateButton" TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+        </Style>
+
+        <Style x:Key="ManualDeleteButton" TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Background" Value="{DynamicResource ButtonDangerBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonDangerBrush}" />
+        </Style>
+
+        <Style x:Key="ManualRenameButton" TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Background" Value="{DynamicResource ButtonWarningBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonWarningBorderBrush}" />
+        </Style>
+
+        <Style x:Key="ManualSaveButton" TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Background" Value="{DynamicResource ButtonSuccessBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource StatusReadyBrush}" />
+        </Style>
+
+        <Style x:Key="ManualComboBoxItem" TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="{DynamicResource GridBackgroundBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Padding" Value="10,6" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Style.Triggers>
+                <Trigger Property="IsHighlighted" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource MenuItemSelectedBackgroundBrush}" />
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ManualComboBox" TargetType="ComboBox">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="Background" Value="{DynamicResource GridBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="ItemContainerStyle" Value="{StaticResource ManualComboBoxItem}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <ToggleButton x:Name="ToggleButton"
+                                          Focusable="False"
+                                          ClickMode="Press"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border x:Name="Shell"
+                                                Background="{DynamicResource GridBackgroundBrush}"
+                                                BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}"
+                                                BorderThickness="1"
+                                                CornerRadius="4">
+                                            <Grid>
+                                                <ContentPresenter Margin="10,0,36,0"
+                                                                  HorizontalAlignment="Left"
+                                                                  VerticalAlignment="Center"
+                                                                  RecognizesAccessKey="True"
+                                                                  TextElement.Foreground="{DynamicResource TextPrimaryBrush}"
+                                                                  TextElement.FontSize="14"
+                                                                  TextElement.FontWeight="SemiBold"
+                                                                  Content="{Binding SelectionBoxItem, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentTemplate="{Binding SelectionBoxItemTemplate, RelativeSource={RelativeSource AncestorType=ComboBox}}"
+                                                                  ContentStringFormat="{Binding SelectionBoxItemStringFormat, RelativeSource={RelativeSource AncestorType=ComboBox}}" />
+                                                <Path Data="M 0 0 L 5 5 L 10 0 Z"
+                                                      Fill="{DynamicResource TextSecondaryBrush}"
+                                                      Width="10"
+                                                      Height="5"
+                                                      Stretch="Fill"
+                                                      HorizontalAlignment="Right"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,12,0" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Shell" Property="BorderBrush" Value="{DynamicResource AccentTextBrush}" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <Popup x:Name="Popup"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   PopupAnimation="Fade">
+                                <Border Background="{DynamicResource GridBackgroundBrush}"
+                                        BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}"
+                                        BorderThickness="1"
+                                        MinWidth="{TemplateBinding ActualWidth}">
+                                    <ScrollViewer MaxHeight="160">
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingListText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Visibility="{Binding CurrentScreen.IsManualLayout, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="58" />
+            <RowDefinition Height="52" />
+            <RowDefinition Height="154" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="MANUAL / CONTROL"
+                       Foreground="{DynamicResource TextPrimaryBrush}"
+                       FontSize="28"
+                       FontWeight="SemiBold" />
+            <TextBlock Text="Scanner, stage and vision manual operation"
+                       Foreground="{DynamicResource TextSecondaryBrush}"
+                       FontSize="14" />
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,2,0,4">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Button Grid.Column="0"
+                    Content="SCANNER"
+                    Command="{Binding CurrentScreen.Manual.SelectManualWorkspaceCommand}"
+                    CommandParameter="SCANNER"
+                    Margin="0,0,8,0">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ManualWorkspaceButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentScreen.Manual.IsScannerWorkspace}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource MenuItemSelectedBackgroundBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource MenuItemSelectedBorderBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+
+            <Button Grid.Column="1"
+                    Content="STAGE / VISION"
+                    Command="{Binding CurrentScreen.Manual.SelectManualWorkspaceCommand}"
+                    CommandParameter="STAGE_VISION">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource ManualWorkspaceButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CurrentScreen.Manual.IsStageVisionWorkspace}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource MenuItemSelectedBackgroundBrush}" />
+                                <Setter Property="BorderBrush" Value="{DynamicResource MenuItemSelectedBorderBrush}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </Grid>
+
+        <Border Grid.Row="2"
+                Style="{StaticResource PanelBorder}"
+                Visibility="{Binding CurrentScreen.Manual.IsScannerWorkspace, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Top"
+                           Text="Head Select (Select one head)"
+                           Style="{StaticResource PanelTitle}" />
+
+                <ItemsControl ItemsSource="{Binding CurrentScreen.Manual.HeadCards}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding DataContext.CurrentScreen.Manual.SelectHeadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    CommandParameter="{Binding HeadNo}"
+                                    Style="{StaticResource ManualHeadButton}">
+                                <Border Margin="4,0"
+                                        Padding="12,10"
+                                        BorderThickness="1">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="{DynamicResource PanelBackgroundBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                    <Setter Property="Background" Value="{DynamicResource MenuItemSelectedBackgroundBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource MenuItemSelectedBorderBrush}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="24" />
+                                            <RowDefinition Height="22" />
+                                            <RowDefinition Height="22" />
+                                            <RowDefinition Height="22" />
+                                        </Grid.RowDefinitions>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <Ellipse Width="17"
+                                                     Height="17"
+                                                     Stroke="{DynamicResource TextPrimaryBrush}"
+                                                     StrokeThickness="2"
+                                                     VerticalAlignment="Center">
+                                                <Ellipse.Style>
+                                                    <Style TargetType="Ellipse">
+                                                        <Setter Property="Fill" Value="Transparent" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                                <Setter Property="Fill" Value="{DynamicResource AccentTextBrush}" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Ellipse.Style>
+                                            </Ellipse>
+                                            <TextBlock Text="{Binding HeadName}"
+                                                       Margin="8,0,0,0"
+                                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                                       FontSize="15"
+                                                       FontWeight="SemiBold" />
+                                        </StackPanel>
+
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding Gx, StringFormat=GX  {0}}"
+                                                   Style="{StaticResource ManualValueText}"
+                                                   FontSize="12" />
+                                        <TextBlock Grid.Row="2"
+                                                   Text="{Binding Gy, StringFormat=GY  {0}}"
+                                                   Style="{StaticResource ManualValueText}"
+                                                   FontSize="12" />
+                                        <StackPanel Grid.Row="3"
+                                                    Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <Ellipse Width="12"
+                                                     Height="12"
+                                                     Fill="{Binding StateBrush}" />
+                                            <TextBlock Text="{Binding State}"
+                                                       Margin="8,0,0,0"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}"
+                                                       FontSize="12"
+                                                       FontWeight="SemiBold" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </Border>
+
+        <ScrollViewer Grid.Row="3"
+                      Margin="0,12,0,0"
+                      HorizontalContentAlignment="Stretch"
+                      VerticalContentAlignment="Stretch"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding CurrentScreen.Manual.IsScannerWorkspace, Converter={StaticResource BooleanToVisibilityConverter}}">
+        <Grid MinHeight="520">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="390" MinWidth="350" />
+                <ColumnDefinition Width="*" MinWidth="500" />
+                <ColumnDefinition Width="420" MinWidth="380" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="72" />
+                        <RowDefinition Height="174" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="Manual Setting (SCAN SETTING/*.scan)"
+                               Style="{StaticResource PanelTitle}" />
+
+                    <Grid Grid.Row="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="36" />
+                            <RowDefinition Height="36" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="130" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Grid.Row="0" Grid.Column="0" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="8">
+                            <TextBlock Text="Loaded Setting" Style="{StaticResource ManualSmallText}" />
+                        </Border>
+                        <Border Grid.Row="0" Grid.Column="1" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,1,1,1" Padding="8">
+                            <TextBlock Text="{Binding CurrentScreen.Manual.LoadedSettingName}"
+                                       Foreground="{DynamicResource AccentTextBrush}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold" />
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="0" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1,0,1,1" Padding="8">
+                            <TextBlock Text="Path" Style="{StaticResource ManualSmallText}" />
+                        </Border>
+                        <Border Grid.Row="1" Grid.Column="1" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="0,0,1,1" Padding="8">
+                            <TextBlock Text="{Binding CurrentScreen.Manual.LoadedSettingPath}"
+                                       Foreground="{DynamicResource TextPrimaryBrush}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold" />
+                        </Border>
+                    </Grid>
+
+                    <Grid Grid.Row="2" Margin="0,12,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="28" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="122" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="Setting List"
+                                   Style="{StaticResource ManualValueText}" />
+
+                        <ItemsControl Grid.Row="1"
+                                      ItemsSource="{Binding CurrentScreen.Manual.SettingFiles}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Command="{Binding DataContext.CurrentScreen.Manual.SelectSettingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding Name}"
+                                            Style="{StaticResource ManualHeadButton}">
+                                        <Border Height="27"
+                                                Padding="8,5">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding Name}"
+                                                       Style="{StaticResource SettingListText}" />
+                                        </Border>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Grid.Row="1"
+                                    Grid.Column="1"
+                                    Margin="12,0,0,0">
+                            <Button Content="CREATE"
+                                    Command="{Binding CurrentScreen.Manual.CreateCommand}"
+                                    Style="{StaticResource ManualCreateButton}"
+                                    Margin="0,0,0,7" />
+                            <Button Content="DELETE"
+                                    Command="{Binding CurrentScreen.Manual.DeleteCommand}"
+                                    Style="{StaticResource ManualDeleteButton}"
+                                    Margin="0,0,0,7" />
+                            <Button Content="RENAME"
+                                    Command="{Binding CurrentScreen.Manual.RenameCommand}"
+                                    Style="{StaticResource ManualRenameButton}"
+                                    Margin="0,0,0,7" />
+                            <Button Content="SAVE"
+                                    Command="{Binding CurrentScreen.Manual.SaveCommand}"
+                                    Style="{StaticResource ManualSaveButton}"
+                                    Margin="0" />
+                        </StackPanel>
+                    </Grid>
+
+                    <DockPanel Grid.Row="3" Margin="0,12,0,0">
+                        <TextBlock DockPanel.Dock="Top"
+                                   Text="{Binding CurrentScreen.Manual.LoadedSettingName, StringFormat=Setting Parameter (for {0})}"
+                                   Style="{StaticResource ManualValueText}"
+                                   Margin="0,0,0,8" />
+                        <DataGrid ItemsSource="{Binding CurrentScreen.Manual.SettingParameters}"
+                                  IsReadOnly="False"
+                                  Style="{StaticResource PlainDataGrid}"
+                                  RowHeight="44"
+                                  FontSize="12">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Parameter" Binding="{Binding Parameter}" Width="*" IsReadOnly="True" />
+                                <DataGridTemplateColumn Header="Value" Width="86"><DataGridTemplateColumn.CellTemplate><DataTemplate><Grid><Button Content="{Binding Value}" Click="OpenManualParameterInput"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource ManualInputButton}"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding UsesSelectionEditor}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Button.Style></Button><ComboBox ItemsSource="{Binding ValueOptions}" SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"><ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource ManualComboBox}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding UsesSelectionEditor}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></ComboBox.Style></ComboBox></Grid></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                                <DataGridTextColumn Header="Unit" Binding="{Binding Unit}" Width="72" IsReadOnly="True" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </DockPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Margin="12,0"
+                    Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="154" />
+                        <RowDefinition Height="1" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="{Binding CurrentScreen.Manual.SelectedHead, StringFormat=Manual Scan Command (Selected Head : {0})}"
+                               Style="{StaticResource PanelTitle}" />
+
+                    <Grid Grid.Row="1" Margin="0,8,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="28" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock Text="Position Move"
+                                   Style="{StaticResource ManualValueText}" />
+
+                        <UniformGrid Grid.Row="1"
+                                     Columns="3"
+                                     Margin="0,10,12,0">
+                            <Button Height="96"
+                                    Command="{Binding CurrentScreen.Manual.CenterMoveCommand}"
+                                    Style="{StaticResource ManualCommandButton}"
+                                    Margin="0,0,8,0">
+                                <StackPanel>
+                                    <Viewbox Width="32" Height="32" Margin="0,0,0,6">
+                                        <Canvas Width="48" Height="48">
+                                            <Ellipse Canvas.Left="12" Canvas.Top="12" Width="24" Height="24"
+                                                     Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" Fill="Transparent" />
+                                            <Ellipse Canvas.Left="21" Canvas.Top="21" Width="6" Height="6"
+                                                     Fill="{DynamicResource TextSecondaryBrush}" />
+                                            <Line X1="24" Y1="4" X2="24" Y2="44" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                            <Line X1="4" Y1="24" X2="44" Y2="24" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="CENTER MOVE"
+                                               HorizontalAlignment="Center"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button Height="96"
+                                    Command="{Binding CurrentScreen.Manual.PositionMoveCommand}"
+                                    Style="{StaticResource ManualCommandButton}"
+                                    Margin="0,0,8,0">
+                                <StackPanel>
+                                    <Viewbox Width="32" Height="32" Margin="0,0,0,6">
+                                        <Canvas Width="48" Height="48">
+                                            <Path Data="M24,4 C15,4 9,11 9,20 C9,33 24,44 24,44 C24,44 39,33 39,20 C39,11 33,4 24,4 Z"
+                                                  Fill="{DynamicResource TextSecondaryBrush}" />
+                                            <Ellipse Canvas.Left="17" Canvas.Top="13" Width="14" Height="14"
+                                                     Fill="{DynamicResource ButtonPrimaryBrush}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="POSITION MOVE"
+                                               HorizontalAlignment="Center"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button Height="96"
+                                    Command="{Binding CurrentScreen.Manual.MoveStopCommand}"
+                                    Background="{DynamicResource ButtonDangerBrush}"
+                                    BorderBrush="{DynamicResource ButtonDangerBrush}"
+                                    Style="{StaticResource ManualCommandButton}">
+                                <StackPanel>
+                                    <Viewbox Width="32" Height="32" Margin="0,0,0,6">
+                                        <Canvas Width="48" Height="48">
+                                            <Rectangle Canvas.Left="12" Canvas.Top="12" Width="24" Height="24"
+                                                       Stroke="{DynamicResource TextPrimaryBrush}" StrokeThickness="4" Fill="Transparent" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="MOVE STOP"
+                                               HorizontalAlignment="Center"
+                                               FontSize="12"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                        </UniformGrid>
+
+                        <Grid Grid.Row="1"
+                              Grid.Column="1"
+                              Margin="0,12,0,0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="44" />
+                                <RowDefinition Height="44" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="126" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="SX Target Position"
+                                       Style="{StaticResource ManualSmallText}"
+                                       FontSize="14" />
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding CurrentScreen.Manual.TargetGx, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="Double" ToolTip="SX Target Position" PreviewMouseLeftButtonDown="OpenTextInput"
+                                     Style="{StaticResource ManualInput}" />
+                            <TextBlock Grid.Row="1"
+                                       Text="SY Target Position"
+                                       Style="{StaticResource ManualSmallText}"
+                                       FontSize="14" />
+                            <TextBox Grid.Row="1"
+                                     Grid.Column="1"
+                                     Text="{Binding CurrentScreen.Manual.TargetGy, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="Double" ToolTip="SY Target Position" PreviewMouseLeftButtonDown="OpenTextInput"
+                                     Style="{StaticResource ManualInput}" />
+                        </Grid>
+                    </Grid>
+
+                    <Border Grid.Row="2" Background="{DynamicResource PanelBorderBrush}" />
+
+                    <TextBlock Grid.Row="3"
+                               Text="Shape Scan"
+                               Style="{StaticResource ManualValueText}"
+                               Margin="0,20,0,12" />
+
+                    <Grid Grid.Row="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="132" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="172" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Margin="0,0,14,0">
+                                <TextBlock Text="Shape Size" Style="{StaticResource ManualSmallText}" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding CurrentScreen.Manual.ShapeSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="Double" ToolTip="Shape Size" PreviewMouseLeftButtonDown="OpenTextInput" Style="{StaticResource ManualInput}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,14,0">
+                                <TextBlock Text="Offset X" Style="{StaticResource ManualSmallText}" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding CurrentScreen.Manual.ShapeOffsetX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="Double" ToolTip="Offset X" PreviewMouseLeftButtonDown="OpenTextInput" Style="{StaticResource ManualInput}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Margin="0,0,14,0">
+                                <TextBlock Text="Offset Y" Style="{StaticResource ManualSmallText}" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding CurrentScreen.Manual.ShapeOffsetY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="Double" ToolTip="Offset Y" PreviewMouseLeftButtonDown="OpenTextInput" Style="{StaticResource ManualInput}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3">
+                                <TextBlock Text="Direction" Style="{StaticResource ManualSmallText}" Margin="0,0,0,6" />
+                                <ComboBox Style="{StaticResource ManualComboBox}"
+                                          SelectedValue="{Binding CurrentScreen.Manual.ShapeDirection, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          SelectedValuePath="Content">
+                                    <ComboBoxItem Content="CW" />
+                                    <ComboBoxItem Content="CCW" />
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,8,14,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Grid">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Grid Row Lines" Style="{StaticResource ManualSmallText}" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding CurrentScreen.Manual.GridRowLines, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="Int" ToolTip="Grid Row Lines" PreviewMouseLeftButtonDown="OpenTextInput" Style="{StaticResource ManualInput}" />
+                            </StackPanel>
+                            <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,8,14,0">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Grid">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="Grid Col Lines" Style="{StaticResource ManualSmallText}" Margin="0,0,0,6" />
+                                <TextBox Text="{Binding CurrentScreen.Manual.GridColLines, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Tag="Int" ToolTip="Grid Col Lines" PreviewMouseLeftButtonDown="OpenTextInput" Style="{StaticResource ManualInput}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <UniformGrid Grid.Row="1"
+                                     Columns="7"
+                                     Margin="0,12,0,0">
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Dot" Margin="0,0,10,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Dot">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Ellipse Canvas.Left="21" Canvas.Top="17" Width="6" Height="6" Fill="{DynamicResource TextSecondaryBrush}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="DOT" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Cross" Margin="0,0,10,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Cross">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Line X1="24" Y1="6" X2="24" Y2="34" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                            <Line X1="10" Y1="20" X2="38" Y2="20" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                            <Ellipse Canvas.Left="21" Canvas.Top="17" Width="6" Height="6" Fill="{DynamicResource TextSecondaryBrush}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="CROSS" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Circle" Margin="0,0,10,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Circle">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Ellipse Canvas.Left="10" Canvas.Top="3" Width="28" Height="28"
+                                                     Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" Fill="Transparent" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="CIRCLE" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Rect" Margin="0,0,10,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Rect">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Rectangle Canvas.Left="10" Canvas.Top="8" Width="28" Height="18"
+                                                       Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" Fill="Transparent" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="RECT" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Grid" Margin="0,0,10,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="Grid">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Line X1="10" Y1="10" X2="38" Y2="10" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                            <Line X1="10" Y1="20" X2="38" Y2="20" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                            <Line X1="10" Y1="30" X2="38" Y2="30" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                            <Line X1="12" Y1="8" X2="12" Y2="32" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                            <Line X1="24" Y1="8" X2="24" Y2="32" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                            <Line X1="36" Y1="8" X2="36" Y2="32" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="GRID" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="H-Line" Margin="0,0,10,0">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="H-Line">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Line X1="9" Y1="20" X2="39" Y2="20" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="H-LINE" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="V-Line">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
+                                        <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
+                                        <Setter Property="BorderBrush" Value="{DynamicResource ButtonSecondaryBorderBrush}" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.ShapeName}" Value="V-Line">
+                                                <Setter Property="Background" Value="{DynamicResource ButtonPrimaryBrush}" />
+                                                <Setter Property="BorderBrush" Value="{DynamicResource ButtonPrimaryBorderBrush}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <StackPanel>
+                                    <Viewbox Width="42" Height="38" Margin="0,0,0,8">
+                                        <Canvas Width="48" Height="40">
+                                            <Line X1="24" Y1="5" X2="24" Y2="35" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="V-LINE" HorizontalAlignment="Center" FontSize="15" />
+                                </StackPanel>
+                            </Button>
+                        </UniformGrid>
+
+                        <Grid Grid.Row="2" Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Height="84"
+                                    Command="{Binding CurrentScreen.Manual.ShapeStartCommand}"
+                                    Background="{DynamicResource ButtonSuccessBrush}"
+                                    BorderBrush="{DynamicResource StatusReadyBrush}"
+                                    Style="{StaticResource ManualCommandButton}"
+                                    Margin="0,0,14,0">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Viewbox Width="30" Height="28" Margin="0,0,10,0">
+                                        <Canvas Width="48" Height="40">
+                                            <Polygon Points="15,7 15,33 36,20" Fill="{DynamicResource TextSecondaryBrush}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="START"
+                                               HorizontalAlignment="Center"
+                                               FontSize="15"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="1"
+                                    Height="84"
+                                    Command="{Binding CurrentScreen.Manual.ShapeStopCommand}"
+                                    Background="{DynamicResource ButtonDangerBrush}"
+                                    BorderBrush="{DynamicResource ButtonDangerBorderBrush}"
+                                    Style="{StaticResource ManualCommandButton}">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Viewbox Width="30" Height="28" Margin="0,0,10,0">
+                                        <Canvas Width="48" Height="40">
+                                            <Rectangle Canvas.Left="14" Canvas.Top="10" Width="20" Height="20"
+                                                       Fill="{DynamicResource TextSecondaryBrush}" />
+                                        </Canvas>
+                                    </Viewbox>
+                                    <TextBlock Text="STOP"
+                                               HorizontalAlignment="Center"
+                                               FontSize="15"
+                                               VerticalAlignment="Center"
+                                               FontWeight="SemiBold" />
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="{Binding CurrentScreen.Manual.SelectedHead, StringFormat=Laser Action ({0})}"
+                               Style="{StaticResource PanelTitle}" />
+
+                    <StackPanel Grid.Row="1"
+                                Margin="0,8,0,12">
+                        <Button Background="{DynamicResource ButtonSuccessBrush}"
+                                Command="{Binding CurrentScreen.Manual.LaserOnCommand}"
+                                BorderBrush="{DynamicResource StatusReadyBrush}"
+                                Style="{StaticResource LaserActionButton}"
+                                Margin="0,0,0,10">
+                            <Grid Width="230">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="62" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Viewbox Width="44" Height="44" HorizontalAlignment="Center">
+                                    <Canvas Width="48" Height="48">
+                                        <Line X1="24" Y1="5" X2="24" Y2="43" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        <Line X1="5" Y1="24" X2="43" Y2="24" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        <Line X1="10" Y1="10" X2="38" Y2="38" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                        <Line X1="38" Y1="10" X2="10" Y2="38" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                        <Ellipse Canvas.Left="20" Canvas.Top="20" Width="8" Height="8" Fill="{DynamicResource TextSecondaryBrush}" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Grid.Column="1"
+                                           Text="LASER ON"
+                                           FontSize="19"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+
+                        <Border Margin="0,0,0,10"
+                                Padding="10,8"
+                                Background="{DynamicResource GridBackgroundBrush}"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="4">
+                            <Grid Width="230">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="32" />
+                                    <RowDefinition Height="32" />
+                                    <RowDefinition Height="32" />
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="86" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="56" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Mode"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <ComboBox Grid.Column="1"
+                                          Style="{StaticResource ManualComboBox}"
+                                          Height="30"
+                                          SelectedValue="{Binding CurrentScreen.Manual.LaserOnMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          SelectedValuePath="Content">
+                                    <ComboBoxItem Content="TIME" />
+                                    <ComboBoxItem Content="COUNT" />
+                                </ComboBox>
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding CurrentScreen.Manual.LaserOnMode}"
+                                           Foreground="{DynamicResource AccentTextBrush}"
+                                           FontSize="12"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right" />
+
+                                <TextBlock Grid.Row="1"
+                                           Text="On Time"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Row="1"
+                                         Grid.Column="1"
+                                         Text="{Binding CurrentScreen.Manual.LaserOnTimeMsec, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="Double" ToolTip="Laser On Time" PreviewMouseLeftButtonDown="OpenTextInput"
+                                         IsEnabled="{Binding CurrentScreen.Manual.IsLaserTimeMode}"
+                                         Style="{StaticResource ManualInput}"
+                                         Height="30"
+                                         Padding="8,3"
+                                         FontSize="13" />
+                                <TextBlock Grid.Row="1"
+                                           Grid.Column="2"
+                                           Text="msec"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right" />
+
+                                <TextBlock Grid.Row="2"
+                                           Text="Shot Count"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                                <TextBox Grid.Row="2"
+                                         Grid.Column="1"
+                                         Text="{Binding CurrentScreen.Manual.LaserShotCount, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="Int" ToolTip="Laser Shot Count" PreviewMouseLeftButtonDown="OpenTextInput"
+                                         IsEnabled="{Binding CurrentScreen.Manual.IsLaserCountMode}"
+                                         Style="{StaticResource ManualInput}"
+                                         Height="30"
+                                         Padding="8,3"
+                                         FontSize="13" />
+                                <TextBlock Grid.Row="2"
+                                           Grid.Column="2"
+                                           Text="count"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right" />
+                            </Grid>
+                        </Border>
+
+                        <Button Background="{DynamicResource ButtonSecondaryBrush}"
+                                Command="{Binding CurrentScreen.Manual.LaserOffCommand}"
+                                BorderBrush="{DynamicResource PanelBorderBrush}"
+                                Style="{StaticResource LaserActionButton}"
+                                Margin="0,0,0,10">
+                            <Grid Width="230">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="62" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Viewbox Width="44" Height="44" HorizontalAlignment="Center">
+                                    <Canvas Width="48" Height="48">
+                                        <Line X1="24" Y1="5" X2="24" Y2="43" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        <Line X1="5" Y1="24" X2="43" Y2="24" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        <Line X1="10" Y1="10" X2="38" Y2="38" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                        <Line X1="38" Y1="10" X2="10" Y2="38" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2" />
+                                        <Line X1="7" Y1="41" X2="41" Y2="7" Stroke="{DynamicResource ButtonDangerBorderBrush}" StrokeThickness="3" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Grid.Column="1"
+                                           Text="LASER OFF"
+                                           FontSize="19"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                        <Button Background="{DynamicResource ButtonPrimaryBrush}"
+                                Command="{Binding CurrentScreen.Manual.CenterOnCommand}"
+                                BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
+                                Style="{StaticResource LaserActionButton}">
+                            <Grid Width="230">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="62" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Viewbox Width="44" Height="44" HorizontalAlignment="Center">
+                                    <Canvas Width="48" Height="48">
+                                        <Ellipse Canvas.Left="12" Canvas.Top="12" Width="24" Height="24"
+                                                 Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" Fill="Transparent" />
+                                        <Ellipse Canvas.Left="21" Canvas.Top="21" Width="6" Height="6"
+                                                 Fill="{DynamicResource TextSecondaryBrush}" />
+                                        <Line X1="24" Y1="4" X2="24" Y2="44" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                        <Line X1="4" Y1="24" X2="44" Y2="24" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="3" />
+                                    </Canvas>
+                                </Viewbox>
+                                <TextBlock Grid.Column="1"
+                                           Text="CENTER ON"
+                                           FontSize="19"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Button>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="2"
+                              ItemsSource="{Binding CurrentScreen.Manual.CommandStateRows}"
+                              IsReadOnly="False"
+                              Style="{StaticResource PlainDataGrid}"
+                              RowHeight="36"
+                              FontSize="13">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Item"
+                                                Binding="{Binding Name}"
+                                                IsReadOnly="True"
+                                                Width="132" />
+                            <DataGridTemplateColumn Header="Value" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Grid>
+                                            <Button Content="{Binding Value}" IsEnabled="{Binding IsEditable}" Click="OpenCommandStateInput" Height="28" Padding="8,2" FontSize="13">
+                                                <Button.Style><Style TargetType="Button" BasedOn="{StaticResource ManualInputButton}"><Setter Property="Visibility" Value="Visible" /><Style.Triggers><DataTrigger Binding="{Binding UsesSelectionEditor}" Value="True"><Setter Property="Visibility" Value="Collapsed" /></DataTrigger></Style.Triggers></Style></Button.Style>
+                                            </Button>
+                                            <ComboBox ItemsSource="{Binding ValueOptions}" SelectedItem="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Height="28">
+                                                <ComboBox.Style><Style TargetType="ComboBox" BasedOn="{StaticResource ManualComboBox}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding UsesSelectionEditor}" Value="True"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></ComboBox.Style>
+                                            </ComboBox>
+                                        </Grid>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Unit"
+                                                Binding="{Binding Unit}"
+                                                IsReadOnly="True"
+                                                Width="62" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2"
+              Grid.RowSpan="2"
+              Margin="0,6,0,0"
+              Visibility="{Binding CurrentScreen.Manual.IsStageVisionWorkspace, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="0.82*" />
+                <ColumnDefinition Width="1.18*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Margin="0,0,6,0"
+                    Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="Stage Control"
+                               Style="{StaticResource PanelTitle}" />
+
+                    <ItemsControl Grid.Row="1"
+                                  Margin="0,18,0,0"
+                                  ItemsSource="{Binding CurrentScreen.Manual.StageAxes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="44" />
+                                    </Grid.RowDefinitions>
+
+                                    <Grid Grid.Row="0" Margin="0,0,0,18">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="52" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayAxis}"
+                                                       Foreground="{DynamicResource AccentBrush}"
+                                                       FontSize="22"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Text="AXIS"
+                                                       Style="{StaticResource ManualSmallText}"
+                                                       Margin="0,1,0,0" />
+                                        </StackPanel>
+
+                                        <Grid Grid.Column="1" Margin="0,0,6,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="40" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Current Position"
+                                                       Style="{StaticResource ManualSmallText}"
+                                                       Margin="0,0,0,6" />
+                                            <Border Grid.Row="1"
+                                                    Background="{DynamicResource GridBackgroundBrush}"
+                                                    BorderBrush="{DynamicResource PanelBorderBrush}"
+                                                    BorderThickness="1"
+                                                    Padding="12,0">
+                                                <Grid>
+                                                    <TextBlock Text="{Binding CurrentPosition}"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               FontSize="14"
+                                                               FontWeight="SemiBold"
+                                                               VerticalAlignment="Center" />
+                                                    <TextBlock Text="{Binding Unit}"
+                                                               HorizontalAlignment="Right"
+                                                               VerticalAlignment="Center"
+                                                               Style="{StaticResource ManualSmallText}" />
+                                                </Grid>
+                                            </Border>
+                                        </Grid>
+
+                                        <Grid Grid.Column="2" Margin="6,0,0,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="40" />
+                                            </Grid.RowDefinitions>
+                                            <TextBlock Text="Target Position"
+                                                       Style="{StaticResource ManualSmallText}"
+                                                       Margin="0,0,0,6" />
+                                            <Grid Grid.Row="1">
+                                                <Button Content="{Binding TargetPosition}"
+                                                        Click="OpenStageTargetInput"
+                                                        Style="{StaticResource ManualInputButton}"
+                                                        Height="40"
+                                                        Padding="12,7,44,7" />
+                                                <TextBlock Text="{Binding Unit}"
+                                                           HorizontalAlignment="Right"
+                                                           VerticalAlignment="Center"
+                                                           Margin="0,0,12,0"
+                                                           Style="{StaticResource ManualSmallText}"
+                                                           IsHitTestVisible="False" />
+                                            </Grid>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Grid Grid.Row="1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Grid.Column="0"
+                                                Content="HOME"
+                                                Command="{Binding DataContext.CurrentScreen.Manual.StageHomeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Style="{StaticResource ManualCommandButton}"
+                                                Margin="0,0,6,0" />
+                                        <Button Grid.Column="1"
+                                                Content="MOVE"
+                                                Command="{Binding DataContext.CurrentScreen.Manual.StageMoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource ManualCommandButton}"
+                                                Margin="6,0" />
+                                        <Button Grid.Column="2"
+                                                Content="STOP"
+                                                Command="{Binding DataContext.CurrentScreen.Manual.StageStopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                Style="{StaticResource ManualCommandButton}"
+                                                Background="{DynamicResource ButtonDangerBrush}"
+                                                BorderBrush="{DynamicResource ButtonDangerBorderBrush}"
+                                                Margin="6,0,0,0" />
+                                    </Grid>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="1"
+                    Margin="6,0,0,0"
+                    Style="{StaticResource PanelBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="64" />
+                        <RowDefinition Height="64" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Text="Vision Capture"
+                               Style="{StaticResource PanelTitle}" />
+
+                    <Border Grid.Row="1"
+                            Margin="0,10,0,0"
+                            Background="{DynamicResource GridBackgroundBrush}"
+                            BorderBrush="{DynamicResource PanelBorderBrush}"
+                            BorderThickness="1"
+                            Padding="8">
+                        <Grid>
+                            <Image Source="{Binding CurrentScreen.Manual.VisionImage}"
+                                   Stretch="Uniform" />
+                            <StackPanel HorizontalAlignment="Center"
+                                        VerticalAlignment="Center">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding CurrentScreen.Manual.HasVisionImage}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="VISION IMAGE"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="22"
+                                           FontWeight="SemiBold"
+                                           HorizontalAlignment="Center" />
+                                <TextBlock Text="Press SHOT to capture the current camera image"
+                                           Style="{StaticResource ManualSmallText}"
+                                           Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="28" />
+                            <RowDefinition Height="28" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="Status" Style="{StaticResource ManualSmallText}" />
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding CurrentScreen.Manual.VisionCaptureStatus}"
+                                   Style="{StaticResource ManualValueText}"
+                                   FontSize="12" />
+                        <TextBlock Grid.Row="1" Text="Captured At" Style="{StaticResource ManualSmallText}" />
+                        <TextBlock Grid.Row="1"
+                                   Grid.Column="1"
+                                   Text="{Binding CurrentScreen.Manual.VisionCaptureTime}"
+                                   Style="{StaticResource ManualValueText}"
+                                   FontSize="12" />
+                    </Grid>
+
+                    <Button Grid.Row="3"
+                            Content="SHOT"
+                            Command="{Binding CurrentScreen.Manual.VisionShotCommand}"
+                            Style="{StaticResource ManualCommandButton}"
+                            Background="{DynamicResource ButtonSuccessBrush}"
+                            BorderBrush="{DynamicResource StatusReadyBrush}"
+                            Margin="0,10,0,0" />
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
+
+

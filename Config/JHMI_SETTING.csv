@@ -1,0 +1,83 @@
+TAB,GROUP,NAME,DISPLAY NAME,DATA TYPE,UNIT,SHOW,USE,VALUE,MIN,MAX,DESCRIPTION,ORDER
+OPTION,PATH,LocalScriptPath,Local Script Path,STRING,,1,1,.\Data\Script,0,0,Generated script path on scan PC,11
+OPTION,PATH,AutomationScriptPath,Automation Script Path,STRING,,1,1,/,0,0,Automation1 controller script target path,12
+OPTION,SCRIPT,SCRIPT_BUFFERED_RUN_USE,Script Buffered Run Use,BOOL,,1,1,OFF,0,1,Use Automation1 command queue for process script run,13
+OPTION,SCRIPT,SCRIPT_BUFFERED_RUN_LINES_PER_COMMAND,Buffered Run Lines Per Command,INT,line,1,1,1000,2,10000,Lines per command when adding a script file to command queue,14
+OPTION,SCRIPT,SCRIPT_BUFFERED_RUN_TIMEOUT_MS,Buffered Run Timeout,INT,ms,1,1,600000,0,3600000,Wait timeout for buffered run command queue. 0 means infinite,15
+OPTION,SCRIPT,SCRIPT_BUFFERED_RUN_QUEUE_SIZE,Buffered Run Queue Size,INT,count,1,1,100,1,10000,Automation1 command queue capacity for buffered run,16
+OPTION,VISION,VisionXFlip,X Flip,BOOL,,1,1,OFF,0,1,Flip the Vision X error sign before Head coordinate conversion,20
+OPTION,VISION,VisionYFlip,Y Flip,BOOL,,1,1,OFF,0,1,Flip the Vision Y error sign before Head coordinate conversion,21
+OPTION,VISION,VisionXyFlip,XY Flip,BOOL,,1,1,OFF,0,1,Apply the XY axis transform after X/Y flips and before Head coordinate conversion,22
+OPTION,AUTO SEQUENCE,AUTO_POWER_CHECK_USE,Auto Power Check Use,BOOL,,1,1,ON,0,1,Use power check step in auto sequence,30
+OPTION,AUTO SEQUENCE,AUTO_ALIGN_USE,Auto Align Use,BOOL,,1,1,ON,0,1,Use align step in auto sequence,31
+OPTION,AUTO SEQUENCE,AUTO_PROCESS_USE,Auto Process Use,BOOL,,1,1,ON,0,1,Use drilling process step in auto sequence,32
+OPTION,AUTO SEQUENCE,AUTO_INSPECTION_USE,Auto Inspection Use,BOOL,,1,1,ON,0,1,Use inspection step in auto sequence,33
+INTERFACE,HOST,HostIp,Host IP,STRING,,1,1,192.168.0.10,0,0,Host communication IP,10
+INTERFACE,HOST,Port,Host Port,INT,,1,1,5000,1,65535,Host communication port,11
+INTERFACE,HOST,Timeout,Message Timeout,INT,ms,1,1,3000,100,60000,Message timeout,12
+INTERFACE,HOST,Retry,Retry Count,INT,count,1,1,3,0,10,Retry count,13
+IO,OUTPUT,OutputOnDelay,Output ON Delay,INT,ms,1,1,50,0,10000,Output ON delay,10
+IO,OUTPUT,OutputOffDelay,Output OFF Delay,INT,ms,1,1,50,0,10000,Output OFF delay,11
+IO,INPUT,InputStableTime,Input Stable Time,INT,ms,1,1,20,0,10000,Input debounce time,20
+MOTOR,STAGE,STAGE_Y_SPEED,Stage Y Speed,DOUBLE,mm/sec,1,1,100,0,5000,Stage Y movement speed,10
+MOTOR,STAGE,STAGE_START_POS_X,Stage Start Pos X,DOUBLE,mm,1,1,0.000,-10000,10000,Stage start position X before scan process,11
+MOTOR,STAGE,STAGE_START_POS_Y,Stage Start Pos Y,DOUBLE,mm,1,1,0.000,-10000,10000,Stage start position Y before scan process,12
+MOTOR,AXIS,MoveTimeout,Move Timeout,INT,ms,1,1,10000,100,120000,Axis movement timeout,20
+POSITION,SCANNER,SCAN_ENCODER_AXIS,Scan Encoder Axis,STRING,,1,1,GX,0,0,Automation1 auxiliary feedback axis used for stage synchronized scan,33
+POSITION,SCANNER,SCAN_ENCODER_SCALE,Scan Encoder Scale,DOUBLE,count/mm,1,1,16000,1,1000000,Stage encoder scale used by Automation1 process script wait,34
+POSITION,SCANNER,SCAN_START_JUMP_STEP,Scan Start Jump Step,DOUBLE,mm,1,1,5,0.001,1000,Scanner jump step before first process point,35
+POSITION,SCANNER,STAGE_SCAN_DIRECTION_Y,Stage Scan Direction Y,DOUBLE,sign,1,1,-1,-1,1,Stage Y scan direction during process script,36
+POSITION,SCANNER,HeadGapX,Head Gap X,DOUBLE,mm,1,1,200,-10000,10000,X pitch between adjacent Head centers,37
+POSITION,SCANNER,HeadGapY,Head Gap Y,DOUBLE,mm,1,1,270,-10000,10000,Y distance from H02/H04/H06/H08 lane to H01/H03/H05/H07 lane,38
+POSITION,SCANNER,REVIEW_TO_HEAD1_GAP_Y,Review To Head1 Gap Y,DOUBLE,mm,1,1,0,-10000,10000,Y distance from review camera center to H01/H03/H05/H07 head center,39
+POSITION,SCANNER,H01_AK_POSITION_X,H01 AK Position X,DOUBLE,mm,1,1,-5,-10000,10000,H01 center X relative to Align Key,100
+POSITION,SCANNER,H01_SCAN_FIELD_WIDTH_X,H01 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H01 total assignment width centered on Head,101
+POSITION,SCANNER,H02_SCAN_FIELD_WIDTH_X,H02 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H02 total assignment width centered on Head,104
+POSITION,SCANNER,H03_SCAN_FIELD_WIDTH_X,H03 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H03 total assignment width centered on Head,107
+POSITION,SCANNER,H04_SCAN_FIELD_WIDTH_X,H04 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H04 total assignment width centered on Head,110
+POSITION,SCANNER,H05_SCAN_FIELD_WIDTH_X,H05 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H05 total assignment width centered on Head,113
+POSITION,SCANNER,H06_SCAN_FIELD_WIDTH_X,H06 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H06 total assignment width centered on Head,116
+POSITION,SCANNER,H07_SCAN_FIELD_WIDTH_X,H07 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H07 total assignment width centered on Head,119
+POSITION,SCANNER,H08_SCAN_FIELD_WIDTH_X,H08 Scan Field Width X,DOUBLE,mm,1,1,110,0,10000,H08 total assignment width centered on Head,122
+POSITION,SCANNER,H01_STAGE_X_TO_GX_SIGN,H01 Stage X to GX Sign,DOUBLE,sign,1,1,-1,-1,1,H01 scanner GX direction relative to Stage X direction,40
+POSITION,SCANNER,H01_STAGE_Y_TO_GY_SIGN,H01 Stage Y to GY Sign,DOUBLE,sign,1,1,1,-1,1,H01 scanner GY direction relative to Stage Y direction,41
+POSITION,SCANNER,H02_STAGE_X_TO_GX_SIGN,H02 Stage X to GX Sign,DOUBLE,sign,1,1,1,-1,1,H02 scanner GX direction relative to Stage X direction,42
+POSITION,SCANNER,H02_STAGE_Y_TO_GY_SIGN,H02 Stage Y to GY Sign,DOUBLE,sign,1,1,-1,-1,1,H02 scanner GY direction relative to Stage Y direction,43
+POSITION,SCANNER,H03_STAGE_X_TO_GX_SIGN,H03 Stage X to GX Sign,DOUBLE,sign,1,1,-1,-1,1,H03 scanner GX direction relative to Stage X direction,44
+POSITION,SCANNER,H03_STAGE_Y_TO_GY_SIGN,H03 Stage Y to GY Sign,DOUBLE,sign,1,1,1,-1,1,H03 scanner GY direction relative to Stage Y direction,45
+POSITION,SCANNER,H04_STAGE_X_TO_GX_SIGN,H04 Stage X to GX Sign,DOUBLE,sign,1,1,1,-1,1,H04 scanner GX direction relative to Stage X direction,46
+POSITION,SCANNER,H04_STAGE_Y_TO_GY_SIGN,H04 Stage Y to GY Sign,DOUBLE,sign,1,1,-1,-1,1,H04 scanner GY direction relative to Stage Y direction,47
+POSITION,SCANNER,H05_STAGE_X_TO_GX_SIGN,H05 Stage X to GX Sign,DOUBLE,sign,1,1,-1,-1,1,H05 scanner GX direction relative to Stage X direction,48
+POSITION,SCANNER,H05_STAGE_Y_TO_GY_SIGN,H05 Stage Y to GY Sign,DOUBLE,sign,1,1,1,-1,1,H05 scanner GY direction relative to Stage Y direction,49
+POSITION,SCANNER,H06_STAGE_X_TO_GX_SIGN,H06 Stage X to GX Sign,DOUBLE,sign,1,1,1,-1,1,H06 scanner GX direction relative to Stage X direction,50
+POSITION,SCANNER,H06_STAGE_Y_TO_GY_SIGN,H06 Stage Y to GY Sign,DOUBLE,sign,1,1,-1,-1,1,H06 scanner GY direction relative to Stage Y direction,51
+POSITION,SCANNER,H07_STAGE_X_TO_GX_SIGN,H07 Stage X to GX Sign,DOUBLE,sign,1,1,-1,-1,1,H07 scanner GX direction relative to Stage X direction,52
+POSITION,SCANNER,H07_STAGE_Y_TO_GY_SIGN,H07 Stage Y to GY Sign,DOUBLE,sign,1,1,1,-1,1,H07 scanner GY direction relative to Stage Y direction,53
+POSITION,SCANNER,H08_STAGE_X_TO_GX_SIGN,H08 Stage X to GX Sign,DOUBLE,sign,1,1,1,-1,1,H08 scanner GX direction relative to Stage X direction,54
+POSITION,SCANNER,H08_STAGE_Y_TO_GY_SIGN,H08 Stage Y to GY Sign,DOUBLE,sign,1,1,-1,-1,1,H08 scanner GY direction relative to Stage Y direction,55
+POSITION,SCANNER,H01_X_AXIS,H01 X Axis,STRING,,1,1,GX_1,0,0,H01 Automation1 scanner X axis name,60
+POSITION,SCANNER,H01_Y_AXIS,H01 Y Axis,STRING,,1,1,GY_1,0,0,H01 Automation1 scanner Y axis name,61
+POSITION,SCANNER,H01_ENCODER_AXIS,H01 Encoder Axis,STRING,,1,1,GX_1,0,0,H01 Automation1 auxiliary feedback axis for MOF wait,62
+POSITION,SCANNER,H02_X_AXIS,H02 X Axis,STRING,,1,1,GX_2,0,0,H02 Automation1 scanner X axis name,63
+POSITION,SCANNER,H02_Y_AXIS,H02 Y Axis,STRING,,1,1,GY_2,0,0,H02 Automation1 scanner Y axis name,64
+POSITION,SCANNER,H02_ENCODER_AXIS,H02 Encoder Axis,STRING,,1,1,GX_2,0,0,H02 Automation1 auxiliary feedback axis for MOF wait,65
+POSITION,SCANNER,H03_X_AXIS,H03 X Axis,STRING,,1,1,GX_3,0,0,H03 Automation1 scanner X axis name,66
+POSITION,SCANNER,H03_Y_AXIS,H03 Y Axis,STRING,,1,1,GY_3,0,0,H03 Automation1 scanner Y axis name,67
+POSITION,SCANNER,H03_ENCODER_AXIS,H03 Encoder Axis,STRING,,1,1,GX_3,0,0,H03 Automation1 auxiliary feedback axis for MOF wait,68
+POSITION,SCANNER,H04_X_AXIS,H04 X Axis,STRING,,1,1,GX_4,0,0,H04 Automation1 scanner X axis name,69
+POSITION,SCANNER,H04_Y_AXIS,H04 Y Axis,STRING,,1,1,GY_4,0,0,H04 Automation1 scanner Y axis name,70
+POSITION,SCANNER,H04_ENCODER_AXIS,H04 Encoder Axis,STRING,,1,1,GX_4,0,0,H04 Automation1 auxiliary feedback axis for MOF wait,71
+POSITION,SCANNER,H05_X_AXIS,H05 X Axis,STRING,,1,1,GX_5,0,0,H05 Automation1 scanner X axis name,72
+POSITION,SCANNER,H05_Y_AXIS,H05 Y Axis,STRING,,1,1,GY_5,0,0,H05 Automation1 scanner Y axis name,73
+POSITION,SCANNER,H05_ENCODER_AXIS,H05 Encoder Axis,STRING,,1,1,GX_5,0,0,H05 Automation1 auxiliary feedback axis for MOF wait,74
+POSITION,SCANNER,H06_X_AXIS,H06 X Axis,STRING,,1,1,GX_6,0,0,H06 Automation1 scanner X axis name,75
+POSITION,SCANNER,H06_Y_AXIS,H06 Y Axis,STRING,,1,1,GY_6,0,0,H06 Automation1 scanner Y axis name,76
+POSITION,SCANNER,H06_ENCODER_AXIS,H06 Encoder Axis,STRING,,1,1,GX_6,0,0,H06 Automation1 auxiliary feedback axis for MOF wait,77
+POSITION,SCANNER,H07_X_AXIS,H07 X Axis,STRING,,1,1,GX_7,0,0,H07 Automation1 scanner X axis name,78
+POSITION,SCANNER,H07_Y_AXIS,H07 Y Axis,STRING,,1,1,GY_7,0,0,H07 Automation1 scanner Y axis name,79
+POSITION,SCANNER,H07_ENCODER_AXIS,H07 Encoder Axis,STRING,,1,1,GX_7,0,0,H07 Automation1 auxiliary feedback axis for MOF wait,80
+POSITION,SCANNER,H08_X_AXIS,H08 X Axis,STRING,,1,1,GX_8,0,0,H08 Automation1 scanner X axis name,81
+POSITION,SCANNER,H08_Y_AXIS,H08 Y Axis,STRING,,1,1,GY_8,0,0,H08 Automation1 scanner Y axis name,82
+POSITION,SCANNER,H08_ENCODER_AXIS,H08 Encoder Axis,STRING,,1,1,GX_8,0,0,H08 Automation1 auxiliary feedback axis for MOF wait,83
+ALARM,ALARM,ResetTimeout,Reset Timeout,INT,ms,1,1,5000,100,60000,Alarm reset timeout,10
+ALARM,BUZZER,BuzzerAutoOff,Buzzer Auto Off,BOOL,,1,1,false,0,1,Use automatic buzzer off,20

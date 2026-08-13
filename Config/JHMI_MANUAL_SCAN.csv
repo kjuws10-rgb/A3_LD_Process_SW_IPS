@@ -1,0 +1,14 @@
+NAME,DISPLAY NAME,DATA TYPE,UNIT,SHOW,USE,VALUE,MIN,MAX,DESCRIPTION,ORDER
+ShapeSize,Shape Size,DOUBLE,mm,0,1,0.350,0.001,100,Manual shape size,1
+OffsetX,Offset X,DOUBLE,mm,0,1,0.000,-100,100,Manual shape center offset X,2
+OffsetY,Offset Y,DOUBLE,mm,0,1,0.000,-100,100,Manual shape center offset Y,3
+Direction,Direction,STRING,,0,1,CW,0,0,Manual shape direction,4
+ShapeName,Shape Name,STRING,,0,1,Circle,0,0,Manual shape name,5
+GridRowLines,Grid Row Lines,INT,ea,0,1,5,2,200,Manual grid row line count,6
+GridColLines,Grid Col Lines,INT,ea,0,1,5,2,200,Manual grid column line count,7
+LaserPower,Laser Power,DOUBLE,W,1,1,1.00,0,100,Manual laser power,10
+JumpSpeed,Jump Speed,DOUBLE,m/sec,1,1,1.500,0.001,100,Manual jump speed,20
+MarkSpeed,Mark Speed,DOUBLE,m/sec,1,1,0.900,0.001,100,Manual mark speed,30
+LaserFrequency,Laser Frequency,DOUBLE,kHz,1,1,20.0,0.001,1000,Manual laser frequency,40
+LaserOnDelay,Laser On Delay,DOUBLE,usec,1,1,8,0,10000,Manual laser on delay,50
+LaserOffDelay,Laser Off Delay,DOUBLE,usec,1,1,12,0,10000,Manual laser off delay,60

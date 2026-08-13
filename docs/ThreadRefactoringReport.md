@@ -302,7 +302,7 @@ Vendor SDK 내부의 Interface/Task 형식은 수정하지 않았다. 사용자 
 | 기준 Commit | `9b33c16ee102a6879acb4411ba781771ec0759d4` |
 | 작업 Branch | `agent/remove-async-task-thread` |
 | 주요 작업 Commit | `d7fe6e8`, `43dc141`, `20e837d`, `5ccea3b` |
-| 변경 파일 수 | 직접 관리 파일 69개 |
+| 변경 파일 수 | 직접 관리 파일 70개 |
 | Push | 최종 검증 후 갱신 |
 | Pull Request | 최종 검증 후 갱신 |
 | Merge Commit | 최종 병합 후 갱신 |

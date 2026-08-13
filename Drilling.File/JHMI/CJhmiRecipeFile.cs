@@ -549,14 +549,23 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         {
             return $"Cell{cellNo} {holeName} {namedDisplayName}";
         }
-
-        var itemName = parameterName.ToUpperInvariant() switch
+        string EvaluateValueSwitch1()
         {
-            "PIXEL_SIZE" => "Hole Size",
-            "NUM_OF_PIXEL_X" => "Hole Count X",
-            "NUM_OF_PIXEL_Y" => "Hole Count Y",
-            _ => parameter.Name
-        };
+            var switchValue = parameterName.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "PIXEL_SIZE":
+                    return "Hole Size";
+                case "NUM_OF_PIXEL_X":
+                    return "Hole Count X";
+                case "NUM_OF_PIXEL_Y":
+                    return "Hole Count Y";
+                default:
+                    return parameter.Name;
+            }
+        }
+
+        var itemName = EvaluateValueSwitch1();
         return $"Cell{cellNo} {itemName}";
     }
 
@@ -807,13 +816,23 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
 
     private static EN_RECIPE_DATA_TYPE ReadDataType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_RECIPE_DATA_TYPE EvaluateValueSwitch2()
         {
-            "INT" => EN_RECIPE_DATA_TYPE.Int,
-            "DOUBLE" => EN_RECIPE_DATA_TYPE.Double,
-            "BOOL" => EN_RECIPE_DATA_TYPE.Bool,
-            _ => EN_RECIPE_DATA_TYPE.String
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INT":
+                    return EN_RECIPE_DATA_TYPE.Int;
+                case "DOUBLE":
+                    return EN_RECIPE_DATA_TYPE.Double;
+                case "BOOL":
+                    return EN_RECIPE_DATA_TYPE.Bool;
+                default:
+                    return EN_RECIPE_DATA_TYPE.String;
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static bool ReadBool(string value, bool defaultValue)

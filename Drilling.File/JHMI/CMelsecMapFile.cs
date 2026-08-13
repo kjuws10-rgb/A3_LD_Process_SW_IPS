@@ -217,38 +217,71 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
 
     private static EN_MELSEC_DATA_TYPE ReadDataType(string value, int rowNo)
     {
-        return NormalizeText(value) switch
+        EN_MELSEC_DATA_TYPE EvaluateValueSwitch1()
         {
-            "BIT" => EN_MELSEC_DATA_TYPE.Bit,
-            "WORD" => EN_MELSEC_DATA_TYPE.Word,
-            "DWORD" or "D_WORD" or "DOUBLEWORD" => EN_MELSEC_DATA_TYPE.DWord,
-            "DOUBLE" or "REAL64" => EN_MELSEC_DATA_TYPE.Double,
-            "FLOAT" or "REAL32" => EN_MELSEC_DATA_TYPE.Float,
-            "STRING" or "TEXT" => EN_MELSEC_DATA_TYPE.String,
-            _ => throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DATA TYPE is invalid: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "BIT":
+                    return EN_MELSEC_DATA_TYPE.Bit;
+                case "WORD":
+                    return EN_MELSEC_DATA_TYPE.Word;
+                case "DWORD" or "D_WORD" or "DOUBLEWORD":
+                    return EN_MELSEC_DATA_TYPE.DWord;
+                case "DOUBLE" or "REAL64":
+                    return EN_MELSEC_DATA_TYPE.Double;
+                case "FLOAT" or "REAL32":
+                    return EN_MELSEC_DATA_TYPE.Float;
+                case "STRING" or "TEXT":
+                    return EN_MELSEC_DATA_TYPE.String;
+                default:
+                    throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DATA TYPE is invalid: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static EN_MELSEC_DIRECTION ReadDirection(string value, int rowNo)
     {
-        return NormalizeText(value) switch
+        EN_MELSEC_DIRECTION EvaluateValueSwitch2()
         {
-            "IN" or "INPUT" => EN_MELSEC_DIRECTION.In,
-            "OUT" or "OUTPUT" => EN_MELSEC_DIRECTION.Out,
-            "INOUT" or "IN_OUT" or "BOTH" => EN_MELSEC_DIRECTION.InOut,
-            _ => throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DIRECTION is invalid: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "IN" or "INPUT":
+                    return EN_MELSEC_DIRECTION.In;
+                case "OUT" or "OUTPUT":
+                    return EN_MELSEC_DIRECTION.Out;
+                case "INOUT" or "IN_OUT" or "BOTH":
+                    return EN_MELSEC_DIRECTION.InOut;
+                default:
+                    throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DIRECTION is invalid: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static EN_MELSEC_ACCESS ReadAccess(string value, int rowNo)
     {
-        return NormalizeText(value) switch
+        EN_MELSEC_ACCESS EvaluateValueSwitch3()
         {
-            "R" or "READ" => EN_MELSEC_ACCESS.Read,
-            "W" or "WRITE" => EN_MELSEC_ACCESS.Write,
-            "RW" or "R/W" or "READWRITE" or "READ_WRITE" => EN_MELSEC_ACCESS.ReadWrite,
-            _ => throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / ACCESS is invalid: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "R" or "READ":
+                    return EN_MELSEC_ACCESS.Read;
+                case "W" or "WRITE":
+                    return EN_MELSEC_ACCESS.Write;
+                case "RW" or "R/W" or "READWRITE" or "READ_WRITE":
+                    return EN_MELSEC_ACCESS.ReadWrite;
+                default:
+                    throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / ACCESS is invalid: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch3();
     }
 
     private static string RequireText(

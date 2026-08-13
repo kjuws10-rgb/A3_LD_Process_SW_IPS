@@ -263,14 +263,23 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
             {
                 throw new InvalidDataException($"Setting save blocked. {formItem.DisplayName} cannot be empty.");
             }
-
-            var validationMessage = formItem.DataType switch
+            string EvaluateDataTypeSwitch1()
             {
-                EN_RECIPE_DATA_TYPE.Int => ValidateIntParameter(formItem, value),
-                EN_RECIPE_DATA_TYPE.Double => ValidateDoubleParameter(formItem, value),
-                EN_RECIPE_DATA_TYPE.Bool => ValidateBoolParameter(formItem, value),
-                _ => ""
-            };
+                var switchValue = formItem.DataType;
+                switch (switchValue)
+                {
+                    case EN_RECIPE_DATA_TYPE.Int:
+                        return ValidateIntParameter(formItem, value);
+                    case EN_RECIPE_DATA_TYPE.Double:
+                        return ValidateDoubleParameter(formItem, value);
+                    case EN_RECIPE_DATA_TYPE.Bool:
+                        return ValidateBoolParameter(formItem, value);
+                    default:
+                        return "";
+                }
+            }
+
+            var validationMessage = EvaluateDataTypeSwitch1();
 
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
@@ -363,13 +372,23 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
     private static string NormalizeTab(string value)
     {
         var normalized = value.Trim().ToUpperInvariant();
-        return normalized switch
+        string EvaluateNormalizedSwitch2()
         {
-            "IO" => "IO",
-            "POSITION" => "OPTION",
-            "OPTION" or "INTERFACE" or "MOTOR" or "ALARM" => normalized,
-            _ => normalized
-        };
+            var switchValue = normalized;
+            switch (switchValue)
+            {
+                case "IO":
+                    return "IO";
+                case "POSITION":
+                    return "OPTION";
+                case "OPTION" or "INTERFACE" or "MOTOR" or "ALARM":
+                    return normalized;
+                default:
+                    return normalized;
+            }
+        }
+
+        return EvaluateNormalizedSwitch2();
     }
 
     private static string NormalizeSettingText(string value, string defaultValue)
@@ -386,13 +405,23 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
 
     private static EN_RECIPE_DATA_TYPE ReadDataType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_RECIPE_DATA_TYPE EvaluateValueSwitch3()
         {
-            "INT" => EN_RECIPE_DATA_TYPE.Int,
-            "DOUBLE" => EN_RECIPE_DATA_TYPE.Double,
-            "BOOL" => EN_RECIPE_DATA_TYPE.Bool,
-            _ => EN_RECIPE_DATA_TYPE.String
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INT":
+                    return EN_RECIPE_DATA_TYPE.Int;
+                case "DOUBLE":
+                    return EN_RECIPE_DATA_TYPE.Double;
+                case "BOOL":
+                    return EN_RECIPE_DATA_TYPE.Bool;
+                default:
+                    return EN_RECIPE_DATA_TYPE.String;
+            }
+        }
+
+        return EvaluateValueSwitch3();
     }
 
     private static bool ReadBool(string value, bool defaultValue)
@@ -424,11 +453,19 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
 
     private static string ToTabText(EN_SETTING_TAB section)
     {
-        return section switch
+        string EvaluateSectionSwitch4()
         {
-            EN_SETTING_TAB.Io => "IO",
-            _ => section.ToString().ToUpperInvariant()
-        };
+            var switchValue = section;
+            switch (switchValue)
+            {
+                case EN_SETTING_TAB.Io:
+                    return "IO";
+                default:
+                    return section.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateSectionSwitch4();
     }
 
     private sealed record ST_SETTING_FORM_ITEM(

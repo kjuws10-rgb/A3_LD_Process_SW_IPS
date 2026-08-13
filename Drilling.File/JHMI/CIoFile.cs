@@ -187,13 +187,22 @@ public sealed class CIoFile(string configRoot) : IIoFile
         string value,
         int rowNo)
     {
-        return NormalizeText(value) switch
+        bool EvaluateValueSwitch1()
         {
-            "OUT" or "OUTPUT" or "Y" => true,
-            "IN" or "INPUT" or "X" => false,
-            _ => throw new InvalidDataException(
-                $"JHMI_IO validation failed. Row {rowNo} / DIRECTION must be IN or OUT: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "OUT" or "OUTPUT" or "Y":
+                    return true;
+                case "IN" or "INPUT" or "X":
+                    return false;
+                default:
+                    throw new InvalidDataException(
+                        $"JHMI_IO validation failed. Row {rowNo} / DIRECTION must be IN or OUT: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string RequireText(

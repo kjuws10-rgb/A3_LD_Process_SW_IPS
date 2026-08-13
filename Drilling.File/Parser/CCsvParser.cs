@@ -172,13 +172,21 @@ internal static class CCsvParser
         {
             return defaultValue;
         }
-
-        return NormalizeHeader(value) switch
+        bool EvaluateValueSwitch1()
         {
-            "1" or "TRUE" or "ON" or "YES" or "USE" or "Y" => true,
-            "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N" => false,
-            _ => defaultValue
-        };
+            var switchValue = NormalizeHeader(value);
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES" or "USE" or "Y":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     public static bool ReadRequiredBool(
@@ -187,13 +195,22 @@ internal static class CCsvParser
         int rowNo,
         string fieldName)
     {
-        return NormalizeHeader(value) switch
+        bool EvaluateValueSwitch2()
         {
-            "1" or "TRUE" or "ON" or "YES" or "USE" or "Y" or "SIMUL" or "SIMULATION" or "SIM" => true,
-            "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N" or "ONLINE" or "LIVE" or "REAL" => false,
-            _ => throw new InvalidDataException(
-                $"{tableName} validation failed. Row {rowNo} / {fieldName} must be 1/0 or ON/OFF.")
-        };
+            var switchValue = NormalizeHeader(value);
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES" or "USE" or "Y" or "SIMUL" or "SIMULATION" or "SIM":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N" or "ONLINE" or "LIVE" or "REAL":
+                    return false;
+                default:
+                    throw new InvalidDataException(
+                        $"{tableName} validation failed. Row {rowNo} / {fieldName} must be 1/0 or ON/OFF.");
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     public static IReadOnlyList<string> ReadHeaders(string path)

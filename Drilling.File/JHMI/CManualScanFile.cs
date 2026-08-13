@@ -263,14 +263,23 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
             {
                 throw new InvalidDataException($"Manual setting save blocked. {formItem.DisplayName} cannot be empty.");
             }
-
-            var validationMessage = formItem.DataType switch
+            string EvaluateDataTypeSwitch1()
             {
-                EN_RECIPE_DATA_TYPE.Int => ValidateIntParameter(formItem, value),
-                EN_RECIPE_DATA_TYPE.Double => ValidateDoubleParameter(formItem, value),
-                EN_RECIPE_DATA_TYPE.Bool => ValidateBoolParameter(formItem, value),
-                _ => ""
-            };
+                var switchValue = formItem.DataType;
+                switch (switchValue)
+                {
+                    case EN_RECIPE_DATA_TYPE.Int:
+                        return ValidateIntParameter(formItem, value);
+                    case EN_RECIPE_DATA_TYPE.Double:
+                        return ValidateDoubleParameter(formItem, value);
+                    case EN_RECIPE_DATA_TYPE.Bool:
+                        return ValidateBoolParameter(formItem, value);
+                    default:
+                        return "";
+                }
+            }
+
+            var validationMessage = EvaluateDataTypeSwitch1();
 
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
@@ -403,13 +412,23 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
 
     private static EN_RECIPE_DATA_TYPE ReadDataType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_RECIPE_DATA_TYPE EvaluateValueSwitch2()
         {
-            "INT" => EN_RECIPE_DATA_TYPE.Int,
-            "DOUBLE" => EN_RECIPE_DATA_TYPE.Double,
-            "BOOL" => EN_RECIPE_DATA_TYPE.Bool,
-            _ => EN_RECIPE_DATA_TYPE.String
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INT":
+                    return EN_RECIPE_DATA_TYPE.Int;
+                case "DOUBLE":
+                    return EN_RECIPE_DATA_TYPE.Double;
+                case "BOOL":
+                    return EN_RECIPE_DATA_TYPE.Bool;
+                default:
+                    return EN_RECIPE_DATA_TYPE.String;
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static bool ReadBool(string value, bool defaultValue)

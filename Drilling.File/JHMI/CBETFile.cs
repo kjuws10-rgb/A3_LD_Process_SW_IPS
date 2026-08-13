@@ -9,7 +9,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CBETFile(string configRoot) : IBETFile
+public sealed class CBETFile(string configRoot) : CBETFileBase
 {
     private static readonly IReadOnlyList<string> Headers =
     [
@@ -20,7 +20,7 @@ public sealed class CBETFile(string configRoot) : IBETFile
         "SPOTSIZE"
     ];
 
-    public Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
@@ -28,7 +28,7 @@ public sealed class CBETFile(string configRoot) : IBETFile
         return Task.FromResult<IReadOnlyList<ST_BET_TABLE_DATA>>(ReadTable(GetFormPath()));
     }
 
-    public Task Save(
+    public override Task Save(
         IReadOnlyList<ST_BET_TABLE_DATA> table,
         CancellationToken cancellationToken = default)
     {

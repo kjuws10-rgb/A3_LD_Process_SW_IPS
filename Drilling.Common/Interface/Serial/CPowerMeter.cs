@@ -66,31 +66,26 @@ public sealed record ST_POWER_METER_TABLE_DATA(
     }
 }
 
-public interface IPowerMeterFile
+public abstract class CPowerMeterFileBase
 {
-    Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-
-    Task Create(
-        string processFile,
-        CancellationToken cancellationToken = default);
-
-    Task Delete(
-        string processFile,
-        CancellationToken cancellationToken = default);
-
-    Task Rename(
-        string oldProcessFile,
-        string newProcessFile,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_TABLE_DATA> Load(
-        string processFile = "",
-        CancellationToken cancellationToken = default);
-
-    Task Save(
-        string processFile,
-        IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
+    public abstract Task Create(
+            string processFile,
+            CancellationToken cancellationToken = default);
+    public abstract Task Delete(
+            string processFile,
+            CancellationToken cancellationToken = default);
+    public abstract Task Rename(
+            string oldProcessFile,
+            string newProcessFile,
+            CancellationToken cancellationToken = default);
+    public abstract Task<ST_POWER_METER_TABLE_DATA> Load(
+            string processFile = "",
+            CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            string processFile,
+            IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
+            CancellationToken cancellationToken = default);
 }
 
 [CCommType("Serial", "PowerMeter")]

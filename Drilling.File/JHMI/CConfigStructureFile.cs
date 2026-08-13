@@ -3,7 +3,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CConfigStructureFile(string configRoot) : IConfigStructureFile
+public sealed class CConfigStructureFile(string configRoot) : CConfigStructureFileBase
 {
     private static readonly IReadOnlyList<ST_REQUIRED_CSV> RequiredCsvFiles =
     [
@@ -162,7 +162,7 @@ public sealed class CConfigStructureFile(string configRoot) : IConfigStructureFi
         ValueCsv("PowerMeter Default", "PowerMeter\\POWER_CHECK.pwm", [["STEP"], ["OPTION_NAME"], ["POWER_OUT"]], ValidateStepKey)
     ];
 
-    public Task<IReadOnlyList<ST_CONFIG_FILE_STATUS>> Validate(
+    public override Task<IReadOnlyList<ST_CONFIG_FILE_STATUS>> Validate(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();

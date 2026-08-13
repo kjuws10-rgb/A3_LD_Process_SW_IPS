@@ -106,14 +106,14 @@ public sealed record ST_MOTION_CONTROLLER_STATUS(
     int AxisCount,
     IReadOnlyList<string> AxisIds);
 
-public interface IMotorFile
+public abstract class CMotorFileBase
 {
-    Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
 
-public interface IIoFile
+public abstract class CIoFileBase
 {
-    Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
 public sealed class CMotionManager {
     private const string DefaultControllerName = "XPS";

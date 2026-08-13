@@ -14,8 +14,8 @@ public sealed class CMenuManual : CBindingBase, IMenu
     private const int ManualTaskIndex = 1;
 
     private readonly CManager _manager;
-    private readonly IManualScanFile _scanFile;
-    private readonly IAutomationScriptFile _scriptFile;
+    private readonly CManualScanFileBase _scanFile;
+    private readonly CAutomationScriptFileBase _scriptFile;
     private readonly Func<int> _selectedHeadNoProvider;
     private readonly Func<string> _selectedSettingNameProvider;
     private readonly Action<string> _selectedSettingNameSetter;
@@ -50,8 +50,8 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public CMenuManual(
         CManager manager,
-        IManualScanFile scanFile,
-        IAutomationScriptFile scriptFile,
+        CManualScanFileBase scanFile,
+        CAutomationScriptFileBase scriptFile,
         Func<int> selectedHeadNoProvider,
         Func<string> selectedSettingNameProvider,
         Action<string> selectedSettingNameSetter,
@@ -875,7 +875,7 @@ HandleNewSettingName19);
 
     private async Task CenterMove()
     {
-        void RunManualScriptScriptCallback20(IAutomation1Script script, ST_MANUAL_SCAN_PARAM _)
+        void RunManualScriptScriptCallback20(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
         {
             script.Jump(0.0, 0.0);
             script.WaitMoveDone();
@@ -887,7 +887,7 @@ RunManualScriptScriptCallback20);
 
     private async Task PositionMove()
     {
-        void RunManualScriptScriptCallback21(IAutomation1Script script, ST_MANUAL_SCAN_PARAM _)
+        void RunManualScriptScriptCallback21(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
         {
             var gx = ReadRequiredDouble(TargetGx, "GX Target");
             var gy = ReadRequiredDouble(TargetGy, "GY Target");
@@ -918,7 +918,7 @@ RunManualScriptScriptCallback21);
     {
         var headNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
         var scriptName = BuildShapeScanScriptName(headNo, ShapeName);
-        void RunManualScriptScriptCallback22(IAutomation1Script script, ST_MANUAL_SCAN_PARAM settings)
+        void RunManualScriptScriptCallback22(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
         {
             AppendShape(script, settings);
             script.GCodeMove(0.0, 0.0);
@@ -937,7 +937,7 @@ RunManualScriptScriptCallback22,
 
     private async Task LaserOn()
     {
-        void RunManualScriptScriptCallback23(IAutomation1Script script, ST_MANUAL_SCAN_PARAM settings)
+        void RunManualScriptScriptCallback23(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
         {
             var laserActionSettings = ReadLaserActionSettings(settings);
             var moveDelaySeconds = ReadLaserMoveDelaySeconds(laserActionSettings);
@@ -958,7 +958,7 @@ RunManualScriptScriptCallback23,
 
     private async Task LaserOff()
     {
-        void RunManualScriptScriptCallback24(IAutomation1Script script, ST_MANUAL_SCAN_PARAM _)
+        void RunManualScriptScriptCallback24(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
         {
             script.LaserOff();
         }
@@ -977,7 +977,7 @@ RunManualScriptScriptCallback24,
 
     private async Task CenterOn()
     {
-        void RunManualScriptScriptCallback25(IAutomation1Script script, ST_MANUAL_SCAN_PARAM settings)
+        void RunManualScriptScriptCallback25(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
         {
             var laserActionSettings = ReadLaserActionSettings(settings);
             var moveDelaySeconds = ReadLaserMoveDelaySeconds(laserActionSettings);
@@ -1001,8 +1001,8 @@ RunManualScriptScriptCallback25,
 
     private async Task RunManualScript(
         string commandName,
-        Action<IAutomation1Script, ST_MANUAL_SCAN_PARAM> buildScript,
-        Action<IAutomation1Script, ST_MANUAL_SCAN_PARAM>? setupScript = null,
+        Action<CAutomation1ScriptBase, ST_MANUAL_SCAN_PARAM> buildScript,
+        Action<CAutomation1ScriptBase, ST_MANUAL_SCAN_PARAM>? setupScript = null,
         string? scriptFileName = null,
         CancellationToken cancellationToken = default)
     {
@@ -1122,7 +1122,7 @@ RunManualScriptScriptCallback25,
     }
 
     private static void ApplyManualScriptSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         script.DefaultSetting(resetPso: false);
@@ -1134,21 +1134,21 @@ RunManualScriptScriptCallback25,
     }
 
     private void ApplyLaserActionScriptSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         ApplyManualScriptSetup(script, ReadLaserActionSettings(settings));
     }
 
     private static void ApplyManualLaserOffScriptSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM _)
     {
         script.DefaultSetting(resetPso: false);
     }
 
     private static void ApplyManualFigureScanSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         script.DefaultFigureScanSetting();
@@ -1164,7 +1164,7 @@ RunManualScriptScriptCallback25,
     }
 
     private static void AppendManualSettingComment(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         script.AddLine($"// ManualSetting LaserPower={FormatDouble(settings.LaserPower, 3)} W");
@@ -1176,7 +1176,7 @@ RunManualScriptScriptCallback25,
     }
 
     private void AppendShape(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         var shapeName = NormalizeShapeName(settings.ShapeName);
@@ -1224,7 +1224,7 @@ RunManualScriptScriptCallback25,
     }
 
     private static void DrawGrid(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double cx,
         double cy,
         double half,
@@ -1266,7 +1266,7 @@ RunManualScriptScriptCallback25,
     }
 
     private static void DrawLine(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double startX,
         double startY,
         double endX,
@@ -1279,7 +1279,7 @@ RunManualScriptScriptCallback25,
     }
 
     private static void DrawRect(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double cx,
         double cy,
         double half,
@@ -1311,7 +1311,7 @@ RunManualScriptScriptCallback25,
     }
 
     private static void DrawCircle(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double cx,
         double cy,
         double radius,

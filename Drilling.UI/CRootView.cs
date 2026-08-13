@@ -99,13 +99,13 @@ public sealed class CRootView : CBindingBase
         CMotionManager motionManager,
         CAlarmManager alarmManager,
         CInterLockManager interLockManager,
-        IManualScanFile manualScanFile,
+        CManualScanFileBase manualScanFile,
         CRecipeManager recipeManager,
         CSettingManager settingManager,
         CProductManager productManager,
         CReviewManager reviewManager,
-        IReviewRuleFile reviewRuleFile,
-        IAutomationScriptFile automationScriptFile)
+        CReviewRuleFileBase reviewRuleFile,
+        CAutomationScriptFileBase automationScriptFile)
     {
         _manager = manager;
         _stationManager = stationManager;
@@ -1131,13 +1131,13 @@ HandleParameters20,
         CMotionManager motionManager,
         CAlarmManager alarmManager,
         CInterLockManager interLockManager,
-        IManualScanFile manualScanFile,
+        CManualScanFileBase manualScanFile,
         CRecipeManager recipeManager,
         CSettingManager settingManager,
         CProductManager productManager,
         CReviewManager reviewManager,
-        IReviewRuleFile reviewRuleFile,
-        IAutomationScriptFile automationScriptFile)
+        CReviewRuleFileBase reviewRuleFile,
+        CAutomationScriptFileBase automationScriptFile)
     {
         string HandleMenus24()
         {

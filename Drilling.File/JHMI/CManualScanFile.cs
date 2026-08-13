@@ -9,7 +9,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CManualScanFile(string configRoot) : IManualScanFile
+public sealed class CManualScanFile(string configRoot) : CManualScanFileBase
 {
     private const string DefaultSettingName = "CIRCLE_TEST.scan";
 
@@ -21,7 +21,7 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
 
     private readonly string _manualDirectory = Path.Combine(configRoot, "Manual");
 
-    public Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -50,19 +50,19 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         return Task.FromResult<IReadOnlyList<string>>(settingNames);
     }
 
-    public Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult(LoadFormItems());
     }
 
-    public Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default)
+    public override Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default)
     {
         return Load(GetDefaultSettingName(), cancellationToken);
     }
 
-    public Task<ST_MANUAL_SCAN_PARAM> Load(
+    public override Task<ST_MANUAL_SCAN_PARAM> Load(
         string settingName,
         CancellationToken cancellationToken = default)
     {
@@ -112,12 +112,12 @@ HandleValues5,
         return Task.FromResult(settings);
     }
 
-    public Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default)
+    public override Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default)
     {
         return Save(GetDefaultSettingName(), settings, cancellationToken);
     }
 
-    public Task Save(
+    public override Task Save(
         string settingName,
         ST_MANUAL_SCAN_PARAM settings,
         CancellationToken cancellationToken = default)
@@ -175,7 +175,7 @@ HandleValues5,
         return Task.CompletedTask;
     }
 
-    public Task Rename(
+    public override Task Rename(
         string oldSettingName,
         string newSettingName,
         CancellationToken cancellationToken = default)
@@ -200,7 +200,7 @@ HandleValues5,
         return Task.CompletedTask;
     }
 
-    public Task Delete(string settingName, CancellationToken cancellationToken = default)
+    public override Task Delete(string settingName, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

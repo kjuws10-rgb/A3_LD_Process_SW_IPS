@@ -43,34 +43,31 @@ public sealed record ST_SETTING_HISTORY(
     string OperatorId,
     string Action);
 
-public interface ISettingFile
+public abstract class CSettingFileBase
 {
-    Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
-
-    Task Save(
-        EN_SETTING_TAB section,
-        IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
+            EN_SETTING_TAB section,
+            CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            EN_SETTING_TAB section,
+            IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
+            CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
+            EN_SETTING_TAB section,
+            CancellationToken cancellationToken = default);
 }
 
-public interface IInterfaceFile
+public abstract class CInterfaceFileBase
 {
-    Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default);
-
-    Task SaveAll(
-        IReadOnlyList<ST_INTERFACE_DATA> interfaces,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task SaveAll(
+            IReadOnlyList<ST_INTERFACE_DATA> interfaces,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed class CSettingManager(
-    ISettingFile settingFile,
-    IInterfaceFile interfaceFile,
+    CSettingFileBase settingFile,
+    CInterfaceFileBase interfaceFile,
     CInterfaceManager interfaceManager) {
     public Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> LoadSection(
         EN_SETTING_TAB section,

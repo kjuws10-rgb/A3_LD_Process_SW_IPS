@@ -76,23 +76,19 @@ public sealed record ST_RECIPE_VALUE(
     string Value,
     IReadOnlyList<string>? Extra = null);
 
-public interface IRecipeFile
+public abstract class CRecipeFileBase
 {
-    Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default);
-
-    Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default);
-
-    Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default);
-
-    Task Rename(
-        string oldRecipeId,
-        string newRecipeId,
-        CancellationToken cancellationToken = default);
-
-    Task Delete(string recipeId, CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default);
+    public abstract Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default);
+    public abstract Task Rename(
+            string oldRecipeId,
+            string newRecipeId,
+            CancellationToken cancellationToken = default);
+    public abstract Task Delete(string recipeId, CancellationToken cancellationToken = default);
 }
 
-public sealed class CRecipeManager(IRecipeFile recipeFile) {
+public sealed class CRecipeManager(CRecipeFileBase recipeFile) {
     public Task<IReadOnlyList<ST_RECIPE_DATA>> LoadRecipes(CancellationToken cancellationToken = default)
     {
         return recipeFile.LoadAll(cancellationToken);

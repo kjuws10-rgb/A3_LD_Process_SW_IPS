@@ -84,7 +84,7 @@ public sealed class CStationProcess
     private readonly CInterLockManager _interLockManager;
     private readonly CSettingManager _settingManager;
     private readonly CProductManager? _productManager;
-    private readonly IAutomationScriptFile _automationScriptFile;
+    private readonly CAutomationScriptFileBase _automationScriptFile;
     private readonly CAutomationManager _automationManager;
     private readonly CLogManager? _logManager;
     private readonly SemaphoreSlim _runLock = new(1, 1);
@@ -106,7 +106,7 @@ public sealed class CStationProcess
         CMotionManager motionManager,
         CInterLockManager interLockManager,
         CSettingManager settingManager,
-        IAutomationScriptFile automationScriptFile,
+        CAutomationScriptFileBase automationScriptFile,
         CAutomationManager automationManager,
         CProductManager? productManager = null,
         CLogManager? logManager = null,

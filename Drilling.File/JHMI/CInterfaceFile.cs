@@ -10,7 +10,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
+public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
 {
     private readonly CLogManager _logManager = new(configRoot);
 
@@ -62,7 +62,7 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
         ["ARG5"]
     ];
 
-    public Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -92,7 +92,7 @@ public sealed class CInterfaceFile(string configRoot) : IInterfaceFile
         return Task.FromResult<IReadOnlyList<ST_INTERFACE_DATA>>(rows);
     }
 
-    public Task SaveAll(
+    public override Task SaveAll(
         IReadOnlyList<ST_INTERFACE_DATA> interfaces,
         CancellationToken cancellationToken = default)
     {

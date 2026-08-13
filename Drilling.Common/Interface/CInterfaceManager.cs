@@ -131,20 +131,19 @@ public sealed record ST_DEVICE_COMMAND_RESULT(
     bool IsSuccess,
     string Message);
 
-public interface IBETFile
+public abstract class CBETFileBase
 {
-    Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default);
-
-    Task Save(
-        IReadOnlyList<ST_BET_TABLE_DATA> table,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            IReadOnlyList<ST_BET_TABLE_DATA> table,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed class CInterfaceManager {
     private readonly Dictionary<string, CInterfaceDevice> _devices = new(StringComparer.OrdinalIgnoreCase);
     private readonly CLogManager? _logManager;
-    private readonly IBETFile? _betFile;
-    private readonly IPowerMeterFile? _powerMeterFile;
+    private readonly CBETFileBase? _betFile;
+    private readonly CPowerMeterFileBase? _powerMeterFile;
     private readonly CMelsec _melsec;
     private readonly CPicoMotorService _picoMotorService = new();
     private bool? _simulationMode;
@@ -154,8 +153,8 @@ public sealed class CInterfaceManager {
     public CInterfaceManager(
         bool? simulationMode = null,
         CLogManager? logManager = null,
-        IBETFile? betFile = null,
-        IPowerMeterFile? powerMeterFile = null,
+        CBETFileBase? betFile = null,
+        CPowerMeterFileBase? powerMeterFile = null,
         IReadOnlyList<ST_MELSEC_MAP_DATA>? melsecMap = null)
     {
         _simulationMode = simulationMode;

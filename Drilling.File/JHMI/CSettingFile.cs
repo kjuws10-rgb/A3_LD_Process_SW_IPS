@@ -10,7 +10,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CSettingFile(string configRoot) : ISettingFile
+public sealed class CSettingFile(string configRoot) : CSettingFileBase
 {
     private static readonly IReadOnlyList<string> FormHeaders =
     [
@@ -39,7 +39,7 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
     private readonly string _settingDirectory = Path.Combine(configRoot, "Setting");
     private readonly CLogManager _logManager = new(configRoot);
 
-    public Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
+    public override Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
     {
@@ -85,7 +85,7 @@ public sealed class CSettingFile(string configRoot) : ISettingFile
         return Task.FromResult<IReadOnlyList<ST_SYSTEM_PARAMETER>>(parameters);
     }
 
-    public Task Save(
+    public override Task Save(
         EN_SETTING_TAB section,
         IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
         CancellationToken cancellationToken = default)
@@ -197,7 +197,7 @@ HandleEditedValues8,
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
+    public override Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
     {

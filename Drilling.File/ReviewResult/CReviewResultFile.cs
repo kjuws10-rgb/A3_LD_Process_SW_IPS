@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.ReviewResult;
 
-public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
+public sealed class CReviewResultFile(string configRoot) : CReviewResultFileBase
 {
     private static readonly IReadOnlyList<string> Headers =
     [
@@ -23,7 +23,7 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
         "Data",
         "ReviewResult");
 
-    public string RootPath
+    public override string RootPath
     {
         get
         {
@@ -31,7 +31,7 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
         }
     }
 
-    public Task<ST_REVIEW_RESULT_FILE_DATA> Load(
+    public override Task<ST_REVIEW_RESULT_FILE_DATA> Load(
         string path,
         CancellationToken cancellationToken = default)
     {
@@ -89,7 +89,7 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
             rows));
     }
 
-    public Task Save(
+    public override Task Save(
         ST_REVIEW_RESULT_DATA result,
         CancellationToken cancellationToken = default)
     {

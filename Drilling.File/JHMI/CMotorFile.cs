@@ -9,7 +9,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CMotorFile(string configRoot) : IMotorFile
+public sealed class CMotorFile(string configRoot) : CMotorFileBase
 {
     private static readonly IReadOnlyList<string> Headers =
     [
@@ -68,7 +68,7 @@ public sealed class CMotorFile(string configRoot) : IMotorFile
         ["MAX"]
     ];
 
-    public Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();

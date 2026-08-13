@@ -20,7 +20,7 @@ public sealed class CMenuCorrection : IMenu
         "OUTPUT / HISTORY"
     ];
 
-    private readonly IReviewResultFile _reviewResultFile;
+    private readonly CReviewResultFileBase _reviewResultFile;
     private readonly CRecipeManager _recipeManager;
     private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
@@ -38,7 +38,7 @@ public sealed class CMenuCorrection : IMenu
     private string _selectedTab = "REVIEW DATA";
 
     public CMenuCorrection(
-        IReviewResultFile reviewResultFile,
+        CReviewResultFileBase reviewResultFile,
         CRecipeManager recipeManager,
         CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,

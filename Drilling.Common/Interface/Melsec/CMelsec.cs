@@ -45,9 +45,9 @@ public sealed record ST_MELSEC_MAP_DATA(
     int PollMs,
     string Description);
 
-public interface IMelsecMapFile
+public abstract class CMelsecMapFileBase
 {
-    Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
 
 public sealed class CMelsec : IDisposable

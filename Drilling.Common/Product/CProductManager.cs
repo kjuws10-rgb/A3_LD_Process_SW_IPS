@@ -63,32 +63,27 @@ public sealed record ST_PRODUCT_HISTORY(
     string Result,
     string Detail);
 
-public interface IProductFile
+public abstract class CProductFileBase
 {
-    Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
-
-    Task SaveActive(
-        ST_PRODUCT_DATA product,
-        CancellationToken cancellationToken = default);
-
-    Task ClearActive(CancellationToken cancellationToken = default);
-
-    Task AppendHistory(
-        ST_PRODUCT_HISTORY history,
-        CancellationToken cancellationToken = default);
-
-    Task AppendHeadResults(
-        ST_PRODUCT_DATA product,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
-        int maxRows = 100,
-        int days = 14,
-        CancellationToken cancellationToken = default);
+    public abstract Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
+    public abstract Task SaveActive(
+            ST_PRODUCT_DATA product,
+            CancellationToken cancellationToken = default);
+    public abstract Task ClearActive(CancellationToken cancellationToken = default);
+    public abstract Task AppendHistory(
+            ST_PRODUCT_HISTORY history,
+            CancellationToken cancellationToken = default);
+    public abstract Task AppendHeadResults(
+            ST_PRODUCT_DATA product,
+            CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+            int maxRows = 100,
+            int days = 14,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed class CProductManager(
-    IProductFile productFile,
+    CProductFileBase productFile,
     CLogManager? logManager = null) {
     private ST_PRODUCT_DATA? _current;
 

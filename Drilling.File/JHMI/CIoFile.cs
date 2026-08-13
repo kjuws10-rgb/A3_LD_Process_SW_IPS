@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CIoFile(string configRoot) : IIoFile
+public sealed class CIoFile(string configRoot) : CIoFileBase
 {
     private static readonly IReadOnlyList<string> Headers =
     [
@@ -31,7 +31,7 @@ public sealed class CIoFile(string configRoot) : IIoFile
         ["DEV NO", "DEVICE NO"]
     ];
 
-    public Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();

@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
+public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
 {
     private const string DefaultProcessFile = "POWER_CHECK.pwm";
 
@@ -29,7 +29,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
 
     private readonly string _powerMeterDirectory = Path.Combine(configRoot, "PowerMeter");
 
-    public Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
@@ -54,7 +54,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.FromResult<IReadOnlyList<string>>(files);
     }
 
-    public Task Create(
+    public override Task Create(
         string processFile,
         CancellationToken cancellationToken = default)
     {
@@ -79,7 +79,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.CompletedTask;
     }
 
-    public Task Delete(
+    public override Task Delete(
         string processFile,
         CancellationToken cancellationToken = default)
     {
@@ -100,7 +100,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.CompletedTask;
     }
 
-    public Task Rename(
+    public override Task Rename(
         string oldProcessFile,
         string newProcessFile,
         CancellationToken cancellationToken = default)
@@ -125,7 +125,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.CompletedTask;
     }
 
-    public Task<ST_POWER_METER_TABLE_DATA> Load(
+    public override Task<ST_POWER_METER_TABLE_DATA> Load(
         string processFile = "",
         CancellationToken cancellationToken = default)
     {
@@ -165,7 +165,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.FromResult(new ST_POWER_METER_TABLE_DATA(processes, selectedFile, steps));
     }
 
-    public Task Save(
+    public override Task Save(
         string processFile,
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
         CancellationToken cancellationToken = default)

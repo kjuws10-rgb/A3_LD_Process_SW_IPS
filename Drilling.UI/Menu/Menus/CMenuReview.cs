@@ -17,7 +17,7 @@ public sealed class CMenuReview : IMenu
     private const string DefaultRuleFileName = "ALL_POINT.csv";
 
     private readonly CReviewManager _reviewManager;
-    private readonly IReviewRuleFile _reviewRuleFile;
+    private readonly CReviewRuleFileBase _reviewRuleFile;
     private readonly CRecipeManager _recipeManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _statusReporter;
@@ -56,7 +56,7 @@ public sealed class CMenuReview : IMenu
 
     public CMenuReview(
         CReviewManager reviewManager,
-        IReviewRuleFile reviewRuleFile,
+        CReviewRuleFileBase reviewRuleFile,
         CRecipeManager recipeManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> statusReporter,

@@ -10,7 +10,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
+public sealed class CJhmiRecipeFile(string configRoot) : CRecipeFileBase
 {
     private static readonly HashSet<string> CellScopedTemplateNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -50,7 +50,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
     private readonly string _recipeDirectory = Path.Combine(configRoot, "RECIPE");
     private readonly CLogManager _logManager = new(configRoot);
 
-    public Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -85,7 +85,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         return Task.FromResult<IReadOnlyList<ST_RECIPE_DATA>>(recipes);
     }
 
-    public Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default)
+    public override Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -98,7 +98,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         return Task.FromResult(recipe);
     }
 
-    public Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
+    public override Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -271,7 +271,7 @@ HandleOldValues6,
         return Task.CompletedTask;
     }
 
-    public Task Rename(
+    public override Task Rename(
         string oldRecipeId,
         string newRecipeId,
         CancellationToken cancellationToken = default)
@@ -385,7 +385,7 @@ HandleOldValues15,
         return Task.CompletedTask;
     }
 
-    public Task Delete(string recipeId, CancellationToken cancellationToken = default)
+    public override Task Delete(string recipeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

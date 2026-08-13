@@ -206,34 +206,31 @@ public sealed record ST_REVIEW_RESULT_FILE_DATA(
     DateTimeOffset SavedAt,
     IReadOnlyList<ST_REVIEW_RESULT_FILE_ROW> Rows);
 
-public interface IReviewResultFile
+public abstract class CReviewResultFileBase
 {
-    string RootPath { get; }
+    public abstract string RootPath { get; }
 
-    Task<ST_REVIEW_RESULT_FILE_DATA> Load(
-        string path,
-        CancellationToken cancellationToken = default);
-
-    Task Save(
-        ST_REVIEW_RESULT_DATA result,
-        CancellationToken cancellationToken = default);
+    public abstract Task<ST_REVIEW_RESULT_FILE_DATA> Load(
+            string path,
+            CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            ST_REVIEW_RESULT_DATA result,
+            CancellationToken cancellationToken = default);
 }
 
-public interface IReviewRuleFile
+public abstract class CReviewRuleFileBase
 {
-    Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-
-    Task<ST_REVIEW_RULE_DATA> Load(
-        string ruleFileName,
-        CancellationToken cancellationToken = default);
-
-    Task Save(
-        ST_REVIEW_RULE_DATA rule,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
+    public abstract Task<ST_REVIEW_RULE_DATA> Load(
+            string ruleFileName,
+            CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            ST_REVIEW_RULE_DATA rule,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed class CReviewManager(
-    IReviewResultFile reviewResultFile,
+    CReviewResultFileBase reviewResultFile,
     CInterfaceManager interfaceManager,
     CSettingManager settingManager) {
     private const int MaxHeadCount = 8;

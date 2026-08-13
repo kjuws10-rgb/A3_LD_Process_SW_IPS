@@ -5,7 +5,7 @@ using Drilling.Common.Station;
 
 namespace Drilling.File.Script;
 
-public sealed class CAutomation1ScriptFile : IAutomationScriptFile
+public sealed class CAutomation1ScriptFile : CAutomationScriptFileBase
 {
     public const string DefaultScriptFileName = "PROCESS.ascript";
     private const string StandardDirectoryName = "Standard";
@@ -20,7 +20,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             : scriptDirectory;
     }
 
-    public string ScriptFileName
+    public override string ScriptFileName
     {
         get
         {
@@ -28,21 +28,21 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
         }
     }
 
-    public IAutomation1Script Create(string? fileName = null)
+    public override CAutomation1ScriptBase Create(string? fileName = null)
     {
         return new CAutomation1Script(
             _scriptDirectory,
             NormalizeFileName(fileName));
     }
 
-    public async Task<ST_AUTOMATION1_SCRIPT> Build(
+    public async override Task<ST_AUTOMATION1_SCRIPT> Build(
         ST_PROCESS_MODEL processModel,
         CancellationToken cancellationToken = default)
     {
         return await Build(processModel, StandardDirectoryName, cancellationToken);
     }
 
-    public async Task<ST_AUTOMATION1_SCRIPT> Build(
+    public async override Task<ST_AUTOMATION1_SCRIPT> Build(
         ST_PROCESS_MODEL processModel,
         string subDirectoryName,
         CancellationToken cancellationToken = default)
@@ -841,7 +841,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             : $"{normalized}.ascript";
     }
 
-    private sealed class CAutomation1Script : IAutomation1Script
+    private sealed class CAutomation1Script : CAutomation1ScriptBase
     {
         private readonly string _scriptDirectory;
         private readonly List<string> _lines = [];
@@ -870,9 +870,9 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             FileName = fileName;
         }
 
-        public string FileName { get; }
+        public override string FileName { get; }
 
-        public string FilePath
+        public override string FilePath
         {
             get
             {
@@ -880,7 +880,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public IReadOnlyList<string> Lines
+        public override IReadOnlyList<string> Lines
         {
             get
             {
@@ -888,7 +888,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void Clear()
+        public override void Clear()
         {
             _lines.Clear();
             _pointCount = 0;
@@ -909,7 +909,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _scanPlannerStageEncoderMode = false;
         }
 
-        public void AddLine(string line)
+        public override void AddLine(string line)
         {
             if (!string.IsNullOrWhiteSpace(line))
             {
@@ -917,7 +917,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void Start(string title = "")
+        public override void Start(string title = "")
         {
             _createdAt = DateTimeOffset.Now;
 
@@ -930,22 +930,22 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add("program");
         }
 
-        public void SetDeviceNo(int deviceNo)
+        public override void SetDeviceNo(int deviceNo)
         {
             _deviceNo = Math.Max(0, deviceNo);
         }
 
-        public void SetNMarkDriveLaserControl(bool use)
+        public override void SetNMarkDriveLaserControl(bool use)
         {
             _nMarkDriveLaserControl = use;
         }
 
-        public void SetScanPlannerStageEncoderMode(bool use)
+        public override void SetScanPlannerStageEncoderMode(bool use)
         {
             _scanPlannerStageEncoderMode = use;
         }
 
-        public void DefaultSetting(
+        public override void DefaultSetting(
             double scannerAcc = 500000.0,
             int motionUpdateRate = 0,
             int executeLineCount = 110,
@@ -979,7 +979,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void DefaultFigureScanSetting(
+        public override void DefaultFigureScanSetting(
             int motionUpdateRate = 100,
             int executeLineCount = 110)
         {
@@ -1008,7 +1008,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             GCodeMove(0.0, 0.0);
         }
 
-        public void SetAxis(
+        public override void SetAxis(
             string xAxis,
             string yAxis,
             string? laserAxis = null)
@@ -1018,7 +1018,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _laserAxis = NormalizeAxis(laserAxis, _xAxis);
         }
 
-        public void SetStageAxis(
+        public override void SetStageAxis(
             string xAxis,
             string yAxis)
         {
@@ -1026,7 +1026,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _stageYAxis = NormalizeAxis(yAxis, "STAGE_Y");
         }
 
-        public void SetFrequency(double frequencyKhz)
+        public override void SetFrequency(double frequencyKhz)
         {
             _laserOutputPeriod = CalculateLaserPeriod(frequencyKhz);
 
@@ -1036,7 +1036,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetLaserPower(
+        public override void SetLaserPower(
             double powerPercent,
             double outputRate = 100.0,
             bool analogOutputUse = false)
@@ -1056,7 +1056,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetLaserPowerNoDelay(
+        public override void SetLaserPowerNoDelay(
             double powerPercent,
             double outputRate = 100.0)
         {
@@ -1070,7 +1070,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetPulseOnTimeLaserPower(
+        public override void SetPulseOnTimeLaserPower(
             double powerPercent,
             double dutyPercent,
             double outputRate = 100.0)
@@ -1092,7 +1092,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             SetLaserMode(0);
         }
 
-        public void SetLaserMode(int mode)
+        public override void SetLaserMode(int mode)
         {
             if (!_nMarkDriveLaserControl)
             {
@@ -1100,7 +1100,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetLaserDelay(
+        public override void SetLaserDelay(
             double onDelay,
             double offDelay)
         {
@@ -1113,14 +1113,14 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"GalvoConfigureLaserDelays({_laserAxis}, {Format(onDelay / 2.0)}, {Format(offDelay / 2.0)})");
         }
 
-        public void SetJumpSpeed(double speedMeterPerSec)
+        public override void SetJumpSpeed(double speedMeterPerSec)
         {
             _lines.Add($"SetupAxisSpeed({_xAxis}, {Format(speedMeterPerSec * 1000.0)})");
             _lines.Add($"SetupAxisSpeed({_yAxis}, {Format(speedMeterPerSec * 1000.0)})");
             _jumpSpeedMeterPerSec = speedMeterPerSec;
         }
 
-        public void SetJumpSpeedRate(
+        public override void SetJumpSpeedRate(
             double speedMeterPerSec,
             double rate = 1.0)
         {
@@ -1134,13 +1134,13 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _jumpSpeedMeterPerSec = speedMeterPerSec;
         }
 
-        public void SetMarkSpeed(double speedMeterPerSec)
+        public override void SetMarkSpeed(double speedMeterPerSec)
         {
             _lines.Add($"SetupCoordinatedSpeed({Format(speedMeterPerSec * 1000.0)})");
             _markSpeedMeterPerSec = speedMeterPerSec;
         }
 
-        public void SetStageSpeed(
+        public override void SetStageSpeed(
             double speedX,
             double speedY)
         {
@@ -1155,7 +1155,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetScannerAcc(double acc)
+        public override void SetScannerAcc(double acc)
         {
             if (acc <= 0.0)
             {
@@ -1168,7 +1168,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"SetupCoordinatedRampValue(RampMode.Rate, {Format(acc)})");
         }
 
-        public void SetMarkAcc(double acc)
+        public override void SetMarkAcc(double acc)
         {
             if (acc <= 0.0)
             {
@@ -1179,12 +1179,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"SetupCoordinatedRampValue(RampMode.Rate, {Format(acc)})");
         }
 
-        public void SetIFOV(bool use)
+        public override void SetIFOV(bool use)
         {
             _lines.Add(use ? "IfovOn()" : "IfovOff()");
         }
 
-        public void SetIFOVEmulatedQuadratureDivider()
+        public override void SetIFOVEmulatedQuadratureDivider()
         {
             if (IsUsableAxis(_stageXAxis))
             {
@@ -1209,7 +1209,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetIFOVIO(bool use = true)
+        public override void SetIFOVIO(bool use = true)
         {
             if (use)
             {
@@ -1241,7 +1241,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetIFOVScaleXY()
+        public override void SetIFOVScaleXY()
         {
             if (IsUsableAxis(_stageXAxis))
             {
@@ -1254,27 +1254,27 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetIFOVTime(long time)
+        public override void SetIFOVTime(long time)
         {
             _lines.Add($"IfovSetTime({time})");
         }
 
-        public void SetIFOVSize(double size)
+        public override void SetIFOVSize(double size)
         {
             _lines.Add($"IfovSetSize({Format(size)})");
         }
 
-        public void SetIFOVTrackingSpeed(long speed)
+        public override void SetIFOVTrackingSpeed(long speed)
         {
             _lines.Add($"IfovSetTrackingSpeed({speed})");
         }
 
-        public void SetIFOVTrackingAccel(long acc)
+        public override void SetIFOVTrackingAccel(long acc)
         {
             _lines.Add($"IfovSetTrackingAcceleration({acc})");
         }
 
-        public void SetIFOVPair(
+        public override void SetIFOVPair(
             string xStageAxis,
             string yStageAxis,
             bool xDirection,
@@ -1290,32 +1290,32 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"IfovSetAxisPairs([{_xAxis},{NormalizeAxis(xStageAxis, _stageXAxis)}],[{_yAxis},{NormalizeAxis(yStageAxis, _stageYAxis)}], {scaleX},{scaleY})");
         }
 
-        public void SetIFOVSyncAxis()
+        public override void SetIFOVSyncAxis()
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetIFOVSYNCAXIS.
         }
 
-        public void SetMoveBlending(bool use)
+        public override void SetMoveBlending(bool use)
         {
             _lines.Add(use ? "VelocityBlendingOn()" : "VelocityBlendingOff()");
         }
 
-        public void SetAbsoluteMode()
+        public override void SetAbsoluteMode()
         {
             _lines.Add("SetupTaskTargetMode(TargetMode.Absolute)");
         }
 
-        public void SetIncrementalMode()
+        public override void SetIncrementalMode()
         {
             _lines.Add("SetupTaskTargetMode(TargetMode.Incremental)");
         }
 
-        public void SetWaitModeAuto()
+        public override void SetWaitModeAuto()
         {
             _lines.Add("SetupTaskWaitMode(WaitMode.Auto)");
         }
 
-        public void SetMoveDelay(
+        public override void SetMoveDelay(
             double delaySeconds,
             bool addTactTime = true)
         {
@@ -1337,7 +1337,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetExecuteLineCount(int lineCount)
+        public override void SetExecuteLineCount(int lineCount)
         {
             if (lineCount <= 0)
             {
@@ -1347,7 +1347,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"ParameterSetTaskValue(TaskGetIndex(), TaskParameter.ExecuteNumLines, {lineCount})");
         }
 
-        public void SetScannerRotate(double angle)
+        public override void SetScannerRotate(double angle)
         {
             if (!_nMarkDriveLaserControl)
             {
@@ -1355,26 +1355,26 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetScannerRotate(
+        public override void SetScannerRotate(
             string laserAxis,
             double angle)
         {
             _lines.Add($"GalvoRotationSet({NormalizeAxis(laserAxis, _laserAxis)}, {Format(angle)})");
         }
 
-        public void SetMoveUpdateRate(int rate)
+        public override void SetMoveUpdateRate(int rate)
         {
             _lines.Add($"ParameterSetTaskValue(TaskGetIndex(), TaskParameter.MotionUpdateRate, {rate})");
         }
 
-        public void SetCoordinatedAccelLimit(
+        public override void SetCoordinatedAccelLimit(
             long acc,
             long arcAcc)
         {
             _lines.Add($"SetupCoordinatedAccelLimit({acc},{arcAcc})");
         }
 
-        public void SetTaskAccelLimit(
+        public override void SetTaskAccelLimit(
             long acc,
             long arcAcc)
         {
@@ -1382,17 +1382,17 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"ParameterSetTaskValue(TaskGetIndex(), TaskParameter.DefaultCoordinatedCircularAccelLimit, {arcAcc})");
         }
 
-        public void SetScanTrajectoryFIRFilterX(long delay)
+        public override void SetScanTrajectoryFIRFilterX(long delay)
         {
             _lines.Add($"ParameterSetAxisValue({_xAxis},AxisParameter.TrajectoryFirFilter, {delay})");
         }
 
-        public void SetScanTrajectoryFIRFilterY(long delay)
+        public override void SetScanTrajectoryFIRFilterY(long delay)
         {
             _lines.Add($"ParameterSetAxisValue({_yAxis},AxisParameter.TrajectoryFirFilter, {delay})");
         }
 
-        public void SetStageTrajectoryFIRFilterX(long delay)
+        public override void SetStageTrajectoryFIRFilterX(long delay)
         {
             if (IsUsableAxis(_stageXAxis))
             {
@@ -1400,7 +1400,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetStageTrajectoryFIRFilterY(long delay)
+        public override void SetStageTrajectoryFIRFilterY(long delay)
         {
             if (IsUsableAxis(_stageYAxis))
             {
@@ -1408,7 +1408,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetProjection(
+        public override void SetProjection(
             string axis,
             double offsetX,
             double offsetY,
@@ -1417,24 +1417,24 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetProjection.
         }
 
-        public void SetProjectionOff(string axis)
+        public override void SetProjectionOff(string axis)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetProjectionOFF.
         }
 
-        public void SetGearing(
+        public override void SetGearing(
             string masterAxis,
             string slaveAxis)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetGearing.
         }
 
-        public void SetGearingOff(string slaveAxis = "AUTO")
+        public override void SetGearingOff(string slaveAxis = "AUTO")
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetGearingOFF.
         }
 
-        public void SetSoftwareLimitSetup(bool use = true)
+        public override void SetSoftwareLimitSetup(bool use = true)
         {
             if (use)
             {
@@ -1445,7 +1445,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"ParameterSetAxisValue({_yAxis}, AxisParameter.SoftwareLimitSetup, 0)");
         }
 
-        public void SetAerotechEncoderReset(
+        public override void SetAerotechEncoderReset(
             string axisX,
             string axisY)
         {
@@ -1463,7 +1463,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetScanPlannerStageEncoder(string stageAxis)
+        public override void SetScanPlannerStageEncoder(string stageAxis)
         {
             var axis = NormalizeAxis(stageAxis, "NONE");
 
@@ -1473,17 +1473,17 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetEmulatedQuadratureDividerX(int value)
+        public override void SetEmulatedQuadratureDividerX(int value)
         {
             _lines.Add($"ParameterSetAxisValue({_xAxis}, AxisParameter.PrimaryEmulatedQuadratureDivider, {value})");
         }
 
-        public void SetEmulatedQuadratureDividerY(int value)
+        public override void SetEmulatedQuadratureDividerY(int value)
         {
             _lines.Add($"ParameterSetAxisValue({_yAxis}, AxisParameter.PrimaryEmulatedQuadratureDivider, {value})");
         }
 
-        public void SetStageEmulatedQuadratureDivider(
+        public override void SetStageEmulatedQuadratureDivider(
             int xValue,
             int yValue)
         {
@@ -1498,7 +1498,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetPSO(
+        public override void SetPSO(
             double pulseDistance,
             double totalTime,
             double laserOnTime,
@@ -1580,26 +1580,26 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             LaserAuto();
         }
 
-        public void SetPSODistance(double pulseDistance)
+        public override void SetPSODistance(double pulseDistance)
         {
             _lines.Add($"PsoDistanceConfigureFixedDistance({_laserAxis}, Round(UnitsToCounts({_laserAxis}, {Format(pulseDistance)}) / ParameterGetAxisValue({_laserAxis}, AxisParameter.PrimaryEmulatedQuadratureDivider)))");
         }
 
-        public void SetPSOOnOff(bool on)
+        public override void SetPSOOnOff(bool on)
         {
             _lines.Add(on
                 ? $"PsoWaveformOn({_laserAxis})"
                 : $"PsoWaveformOff({_laserAxis})");
         }
 
-        public void SetPSOChangePower(
+        public override void SetPSOChangePower(
             double frequencyKhz,
             double powerPercent)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetPSOChangePower.
         }
 
-        public void SetPSOFire(
+        public override void SetPSOFire(
             double totalTime,
             double laserOnTime,
             int count,
@@ -1609,7 +1609,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetPSOFire.
         }
 
-        public void SetPSOLaserWindowMask(
+        public override void SetPSOLaserWindowMask(
             bool on,
             double windowStartRange = 0,
             double windowEndRange = 0)
@@ -1617,13 +1617,13 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetPSOLaserWindowMask.
         }
 
-        public void DeclareEncoderVariable(
+        public override void DeclareEncoderVariable(
             string axis = "",
             bool useFeedback = false)
         {
         }
 
-        public void InitDeclareVariable()
+        public override void InitDeclareVariable()
         {
             _lines.Add($"var $EncoderScale{_xAxis} as real");
             _lines.Add($"var $EncoderScale{_yAxis} as real");
@@ -1632,12 +1632,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add("var $StageEncoder as real");
         }
 
-        public void InitDeclareVariableIFOV()
+        public override void InitDeclareVariableIFOV()
         {
             // Automation1 branch only documents rglobal usage in ScanMaster; no script line is generated.
         }
 
-        public void SetWaitForEncoder(
+        public override void SetWaitForEncoder(
             string axis,
             double position,
             bool directionPlus = true)
@@ -1649,7 +1649,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"wait(StatusGetAxisItem({encoderAxis}, AxisStatusItem.AuxiliaryFeedback) {op} {Format(offset)})");
         }
 
-        public void SetWaitForEncoder(
+        public override void SetWaitForEncoder(
             string axis,
             bool directionPlus,
             double position,
@@ -1683,7 +1683,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetWaitForEncoder2Axis(
+        public override void SetWaitForEncoder2Axis(
             string axisX,
             string axisY,
             bool inToOut,
@@ -1707,7 +1707,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add("end");
         }
 
-        public void SetWaitForStartAxis2(
+        public override void SetWaitForStartAxis2(
             string axisX,
             string axisY,
             bool inToOut,
@@ -1743,7 +1743,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public void SetEncoderScaleFactor(
+        public override void SetEncoderScaleFactor(
             string galvoAxis,
             string encoderAxis,
             int scale)
@@ -1759,7 +1759,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"GalvoEncoderScaleFactorSet({galvo}, ParameterGetAxisValue({encoder}, AxisParameter.CountsPerUnit) / {scale})");
         }
 
-        public void SetEncoderScaleFactor(
+        public override void SetEncoderScaleFactor(
             string galvoAxis,
             string encoderAxis,
             bool directionPlus)
@@ -1772,7 +1772,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"GalvoEncoderScaleFactorSet({galvo}, $EncoderScale{galvo})");
         }
 
-        public void SetEncoderScaleFactor(
+        public override void SetEncoderScaleFactor(
             string galvoAxis,
             string encoderAxis,
             double encoderX,
@@ -1791,7 +1791,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"GalvoEncoderScaleFactorSet({galvo}, {sign}$EncoderScale{galvo})");
         }
 
-        public void SetEncoderScaleFactorByPrimaryDivider(
+        public override void SetEncoderScaleFactorByPrimaryDivider(
             string galvoAxis,
             string encoderAxis,
             bool directionPlus)
@@ -1810,55 +1810,55 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"GalvoEncoderScaleFactorSet({galvo}, $EncoderScale{galvo})");
         }
 
-        public void InitEncoderCount(string galvoAxis)
+        public override void InitEncoderCount(string galvoAxis)
         {
             var galvo = NormalizeAxis(galvoAxis, _laserAxis);
 
             _lines.Add($"DriveSetAuxiliaryFeedback({galvo}, 0)");
         }
 
-        public void EncoderNotFeedback(string axis)
+        public override void EncoderNotFeedback(string axis)
         {
             var encoderAxis = NormalizeAxis(axis, _stageXAxis);
 
             _lines.Add($"DriveEncoderOutputOff({encoderAxis}, 0)");
         }
 
-        public void ReleaseEncoderScaleFactor(string galvoAxis)
+        public override void ReleaseEncoderScaleFactor(string galvoAxis)
         {
             var galvo = NormalizeAxis(galvoAxis, _laserAxis);
 
             _lines.Add($"GalvoEncoderScaleFactorSet({galvo}, 0)");
         }
 
-        public void LaserAuto()
+        public override void LaserAuto()
         {
             _lines.Add($"GalvoLaserOutput({_laserAxis}, GalvoLaser.Auto)");
         }
 
-        public void LaserOn()
+        public override void LaserOn()
         {
             _lines.Add($"GalvoLaserOutput({_laserAxis}, GalvoLaser.On)");
         }
 
-        public void LaserOff()
+        public override void LaserOff()
         {
             _lines.Add($"GalvoLaserOutput({_laserAxis}, GalvoLaser.Off)");
         }
 
-        public void PsoLaserControl(
+        public override void PsoLaserControl(
             bool on,
             bool manual = false)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetPSOLaserControl.
         }
 
-        public void LaserFire(bool on)
+        public override void LaserFire(bool on)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::ListLaserFire.
         }
 
-        public void Jump(double x, double y)
+        public override void Jump(double x, double y)
         {
             if (!(x == 0.0 && y == 0.0) &&
                 _currentX == x &&
@@ -1874,7 +1874,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _currentY = y;
         }
 
-        public void Mark(double x, double y)
+        public override void Mark(double x, double y)
         {
             if (_currentX == x &&
                 _currentY == y)
@@ -1889,7 +1889,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _currentY = y;
         }
 
-        public void GCodeMove(
+        public override void GCodeMove(
             double x,
             double y)
         {
@@ -1898,17 +1898,17 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _currentY = y;
         }
 
-        public void JumpRel(double x, double y)
+        public override void JumpRel(double x, double y)
         {
             Jump(_currentX + x, _currentY + y);
         }
 
-        public void MarkRel(double x, double y)
+        public override void MarkRel(double x, double y)
         {
             Mark(_currentX + x, _currentY + y);
         }
 
-        public void Arc(
+        public override void Arc(
             double startX,
             double startY,
             double endX,
@@ -1927,7 +1927,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _currentY = endY;
         }
 
-        public void JumpLinear(
+        public override void JumpLinear(
             double x,
             double y)
         {
@@ -1940,12 +1940,12 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _currentY = y;
         }
 
-        public void WaitMoveDone()
+        public override void WaitMoveDone()
         {
             _lines.Add($"WaitForMotionDone([{_xAxis}, {_yAxis}])");
         }
 
-        public void Dwell(double delay)
+        public override void Dwell(double delay)
         {
             if (delay <= 0.0)
             {
@@ -1955,76 +1955,76 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             _lines.Add($"Dwell({Format(delay)})");
         }
 
-        public void EnableAxisPair()
+        public override void EnableAxisPair()
         {
             _lines.Add($"Enable([{_xAxis}, {_yAxis}])");
         }
 
-        public void DisableAxisPair()
+        public override void DisableAxisPair()
         {
             _lines.Add($"Disable([{_xAxis}, {_yAxis}])");
         }
 
-        public void FaultAckAxisPair()
+        public override void FaultAckAxisPair()
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::ListFaultAckXY.
         }
 
-        public void HomeAxisPair()
+        public override void HomeAxisPair()
         {
             _lines.Add($"Home([{_xAxis}, {_yAxis}])");
         }
 
-        public void OffsetClearAxisPair()
+        public override void OffsetClearAxisPair()
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::ListOffsetClearXY.
         }
 
-        public void OffsetSetAxisPair(
+        public override void OffsetSetAxisPair(
             double x,
             double y)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::ListOffsetSetXY.
         }
 
-        public void SetSignalLogTrigger(bool use)
+        public override void SetSignalLogTrigger(bool use)
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetSignalLogTrigger.
         }
 
-        public void ProgramStart()
+        public override void ProgramStart()
         {
             _lines.Add("program");
         }
 
-        public void ProgramEnd()
+        public override void ProgramEnd()
         {
             _lines.Add("end");
         }
 
-        public void BufferedEnd()
+        public override void BufferedEnd()
         {
             _lines.Add("CommandQueueStop()");
         }
 
-        public void WaitInpos()
+        public override void WaitInpos()
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetWaitInpos.
         }
 
-        public void SetHomePos()
+        public override void SetHomePos()
         {
             // Automation1 branch is empty in ScanMaster CMakeAerotech::SetHomePos.
         }
 
-        public void SetGalvoPosZero()
+        public override void SetGalvoPosZero()
         {
             _lines.Add($"MoveRapid([{_xAxis}, {_yAxis}], [0, 0])");
             _currentX = 0.0;
             _currentY = 0.0;
         }
 
-        public void End(bool bufferedRun = false)
+        public override void End(bool bufferedRun = false)
         {
             if (bufferedRun)
             {
@@ -2038,7 +2038,7 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             }
         }
 
-        public async Task<ST_AUTOMATION1_SCRIPT> Save(
+        public async override Task<ST_AUTOMATION1_SCRIPT> Save(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();

@@ -162,362 +162,253 @@ public enum EN_AEROTECH_MODE
     Scanner = 2
 }
 
-public interface IAutomation1Script
+public abstract class CAutomation1ScriptBase
 {
-    string FileName { get; }
-
-    string FilePath { get; }
-
-    IReadOnlyList<string> Lines { get; }
-
-    void Clear();
-
-    void AddLine(string line);
-
-    void Start(string title = "");
-
-    void SetDeviceNo(int deviceNo);
-
-    void SetNMarkDriveLaserControl(bool use);
-
-    void SetScanPlannerStageEncoderMode(bool use);
-
-    void DefaultSetting(
-        double scannerAcc = 500000.0,
-        int motionUpdateRate = 0,
-        int executeLineCount = 110,
-        bool resetPso = true);
-
-    void DefaultFigureScanSetting(
-        int motionUpdateRate = 100,
-        int executeLineCount = 110);
-
-    void SetAxis(
-        string xAxis,
-        string yAxis,
-        string? laserAxis = null);
-
-    void SetStageAxis(
-        string xAxis,
-        string yAxis);
-
-    void SetFrequency(double frequencyKhz);
-
-    void SetLaserPower(
-        double powerPercent,
-        double outputRate = 100.0,
-        bool analogOutputUse = false);
-
-    void SetLaserPowerNoDelay(
-        double powerPercent,
-        double outputRate = 100.0);
-
-    void SetPulseOnTimeLaserPower(
-        double powerPercent,
-        double dutyPercent,
-        double outputRate = 100.0);
-
-    void SetLaserMode(int mode);
-
-    void SetLaserDelay(
-        double onDelay,
-        double offDelay);
-
-    void SetJumpSpeed(double speedMeterPerSec);
-
-    void SetJumpSpeedRate(
-        double speedMeterPerSec,
-        double rate = 1.0);
-
-    void SetMarkSpeed(double speedMeterPerSec);
-
-    void SetStageSpeed(
-        double speedX,
-        double speedY);
-
-    void SetScannerAcc(double acc);
-
-    void SetMarkAcc(double acc);
-
-    void SetIFOV(bool use);
-
-    void SetIFOVEmulatedQuadratureDivider();
-
-    void SetIFOVIO(bool use = true);
-
-    void SetIFOVScaleXY();
-
-    void SetIFOVTime(long time);
-
-    void SetIFOVSize(double size);
-
-    void SetIFOVTrackingSpeed(long speed);
-
-    void SetIFOVTrackingAccel(long acc);
-
-    void SetIFOVPair(
-        string xStageAxis,
-        string yStageAxis,
-        bool xDirection,
-        bool yDirection);
-
-    void SetIFOVSyncAxis();
-
-    void SetMoveBlending(bool use);
-
-    void SetAbsoluteMode();
-
-    void SetIncrementalMode();
-
-    void SetWaitModeAuto();
-
-    void SetMoveDelay(
-        double delaySeconds,
-        bool addTactTime = true);
-
-    void SetExecuteLineCount(int lineCount);
-
-    void SetScannerRotate(double angle);
-
-    void SetScannerRotate(
-        string laserAxis,
-        double angle);
-
-    void SetMoveUpdateRate(int rate);
-
-    void SetCoordinatedAccelLimit(
-        long acc,
-        long arcAcc);
-
-    void SetTaskAccelLimit(
-        long acc,
-        long arcAcc);
-
-    void SetScanTrajectoryFIRFilterX(long delay);
-
-    void SetScanTrajectoryFIRFilterY(long delay);
-
-    void SetStageTrajectoryFIRFilterX(long delay);
-
-    void SetStageTrajectoryFIRFilterY(long delay);
-
-    void SetProjection(
-        string axis,
-        double offsetX,
-        double offsetY,
-        double offsetT);
-
-    void SetProjectionOff(string axis);
-
-    void SetGearing(
-        string masterAxis,
-        string slaveAxis);
-
-    void SetGearingOff(string slaveAxis = "AUTO");
-
-    void SetSoftwareLimitSetup(bool use = true);
-
-    void SetAerotechEncoderReset(
-        string axisX,
-        string axisY);
-
-    void SetScanPlannerStageEncoder(string stageAxis);
-
-    void SetEmulatedQuadratureDividerX(int value);
-
-    void SetEmulatedQuadratureDividerY(int value);
-
-    void SetStageEmulatedQuadratureDivider(
-        int xValue,
-        int yValue);
-
-    void SetPSO(
-        double pulseDistance,
-        double totalTime,
-        double laserOnTime,
-        double delay,
-        EN_AEROTECH_MODE mode,
-        EN_AEROTECH_PSO_MODE psoMode,
-        double frequencyKhz,
-        double powerPercent,
-        int windowMaskDirection,
-        double markSpeed,
-        bool manual = false);
-
-    void SetPSODistance(double pulseDistance);
-
-    void SetPSOOnOff(bool on);
-
-    void SetPSOChangePower(
-        double frequencyKhz,
-        double powerPercent);
-
-    void SetPSOFire(
-        double totalTime,
-        double laserOnTime,
-        int count,
-        double delay,
-        EN_AEROTECH_MODE mode);
-
-    void SetPSOLaserWindowMask(
-        bool on,
-        double windowStartRange = 0,
-        double windowEndRange = 0);
-
-    void DeclareEncoderVariable(
-        string axis = "",
-        bool useFeedback = false);
-
-    void InitDeclareVariable();
-
-    void InitDeclareVariableIFOV();
-
-    void SetWaitForEncoder(
-        string axis,
-        double position,
-        bool directionPlus = true);
-
-    void SetWaitForEncoder(
-        string axis,
-        bool directionPlus,
-        double position,
-        double limit,
-        double encoderScale = 1.0);
-
-    void SetWaitForEncoder2Axis(
-        string axisX,
-        string axisY,
-        bool inToOut,
-        double posX,
-        double posY,
-        double limitX,
-        double limitY);
-
-    void SetWaitForStartAxis2(
-        string axisX,
-        string axisY,
-        bool inToOut,
-        double posX,
-        double posY,
-        double limitX,
-        double limitY);
-
-    void SetEncoderScaleFactor(
-        string galvoAxis,
-        string encoderAxis,
-        int scale);
-
-    void SetEncoderScaleFactor(
-        string galvoAxis,
-        string encoderAxis,
-        bool directionPlus);
-
-    void SetEncoderScaleFactor(
-        string galvoAxis,
-        string encoderAxis,
-        double encoderX,
-        double encoderY,
-        bool directionPlus);
-
-    void SetEncoderScaleFactorByPrimaryDivider(
-        string galvoAxis,
-        string encoderAxis,
-        bool directionPlus);
-
-    void InitEncoderCount(string galvoAxis);
-
-    void EncoderNotFeedback(string axis);
-
-    void ReleaseEncoderScaleFactor(string galvoAxis);
-
-    void LaserAuto();
-
-    void LaserOn();
-
-    void LaserOff();
-
-    void PsoLaserControl(
-        bool on,
-        bool manual = false);
-
-    void LaserFire(bool on);
-
-    void Jump(double x, double y);
-
-    void Mark(double x, double y);
-
-    void GCodeMove(
-        double x,
-        double y);
-
-    void JumpRel(double x, double y);
-
-    void MarkRel(double x, double y);
-
-    void Arc(
-        double startX,
-        double startY,
-        double endX,
-        double endY,
-        double centerX,
-        double centerY,
-        double angle);
-
-    void JumpLinear(
-        double x,
-        double y);
-
-    void WaitMoveDone();
-
-    void Dwell(double delay);
-
-    void EnableAxisPair();
-
-    void DisableAxisPair();
-
-    void FaultAckAxisPair();
-
-    void HomeAxisPair();
-
-    void OffsetClearAxisPair();
-
-    void OffsetSetAxisPair(
-        double x,
-        double y);
-
-    void SetSignalLogTrigger(bool use);
-
-    void ProgramStart();
-
-    void ProgramEnd();
-
-    void BufferedEnd();
-
-    void WaitInpos();
-
-    void SetHomePos();
-
-    void SetGalvoPosZero();
-
-    void End(bool bufferedRun = false);
-
-    Task<ST_AUTOMATION1_SCRIPT> Save(CancellationToken cancellationToken = default);
+    public abstract string FileName { get; }
+    public abstract string FilePath { get; }
+    public abstract IReadOnlyList<string> Lines { get; }
+
+    public abstract void Clear();
+    public abstract void AddLine(string line);
+    public abstract void Start(string title = "");
+    public abstract void SetDeviceNo(int deviceNo);
+    public abstract void SetNMarkDriveLaserControl(bool use);
+    public abstract void SetScanPlannerStageEncoderMode(bool use);
+    public abstract void DefaultSetting(
+            double scannerAcc = 500000.0,
+            int motionUpdateRate = 0,
+            int executeLineCount = 110,
+            bool resetPso = true);
+    public abstract void DefaultFigureScanSetting(
+            int motionUpdateRate = 100,
+            int executeLineCount = 110);
+    public abstract void SetAxis(
+            string xAxis,
+            string yAxis,
+            string? laserAxis = null);
+    public abstract void SetStageAxis(
+            string xAxis,
+            string yAxis);
+    public abstract void SetFrequency(double frequencyKhz);
+    public abstract void SetLaserPower(
+            double powerPercent,
+            double outputRate = 100.0,
+            bool analogOutputUse = false);
+    public abstract void SetLaserPowerNoDelay(
+            double powerPercent,
+            double outputRate = 100.0);
+    public abstract void SetPulseOnTimeLaserPower(
+            double powerPercent,
+            double dutyPercent,
+            double outputRate = 100.0);
+    public abstract void SetLaserMode(int mode);
+    public abstract void SetLaserDelay(
+            double onDelay,
+            double offDelay);
+    public abstract void SetJumpSpeed(double speedMeterPerSec);
+    public abstract void SetJumpSpeedRate(
+            double speedMeterPerSec,
+            double rate = 1.0);
+    public abstract void SetMarkSpeed(double speedMeterPerSec);
+    public abstract void SetStageSpeed(
+            double speedX,
+            double speedY);
+    public abstract void SetScannerAcc(double acc);
+    public abstract void SetMarkAcc(double acc);
+    public abstract void SetIFOV(bool use);
+    public abstract void SetIFOVEmulatedQuadratureDivider();
+    public abstract void SetIFOVIO(bool use = true);
+    public abstract void SetIFOVScaleXY();
+    public abstract void SetIFOVTime(long time);
+    public abstract void SetIFOVSize(double size);
+    public abstract void SetIFOVTrackingSpeed(long speed);
+    public abstract void SetIFOVTrackingAccel(long acc);
+    public abstract void SetIFOVPair(
+            string xStageAxis,
+            string yStageAxis,
+            bool xDirection,
+            bool yDirection);
+    public abstract void SetIFOVSyncAxis();
+    public abstract void SetMoveBlending(bool use);
+    public abstract void SetAbsoluteMode();
+    public abstract void SetIncrementalMode();
+    public abstract void SetWaitModeAuto();
+    public abstract void SetMoveDelay(
+            double delaySeconds,
+            bool addTactTime = true);
+    public abstract void SetExecuteLineCount(int lineCount);
+    public abstract void SetScannerRotate(double angle);
+    public abstract void SetScannerRotate(
+            string laserAxis,
+            double angle);
+    public abstract void SetMoveUpdateRate(int rate);
+    public abstract void SetCoordinatedAccelLimit(
+            long acc,
+            long arcAcc);
+    public abstract void SetTaskAccelLimit(
+            long acc,
+            long arcAcc);
+    public abstract void SetScanTrajectoryFIRFilterX(long delay);
+    public abstract void SetScanTrajectoryFIRFilterY(long delay);
+    public abstract void SetStageTrajectoryFIRFilterX(long delay);
+    public abstract void SetStageTrajectoryFIRFilterY(long delay);
+    public abstract void SetProjection(
+            string axis,
+            double offsetX,
+            double offsetY,
+            double offsetT);
+    public abstract void SetProjectionOff(string axis);
+    public abstract void SetGearing(
+            string masterAxis,
+            string slaveAxis);
+    public abstract void SetGearingOff(string slaveAxis = "AUTO");
+    public abstract void SetSoftwareLimitSetup(bool use = true);
+    public abstract void SetAerotechEncoderReset(
+            string axisX,
+            string axisY);
+    public abstract void SetScanPlannerStageEncoder(string stageAxis);
+    public abstract void SetEmulatedQuadratureDividerX(int value);
+    public abstract void SetEmulatedQuadratureDividerY(int value);
+    public abstract void SetStageEmulatedQuadratureDivider(
+            int xValue,
+            int yValue);
+    public abstract void SetPSO(
+            double pulseDistance,
+            double totalTime,
+            double laserOnTime,
+            double delay,
+            EN_AEROTECH_MODE mode,
+            EN_AEROTECH_PSO_MODE psoMode,
+            double frequencyKhz,
+            double powerPercent,
+            int windowMaskDirection,
+            double markSpeed,
+            bool manual = false);
+    public abstract void SetPSODistance(double pulseDistance);
+    public abstract void SetPSOOnOff(bool on);
+    public abstract void SetPSOChangePower(
+            double frequencyKhz,
+            double powerPercent);
+    public abstract void SetPSOFire(
+            double totalTime,
+            double laserOnTime,
+            int count,
+            double delay,
+            EN_AEROTECH_MODE mode);
+    public abstract void SetPSOLaserWindowMask(
+            bool on,
+            double windowStartRange = 0,
+            double windowEndRange = 0);
+    public abstract void DeclareEncoderVariable(
+            string axis = "",
+            bool useFeedback = false);
+    public abstract void InitDeclareVariable();
+    public abstract void InitDeclareVariableIFOV();
+    public abstract void SetWaitForEncoder(
+            string axis,
+            double position,
+            bool directionPlus = true);
+    public abstract void SetWaitForEncoder(
+            string axis,
+            bool directionPlus,
+            double position,
+            double limit,
+            double encoderScale = 1.0);
+    public abstract void SetWaitForEncoder2Axis(
+            string axisX,
+            string axisY,
+            bool inToOut,
+            double posX,
+            double posY,
+            double limitX,
+            double limitY);
+    public abstract void SetWaitForStartAxis2(
+            string axisX,
+            string axisY,
+            bool inToOut,
+            double posX,
+            double posY,
+            double limitX,
+            double limitY);
+    public abstract void SetEncoderScaleFactor(
+            string galvoAxis,
+            string encoderAxis,
+            int scale);
+    public abstract void SetEncoderScaleFactor(
+            string galvoAxis,
+            string encoderAxis,
+            bool directionPlus);
+    public abstract void SetEncoderScaleFactor(
+            string galvoAxis,
+            string encoderAxis,
+            double encoderX,
+            double encoderY,
+            bool directionPlus);
+    public abstract void SetEncoderScaleFactorByPrimaryDivider(
+            string galvoAxis,
+            string encoderAxis,
+            bool directionPlus);
+    public abstract void InitEncoderCount(string galvoAxis);
+    public abstract void EncoderNotFeedback(string axis);
+    public abstract void ReleaseEncoderScaleFactor(string galvoAxis);
+    public abstract void LaserAuto();
+    public abstract void LaserOn();
+    public abstract void LaserOff();
+    public abstract void PsoLaserControl(
+            bool on,
+            bool manual = false);
+    public abstract void LaserFire(bool on);
+    public abstract void Jump(double x, double y);
+    public abstract void Mark(double x, double y);
+    public abstract void GCodeMove(
+            double x,
+            double y);
+    public abstract void JumpRel(double x, double y);
+    public abstract void MarkRel(double x, double y);
+    public abstract void Arc(
+            double startX,
+            double startY,
+            double endX,
+            double endY,
+            double centerX,
+            double centerY,
+            double angle);
+    public abstract void JumpLinear(
+            double x,
+            double y);
+    public abstract void WaitMoveDone();
+    public abstract void Dwell(double delay);
+    public abstract void EnableAxisPair();
+    public abstract void DisableAxisPair();
+    public abstract void FaultAckAxisPair();
+    public abstract void HomeAxisPair();
+    public abstract void OffsetClearAxisPair();
+    public abstract void OffsetSetAxisPair(
+            double x,
+            double y);
+    public abstract void SetSignalLogTrigger(bool use);
+    public abstract void ProgramStart();
+    public abstract void ProgramEnd();
+    public abstract void BufferedEnd();
+    public abstract void WaitInpos();
+    public abstract void SetHomePos();
+    public abstract void SetGalvoPosZero();
+    public abstract void End(bool bufferedRun = false);
+    public abstract Task<ST_AUTOMATION1_SCRIPT> Save(CancellationToken cancellationToken = default);
 }
 
-public interface IAutomationScriptFile
+public abstract class CAutomationScriptFileBase
 {
-    string ScriptFileName { get; }
+    public abstract string ScriptFileName { get; }
 
-    IAutomation1Script Create(string? fileName = null);
-
-    Task<ST_AUTOMATION1_SCRIPT> Build(
-        ST_PROCESS_MODEL processModel,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_AUTOMATION1_SCRIPT> Build(
-        ST_PROCESS_MODEL processModel,
-        string subDirectoryName,
-        CancellationToken cancellationToken = default);
+    public abstract CAutomation1ScriptBase Create(string? fileName = null);
+    public abstract Task<ST_AUTOMATION1_SCRIPT> Build(
+            ST_PROCESS_MODEL processModel,
+            CancellationToken cancellationToken = default);
+    public abstract Task<ST_AUTOMATION1_SCRIPT> Build(
+            ST_PROCESS_MODEL processModel,
+            string subDirectoryName,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed record ST_STATION_PROCESS_STATUS(
@@ -563,7 +454,7 @@ public sealed class CStationManager {
         CMotionManager motionManager,
         CInterLockManager interLockManager,
         CSettingManager settingManager,
-        IAutomationScriptFile automationScriptFile,
+        CAutomationScriptFileBase automationScriptFile,
         CAutomationManager automationManager,
         CProductManager? productManager = null,
         CLogManager? logManager = null,

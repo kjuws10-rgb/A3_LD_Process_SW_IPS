@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
+public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
 {
     private const string TableName = "JHMI_MELSEC_MAP";
 
@@ -41,7 +41,7 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
         ["POLL_MS", "POLL MS", "POLL"]
     ];
 
-    public Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();

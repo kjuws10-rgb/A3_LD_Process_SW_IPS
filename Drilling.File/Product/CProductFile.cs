@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.Product;
 
-public sealed class CProductFile(string configRoot) : IProductFile
+public sealed class CProductFile(string configRoot) : CProductFileBase
 {
     private static readonly IReadOnlyList<string> ActiveHeaders =
     [
@@ -59,7 +59,7 @@ public sealed class CProductFile(string configRoot) : IProductFile
         "Data",
         "Product");
 
-    public Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
+    public override Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -147,7 +147,7 @@ HandleParameters6,
         return Task.FromResult<ST_PRODUCT_DATA?>(product);
     }
 
-    public Task SaveActive(
+    public override Task SaveActive(
         ST_PRODUCT_DATA product,
         CancellationToken cancellationToken = default)
     {
@@ -188,14 +188,14 @@ HandleParameters6,
         return Task.CompletedTask;
     }
 
-    public Task ClearActive(CancellationToken cancellationToken = default)
+    public override Task ClearActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         DeleteIfExists(GetActiveProductPath());
         return Task.CompletedTask;
     }
 
-    public Task AppendHistory(
+    public override Task AppendHistory(
         ST_PRODUCT_HISTORY history,
         CancellationToken cancellationToken = default)
     {
@@ -204,7 +204,7 @@ HandleParameters6,
         return Task.CompletedTask;
     }
 
-    public Task AppendHeadResults(
+    public override Task AppendHeadResults(
         ST_PRODUCT_DATA product,
         CancellationToken cancellationToken = default)
     {
@@ -224,7 +224,7 @@ HandleParameters6,
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+    public override Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
         int maxRows = 100,
         int days = 14,
         CancellationToken cancellationToken = default)

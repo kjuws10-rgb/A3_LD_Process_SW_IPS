@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
+public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
 {
     private const string DefaultRuleName = "ALL_POINT.csv";
 
@@ -18,7 +18,7 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
 
     private readonly string _ruleDirectory = Path.Combine(configRoot, "ReviewRule");
 
-    public Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureDefaultRuleFile();
@@ -43,7 +43,7 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
         return Task.FromResult<IReadOnlyList<string>>(ruleNames);
     }
 
-    public Task<ST_REVIEW_RULE_DATA> Load(
+    public override Task<ST_REVIEW_RULE_DATA> Load(
         string ruleFileName,
         CancellationToken cancellationToken = default)
     {
@@ -112,7 +112,7 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
                 .ToArray()));
     }
 
-    public Task Save(
+    public override Task Save(
         ST_REVIEW_RULE_DATA rule,
         CancellationToken cancellationToken = default)
     {

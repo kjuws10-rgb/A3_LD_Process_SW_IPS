@@ -232,6 +232,15 @@ Roslyn 비교 수치는 아래와 같이 기준/최종이 동일하다. diff에�
 
 각 구간에서 Debug/Release build 또는 관련 회귀 검증을 수행했고, 자동 생성 파일과 `bin`/`obj` 결과는 commit에 포함하지 않았다.
 
+PR 전체 diff 자체 검토 결과:
+
+- 원격 PR 107개 파일과 로컬 `origin/main..HEAD` 파일 목록이 완전히 일치
+- 원격 PR에 `bin`, `obj`, `.g.cs`, `.g.i.cs`, Data, Log, artifacts 파일 0개
+- Drilling.Common/Drilling.File의 non-empty C# string/interpolated literal 변경 0건; 로그·protocol 문자열 유지
+- 기준/최종 XAML Command binding expression 각각 134개이며 값의 multiset 차이 0건
+- XAML의 나머지 의도된 변경은 coordinate converter를 attached behavior로 교체한 부분이며 WPF 좌표 회귀로 검증
+- GitHub mergeable `true`, mergeable state `clean`; 저장소 CI workflow가 없어 원격 check는 보고되지 않음
+
 ## 10. 실제 설비에서 추가 확인할 항목
 
 물리 장비와 SDK runtime이 없는 환경이므로 아래 항목은 실제 설비 연결 후 별도 확인이 필요하다. 검증하지 않은 항목을 통과로 기록하지 않는다.

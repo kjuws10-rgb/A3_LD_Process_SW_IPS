@@ -48,10 +48,10 @@ if "%REMOTE_BRANCH_EXISTS%"=="0" (
 )
 
 echo [1/2] Fetch origin/%CURRENT_BRANCH%
-git fetch --no-tags origin "%CURRENT_BRANCH%"
+git fetch --no-tags origin "refs/heads/%CURRENT_BRANCH%"
 if errorlevel 1 goto :fail
 
-git merge-base --is-ancestor "origin/%CURRENT_BRANCH%" HEAD
+git merge-base --is-ancestor FETCH_HEAD HEAD
 if errorlevel 1 (
     echo [ERROR] Local history is not a fast-forward of origin/%CURRENT_BRANCH%.
     echo         Review and integrate the remote commits before pushing.
@@ -59,7 +59,7 @@ if errorlevel 1 (
 )
 
 set "AHEAD_COUNT="
-for /f "delims=" %%C in ('git rev-list --count "origin/%CURRENT_BRANCH%..HEAD"') do set "AHEAD_COUNT=%%C"
+for /f "delims=" %%C in ('git rev-list --count "FETCH_HEAD..HEAD"') do set "AHEAD_COUNT=%%C"
 if not defined AHEAD_COUNT (
     echo [ERROR] Could not count commits to push.
     goto :fail

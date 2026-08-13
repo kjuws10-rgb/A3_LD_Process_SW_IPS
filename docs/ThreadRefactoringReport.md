@@ -303,7 +303,7 @@ Vendor SDK 내부의 Interface/Task 형식은 수정하지 않았다. 사용자 
 | 작업 Branch | `agent/remove-async-task-thread` |
 | 주요 작업 Commit | `d7fe6e8`, `43dc141`, `20e837d`, `5ccea3b` |
 | 변경 파일 수 | 직접 관리 파일 70개 |
-| Push | 최종 검증 후 갱신 |
-| Pull Request | 최종 검증 후 갱신 |
+| Push | `origin/agent/remove-async-task-thread` 성공 |
+| Pull Request | `https://github.com/kjuws10-rgb/A3_LD_Process_SW_IPS/pull/3` |
 | Merge Commit | 최종 병합 후 갱신 |
 | 최종 main Commit | 최종 병합 후 갱신 |

@@ -19,4 +19,3 @@ internal sealed class CAjinMotion(CInterfaceManager? interfaceManager, int devic
         }
     }
 }
-

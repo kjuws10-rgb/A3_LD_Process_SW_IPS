@@ -10,6 +10,7 @@ using Drilling.Common.InterLock;
 using Drilling.Common.Station;
 using Drilling.Common.Recipe;
 using Drilling.Common.Review;
+using Drilling.Common.Threading;
 using System.Windows.Media;
 
 namespace Drilling.UI.Menu.Menus;
@@ -64,12 +65,12 @@ public sealed class CMenuRecipe : CMenuBase
     private ST_RECIPE_HOLE_ROW? _selectedHole;
     private IReadOnlyList<ST_RECIPE_MANAGED_ITEM> _previewTrackedItems = [];
     private IReadOnlyList<ST_SYSTEM_PARAMETER> _headPreviewSettings = [];
-    private CancellationTokenSource? _previewRefreshCancellation;
+    private readonly CRecipePreviewThread _previewThread;
     private readonly Func<CMenuRecipe?> _editScreenProvider;
     private readonly Action<string> _setStatusMessage;
     private readonly Action<EN_MENU, string> _showLoadingScreen;
     private readonly Action _refreshShellStatus;
-    private readonly Func<Task> _refreshCurrentScreen;
+    private readonly Action _refreshCurrentScreen;
 
     public CMenuRecipe(
         CRecipeManager recipeManager,
@@ -82,7 +83,7 @@ public sealed class CMenuRecipe : CMenuBase
         Action<string> setStatusMessage,
         Action<EN_MENU, string> showLoadingScreen,
         Action refreshShellStatus,
-        Func<Task> refreshCurrentScreen)
+        Action refreshCurrentScreen)
     {
         _recipeManager = recipeManager;
         _settingManager = settingManager;
@@ -95,38 +96,40 @@ public sealed class CMenuRecipe : CMenuBase
         _showLoadingScreen = showLoadingScreen;
         _refreshShellStatus = refreshShellStatus;
         _refreshCurrentScreen = refreshCurrentScreen;
+        _previewThread = new CRecipePreviewThread(this);
+        _previewThread.Start();
 
-        async void HandleSelectCommand1(object? parameter)
+        void HandleSelectCommand1(object? parameter)
         {
-            await Select(parameter);
+            Select(parameter);
         }
 
         SelectCommand = new CButtonCommand(HandleSelectCommand1);
 
-        async void HandleSelectCategoryCommand2(object? parameter)
+        void HandleSelectCategoryCommand2(object? parameter)
         {
-            await SelectCategory(parameter);
+            SelectCategory(parameter);
         }
 
         SelectCategoryCommand = new CButtonCommand(HandleSelectCategoryCommand2);
 
-        async void HandleSelectGroupCommand3(object? parameter)
+        void HandleSelectGroupCommand3(object? parameter)
         {
-            await SelectGroup(parameter);
+            SelectGroup(parameter);
         }
 
         SelectGroupCommand = new CButtonCommand(HandleSelectGroupCommand3);
 
-        async void HandleSelectCellCommand4(object? parameter)
+        void HandleSelectCellCommand4(object? parameter)
         {
-            await SelectCell(parameter);
+            SelectCell(parameter);
         }
 
         SelectCellCommand = new CButtonCommand(HandleSelectCellCommand4);
 
-        async void HandleSelectPreviewCellCommand5(object? parameter)
+        void HandleSelectPreviewCellCommand5(object? parameter)
         {
-            await SelectPreviewCell(parameter);
+            SelectPreviewCell(parameter);
         }
 
         SelectPreviewCellCommand = new CButtonCommand(HandleSelectPreviewCellCommand5);
@@ -150,9 +153,9 @@ public sealed class CMenuRecipe : CMenuBase
 
         ClearCellSelectionCommand = new CButtonCommand(HandleClearCellSelectionCommand8);
 
-        async void HandleApplyPointPatternCommand9(object? _)
+        void HandleApplyPointPatternCommand9(object? _)
         {
-            await ApplyPointPatternToSelectedCells();
+            ApplyPointPatternToSelectedCells();
         }
 
         bool HandleApplyPointPatternCommand10(object? _)
@@ -164,30 +167,30 @@ public sealed class CMenuRecipe : CMenuBase
 HandleApplyPointPatternCommand9,
 HandleApplyPointPatternCommand10);
 
-        async void HandleCreateCommand11(object? _)
+        void HandleCreateCommand11(object? _)
         {
-            await Create();
+            Create();
         }
 
         CreateCommand = new CButtonCommand(HandleCreateCommand11);
 
-        async void HandleModifyCommand12(object? _)
+        void HandleModifyCommand12(object? _)
         {
-            await Modify();
+            Modify();
         }
 
         ModifyCommand = new CButtonCommand(HandleModifyCommand12);
 
-        async void HandleSaveCommand13(object? _)
+        void HandleSaveCommand13(object? _)
         {
-            await Save();
+            Save();
         }
 
         SaveCommand = new CButtonCommand(HandleSaveCommand13);
 
-        async void HandleDeleteCommand14(object? _)
+        void HandleDeleteCommand14(object? _)
         {
-            await Delete();
+            Delete();
         }
 
         DeleteCommand = new CButtonCommand(HandleDeleteCommand14);
@@ -199,6 +202,11 @@ HandleApplyPointPatternCommand10);
         {
             return EN_MENU.Recipe;
         }
+    }
+
+    public override void Shutdown()
+    {
+        _previewThread.Stop();
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> RecipeList { get; private set; } = [];
@@ -379,10 +387,10 @@ HandleApplyPointPatternCommand10);
 
     public CButtonCommand DeleteCommand { get; }
 
-    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
-        var recipes = await _recipeManager.LoadRecipes(cancellationToken);
-        var optionSettings = await _settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
+        var recipes = _recipeManager.LoadRecipes(cancellationToken);
+        var optionSettings = _settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
         var recipe = GetSelectedRecipe(recipes, _selectedRecipeIdProvider());
         var selectedRecipeFile = GetRecipeFileName(recipe);
         var loadedManagedItems = BuildManagedItems(recipe);
@@ -503,7 +511,7 @@ HandleApplyPointPatternCommand10);
             recipe: this);
     }
 
-    private async Task Select(object? parameter)
+    private void Select(object? parameter)
     {
         var recipeId = GetRecipeIdFromParameter(parameter);
 
@@ -516,10 +524,10 @@ HandleApplyPointPatternCommand10);
         NotifyCommands();
         _setStatusMessage($"Recipe {recipeId}.csv selected.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectCategory(object? parameter)
+    private void SelectCategory(object? parameter)
     {
         if (parameter is not string category || string.IsNullOrWhiteSpace(category))
         {
@@ -530,10 +538,10 @@ HandleApplyPointPatternCommand10);
         _selectedCategorySetter(selectedCategory);
         _selectedGroup = "ALL";
         _setStatusMessage($"Recipe category {selectedCategory} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectGroup(object? parameter)
+    private void SelectGroup(object? parameter)
     {
         if (parameter is not string group || string.IsNullOrWhiteSpace(group))
         {
@@ -542,10 +550,10 @@ HandleApplyPointPatternCommand10);
 
         _selectedGroup = group.Trim().ToUpperInvariant();
         _setStatusMessage($"Recipe group {_selectedGroup} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectCell(object? parameter)
+    private void SelectCell(object? parameter)
     {
         int EvaluateParameterSwitch1()
         {
@@ -573,13 +581,13 @@ HandleApplyPointPatternCommand10);
         OnPropertyChanged(nameof(SelectedCellHoleTitle));
         ApplyPointPatternCommand.NotifyCanExecuteChanged();
         _setStatusMessage($"Recipe Cell{cellNo} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectPreviewCell(object? parameter)
+    private void SelectPreviewCell(object? parameter)
     {
         SetCellDetailVisible(true);
-        await SelectCell(parameter);
+        SelectCell(parameter);
     }
 
     private void SetCellDetailVisible(bool isVisible)
@@ -613,7 +621,7 @@ HandleApplyPointPatternCommand10);
         ApplyPointPatternCommand.NotifyCanExecuteChanged();
     }
 
-    private async Task ApplyPointPatternToSelectedCells()
+    private void ApplyPointPatternToSelectedCells()
     {
         bool FilterCellNo26(int cellNo)
         {
@@ -659,10 +667,10 @@ HandleApplyPointPatternCommand10);
         }
 
         _setStatusMessage($"Cell{_selectedCellNo} Hole Pattern applied to {targetCellNos.Length} selected Cells.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Save()
+    private void Save()
     {
         var recipeId = Path.GetFileNameWithoutExtension(SelectedRecipeFile);
 
@@ -683,16 +691,16 @@ HandleApplyPointPatternCommand10);
 
         var recipeName = GetEditedRecipeName(recipeParameters, recipeId);
 
-        await _recipeManager.SaveRecipe(new ST_RECIPE_DATA(recipeId, recipeName, recipeParameters, []));
+        _recipeManager.SaveRecipe(new ST_RECIPE_DATA(recipeId, recipeName, recipeParameters, []));
 
         NotifyCommands();
         _setStatusMessage($"Recipe {recipeId}.csv saved and CSV verified.");
         _showLoadingScreen(EN_MENU.Recipe, "RECIPE");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Modify()
+    private void Modify()
     {
         var oldRecipeId = GetRecipeIdFromParameter(SelectedRecipeFile);
 
@@ -702,7 +710,7 @@ HandleApplyPointPatternCommand10);
             return;
         }
 
-        var recipes = await _recipeManager.LoadRecipes();
+        var recipes = _recipeManager.LoadRecipes();
         string HandleNewRecipeId29(string value)
         {
             return ValidateRecipeId(NormalizeRecipeIdInput(value), recipes, oldRecipeId);
@@ -749,10 +757,10 @@ HandleNewRecipeId29);
 
         if (AllManagedItems.Any(CheckItem30))
         {
-            await _recipeManager.SaveRecipe(new ST_RECIPE_DATA(oldRecipeId, oldRecipeId, recipeParameters, []));
+            _recipeManager.SaveRecipe(new ST_RECIPE_DATA(oldRecipeId, oldRecipeId, recipeParameters, []));
         }
 
-        await _recipeManager.RenameRecipe(oldRecipeId, newRecipeId);
+        _recipeManager.RenameRecipe(oldRecipeId, newRecipeId);
 
         _selectedRecipeIdSetter(newRecipeId);
         _selectedCategorySetter("ALL");
@@ -760,10 +768,10 @@ HandleNewRecipeId29);
         NotifyCommands();
         _setStatusMessage($"Recipe {oldRecipeId}.csv renamed to {newRecipeId}.csv and CSV verified.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Create()
+    private void Create()
     {
         if (AllManagedItems.Count == 0)
         {
@@ -771,7 +779,7 @@ HandleNewRecipeId29);
             return;
         }
 
-        var recipes = await _recipeManager.LoadRecipes();
+        var recipes = _recipeManager.LoadRecipes();
         string HandleRecipeId31(string value)
         {
             return ValidateRecipeId(NormalizeRecipeIdInput(value), recipes);
@@ -806,7 +814,7 @@ HandleRecipeId31);
             return;
         }
 
-        await _recipeManager.SaveRecipe(new ST_RECIPE_DATA(recipeId, recipeId, recipeParameters, []));
+        _recipeManager.SaveRecipe(new ST_RECIPE_DATA(recipeId, recipeId, recipeParameters, []));
 
         _selectedRecipeIdSetter(recipeId);
         _selectedCategorySetter("ALL");
@@ -814,10 +822,10 @@ HandleRecipeId31);
         NotifyCommands();
         _setStatusMessage($"Recipe {recipeId}.csv created from current recipe and CSV verified.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Delete()
+    private void Delete()
     {
         var recipeId = GetRecipeIdFromParameter(SelectedRecipeFile);
 
@@ -833,7 +841,7 @@ HandleRecipeId31);
             return;
         }
 
-        await _recipeManager.DeleteRecipe(recipeId);
+        _recipeManager.DeleteRecipe(recipeId);
 
         _selectedRecipeIdSetter("");
         _selectedCategorySetter("ALL");
@@ -841,7 +849,7 @@ HandleRecipeId31);
         NotifyCommands();
         _setStatusMessage($"Recipe {recipeId}.csv deleted.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
     private void NotifyCommands()
@@ -948,77 +956,53 @@ HandleRecipeId31);
         }
     }
 
-    private async void ScheduleCellStructureRefresh()
+    private void ScheduleCellStructureRefresh()
     {
-        _previewRefreshCancellation?.Cancel();
-        _previewRefreshCancellation?.Dispose();
-        var cancellation = new CancellationTokenSource();
-        _previewRefreshCancellation = cancellation;
-
-        try
-        {
-            await Task.Delay(250, cancellation.Token);
-            await _refreshCurrentScreen();
-        }
-        catch (OperationCanceledException)
-        {
-            // A newer edit restarted the debounce timer.
-        }
+        _previewThread.Schedule(EN_RECIPE_PREVIEW_REQUEST.CellStructure, 250);
     }
 
-    private async void SchedulePreviewRefresh()
+    private void ProcessCellStructureRefresh()
     {
-        _previewRefreshCancellation?.Cancel();
-        _previewRefreshCancellation?.Dispose();
-        var cancellation = new CancellationTokenSource();
-        _previewRefreshCancellation = cancellation;
-
-        try
-        {
-            await Task.Delay(400, cancellation.Token);
-            var cells = BuildCells(AllManagedItems, GetCellCount(AllManagedItems));
-            var preview = BuildLayoutPreview(AllManagedItems, cells, _selectedCellNo);
-            CellPreviewImage = preview.CellImage;
-            CellPreviewLabels = preview.CellLabels;
-            bool MatchCell32(ST_RECIPE_CELL cell)
-            {
-                return cell.CellNo == _selectedCellNo;
-            }
-
-            UpdateHoleRows(BuildHoleRows(
-                AllManagedItems,
-                cells.First(MatchCell32)));
-            OnPropertyChanged(nameof(CellPreviewImage));
-            OnPropertyChanged(nameof(CellPreviewLabels));
-        }
-        catch (OperationCanceledException)
-        {
-            // A newer edit restarted the debounce timer.
-        }
+        _refreshCurrentScreen();
     }
 
-    private async void ScheduleHeadPreviewRefresh()
+    private void SchedulePreviewRefresh()
     {
-        _previewRefreshCancellation?.Cancel();
-        _previewRefreshCancellation?.Dispose();
-        var cancellation = new CancellationTokenSource();
-        _previewRefreshCancellation = cancellation;
+        _previewThread.Schedule(EN_RECIPE_PREVIEW_REQUEST.CellPreview, 400);
+    }
 
-        try
+    private void ProcessPreviewRefresh()
+    {
+        var cells = BuildCells(AllManagedItems, GetCellCount(AllManagedItems));
+        var preview = BuildLayoutPreview(AllManagedItems, cells, _selectedCellNo);
+        CellPreviewImage = preview.CellImage;
+        CellPreviewLabels = preview.CellLabels;
+        bool MatchCell32(ST_RECIPE_CELL cell)
         {
-            await Task.Delay(400, cancellation.Token);
-            var preview = BuildHeadPreview(AllManagedItems, _headPreviewSettings, SelectedGroup);
-            HeadPreviewImage = preview.Image;
-            HeadPreviewLabels = preview.Labels;
-            HeadPreviewSummaryText = preview.SummaryText;
-            OnPropertyChanged(nameof(HeadPreviewImage));
-            OnPropertyChanged(nameof(HeadPreviewLabels));
-            OnPropertyChanged(nameof(HeadPreviewSummaryText));
+            return cell.CellNo == _selectedCellNo;
         }
-        catch (OperationCanceledException)
-        {
-            // A newer edit restarted the debounce timer.
-        }
+
+        UpdateHoleRows(BuildHoleRows(
+            AllManagedItems,
+            cells.First(MatchCell32)));
+        OnPropertyChanged(nameof(CellPreviewImage));
+        OnPropertyChanged(nameof(CellPreviewLabels));
+    }
+
+    private void ScheduleHeadPreviewRefresh()
+    {
+        _previewThread.Schedule(EN_RECIPE_PREVIEW_REQUEST.HeadPreview, 400);
+    }
+
+    private void ProcessHeadPreviewRefresh()
+    {
+        var preview = BuildHeadPreview(AllManagedItems, _headPreviewSettings, SelectedGroup);
+        HeadPreviewImage = preview.Image;
+        HeadPreviewLabels = preview.Labels;
+        HeadPreviewSummaryText = preview.SummaryText;
+        OnPropertyChanged(nameof(HeadPreviewImage));
+        OnPropertyChanged(nameof(HeadPreviewLabels));
+        OnPropertyChanged(nameof(HeadPreviewSummaryText));
     }
 
     private static ST_RECIPE_DATA? GetSelectedRecipe(
@@ -2797,6 +2781,80 @@ HandleParameterNameCallback5);
     {
         return unit == "-" ? "" : unit;
     }
+
+    private enum EN_RECIPE_PREVIEW_REQUEST
+    {
+        None,
+        CellStructure,
+        CellPreview,
+        HeadPreview
+    }
+
+    private sealed class CRecipePreviewThread : CtrlThread
+    {
+        private readonly CMenuRecipe mobjOwner;
+        private readonly object mobjRequestLock = new object();
+        private EN_RECIPE_PREVIEW_REQUEST meRequest = EN_RECIPE_PREVIEW_REQUEST.None;
+        private DateTimeOffset mdtDueTime = DateTimeOffset.MaxValue;
+
+        public CRecipePreviewThread(CMenuRecipe owner)
+        {
+            mobjOwner = owner;
+        }
+
+        public void Start()
+        {
+            base.Start(20, "RecipePreviewDebounce");
+        }
+
+        public void Schedule(
+            EN_RECIPE_PREVIEW_REQUEST request,
+            int delayMilliseconds)
+        {
+            lock (mobjRequestLock)
+            {
+                meRequest = request;
+                mdtDueTime = DateTimeOffset.UtcNow.AddMilliseconds(delayMilliseconds);
+            }
+        }
+
+        public override void Run()
+        {
+            EN_RECIPE_PREVIEW_REQUEST request;
+            lock (mobjRequestLock)
+            {
+                if (meRequest == EN_RECIPE_PREVIEW_REQUEST.None ||
+                    DateTimeOffset.UtcNow < mdtDueTime)
+                {
+                    return;
+                }
+
+                request = meRequest;
+                meRequest = EN_RECIPE_PREVIEW_REQUEST.None;
+                mdtDueTime = DateTimeOffset.MaxValue;
+            }
+
+            try
+            {
+                switch (request)
+                {
+                    case EN_RECIPE_PREVIEW_REQUEST.CellStructure:
+                        mobjOwner.ProcessCellStructureRefresh();
+                        break;
+                    case EN_RECIPE_PREVIEW_REQUEST.CellPreview:
+                        mobjOwner.ProcessPreviewRefresh();
+                        break;
+                    case EN_RECIPE_PREVIEW_REQUEST.HeadPreview:
+                        mobjOwner.ProcessHeadPreviewRefresh();
+                        break;
+                }
+            }
+            catch (Exception exception)
+            {
+                System.Diagnostics.Debug.WriteLine("Recipe preview refresh failed: " + exception);
+            }
+        }
+    }
 }
 
 public sealed record ST_RECIPE_CATEGORY_TAB(
@@ -3439,7 +3497,3 @@ public sealed record ST_RECIPE_STATE_ROW(
         }
     }
 }
-
-
-
-

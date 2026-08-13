@@ -108,12 +108,12 @@ public sealed record ST_MOTION_CONTROLLER_STATUS(
 
 public abstract class CMotorFileBase
 {
-    public abstract Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract IReadOnlyList<ST_MOTOR_DATA> LoadAll(CancellationToken cancellationToken = default);
 }
 
 public abstract class CIoFileBase
 {
-    public abstract Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract IReadOnlyList<ST_IO_DATA> LoadAll(CancellationToken cancellationToken = default);
 }
 public sealed class CMotionManager {
     private const string DefaultControllerName = "XPS";
@@ -208,7 +208,7 @@ public sealed class CMotionManager {
         _simulationMode = enabled;
     }
 
-    public async Task Initialize(CancellationToken cancellationToken = default)
+    public void Initialize(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         string GroupByAxisCallback7(ST_MOTOR_DATA axis)
@@ -235,21 +235,21 @@ public sealed class CMotionManager {
                 continue;
             }
 
-            await controller.Initialize(group.ToArray(), cancellationToken);
+            controller.Initialize(group.ToArray(), cancellationToken);
         }
     }
 
-    public async Task Destroy(CancellationToken cancellationToken = default)
+    public void Destroy(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         foreach (var controller in _controllers.Values)
         {
-            await controller.Destroy(cancellationToken);
+            controller.Destroy(cancellationToken);
         }
     }
 
-    public async Task RefreshStatus(CancellationToken cancellationToken = default)
+    public void RefreshStatus(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -258,15 +258,15 @@ public sealed class CMotionManager {
             return;
         }
 
-        await RefreshAxisStatus(cancellationToken);
-        await RefreshIoStatus(cancellationToken);
+        RefreshAxisStatus(cancellationToken);
+        RefreshIoStatus(cancellationToken);
     }
 
-    public async Task<IReadOnlyList<ST_MOTOR_AXIS_STATUS>> GetAxisStatus(
+    public IReadOnlyList<ST_MOTOR_AXIS_STATUS> GetAxisStatus(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await RefreshStatus(cancellationToken);
+        RefreshStatus(cancellationToken);
         int GetAxisSortKey8(ST_AXIS_STATE axis)
         {
             return axis.DisplayOrder;
@@ -295,11 +295,11 @@ public sealed class CMotionManager {
         return axes;
     }
 
-    public async Task<IReadOnlyList<ST_IO_STATUS>> GetIoStatus(
+    public IReadOnlyList<ST_IO_STATUS> GetIoStatus(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await RefreshStatus(cancellationToken);
+        RefreshStatus(cancellationToken);
         int GetChannelSortKey10(ST_IO_STATE channel)
         {
             return channel.DisplayOrder;
@@ -323,10 +323,10 @@ public sealed class CMotionManager {
         return io;
     }
 
-    public async Task<IReadOnlyList<ST_MOTION_STATION_STATUS>> GetStationStatus(
+    public IReadOnlyList<ST_MOTION_STATION_STATUS> GetStationStatus(
         CancellationToken cancellationToken = default)
     {
-        var axes = await GetAxisStatus(cancellationToken);
+        var axes = GetAxisStatus(cancellationToken);
         string HandleStatusMap12(ST_MOTOR_AXIS_STATUS axis)
         {
             return axis.AxisId;
@@ -396,7 +396,7 @@ public sealed class CMotionManager {
             .ToArray();
     }
 
-    public Task<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>> GetControllerStatus(
+    public IReadOnlyList<ST_MOTION_CONTROLLER_STATUS> GetControllerStatus(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -449,69 +449,69 @@ public sealed class CMotionManager {
             .ThenBy(GetItemSortKey19)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>>(status);
+        return status;
     }
 
-    public async Task MoveAxis(
+    public void MoveAxis(
         string axisId,
         double targetPosition,
         CancellationToken cancellationToken = default)
     {
-        await Move(axisId, targetPosition, cancellationToken);
+        Move(axisId, targetPosition, cancellationToken);
     }
 
-    public Task ServoOn(
+    public void ServoOn(
         string axisId,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ServoOn, cancellationToken: cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ServoOn, cancellationToken: cancellationToken);
     }
 
-    public Task ServoOff(
+    public void ServoOff(
         string axisId,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ServoOff, cancellationToken: cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ServoOff, cancellationToken: cancellationToken);
     }
 
-    public Task Home(
+    public void Home(
         string axisId,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.Home, cancellationToken: cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.Home, cancellationToken: cancellationToken);
     }
 
-    public Task Move(
+    public void Move(
         string axisId,
         double targetPosition,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.MoveAbs, targetPosition, cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.MoveAbs, targetPosition, cancellationToken);
     }
 
-    public Task MoveRel(
+    public void MoveRel(
         string axisId,
         double distance,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.MoveRel, distance, cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.MoveRel, distance, cancellationToken);
     }
 
-    public Task Stop(
+    public void Stop(
         string axisId,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.Stop, cancellationToken: cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.Stop, cancellationToken: cancellationToken);
     }
 
-    public Task ResetAlarm(
+    public void ResetAlarm(
         string axisId,
         CancellationToken cancellationToken = default)
     {
-        return ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ResetAlarm, cancellationToken: cancellationToken);
+        ExecuteAxisCommand(axisId, EN_MOTION_COMMAND.ResetAlarm, cancellationToken: cancellationToken);
     }
 
-    public async Task ExecuteAxisCommand(
+    public void ExecuteAxisCommand(
         string axisId,
         EN_MOTION_COMMAND command,
         double parameter = 0.0,
@@ -542,19 +542,19 @@ public sealed class CMotionManager {
 
             if (!controller.IsSimulation())
             {
-                await controller.ExecuteAxisCommand(axisData, command, parameter, cancellationToken);
+                controller.ExecuteAxisCommand(axisData, command, parameter, cancellationToken);
             }
         }
 
         ApplyAxisCommand(normalizedAxisId, command, parameter);
     }
 
-    public async Task StopMotion(string axisId, CancellationToken cancellationToken = default)
+    public void StopMotion(string axisId, CancellationToken cancellationToken = default)
     {
-        await Stop(axisId, cancellationToken);
+        Stop(axisId, cancellationToken);
     }
 
-    public async Task SetOutput(
+    public void SetOutput(
         string ioName,
         bool isOn,
         CancellationToken cancellationToken = default)
@@ -577,13 +577,13 @@ public sealed class CMotionManager {
 
         if (!_simulationMode && controller is not null && !controller.IsSimulation())
         {
-            await controller.SetOutput(channel.Address, isOn, cancellationToken);
+            controller.SetOutput(channel.Address, isOn, cancellationToken);
         }
 
         channel.IsOn = isOn;
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteMotionCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteMotionCommand(
         string axisId,
         EN_MOTION_COMMAND command,
         double parameter = 0.0,
@@ -591,7 +591,7 @@ public sealed class CMotionManager {
     {
         try
         {
-            await ExecuteAxisCommand(axisId, command, parameter, cancellationToken);
+            ExecuteAxisCommand(axisId, command, parameter, cancellationToken);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"Motion {axisId} {FormatMotionCommand(command)} OK.");
@@ -605,7 +605,7 @@ public sealed class CMotionManager {
         }
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> SetOutputCommand(
+    public ST_DEVICE_COMMAND_RESULT SetOutputCommand(
         string ioName,
         bool isOn,
         CancellationToken cancellationToken = default)
@@ -615,7 +615,7 @@ public sealed class CMotionManager {
         try
         {
             var channel = GetIoChannelOrThrow(ioName);
-            await SetOutput(channel.Address, isOn, cancellationToken);
+            SetOutput(channel.Address, isOn, cancellationToken);
 
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
@@ -639,7 +639,7 @@ public sealed class CMotionManager {
             : null;
     }
 
-    private async Task RefreshAxisStatus(CancellationToken cancellationToken)
+    private void RefreshAxisStatus(CancellationToken cancellationToken)
     {
         foreach (var axisData in _axisData.Values)
         {
@@ -650,7 +650,7 @@ public sealed class CMotionManager {
 
             try
             {
-                var status = await controller.ReadAxisStatus(axisData, cancellationToken);
+                var status = controller.ReadAxisStatus(axisData, cancellationToken);
 
                 if (status is not null)
                 {
@@ -665,7 +665,7 @@ public sealed class CMotionManager {
         }
     }
 
-    private async Task RefreshIoStatus(CancellationToken cancellationToken)
+    private void RefreshIoStatus(CancellationToken cancellationToken)
     {
         foreach (var channel in _io.Values)
         {
@@ -678,7 +678,7 @@ public sealed class CMotionManager {
 
             try
             {
-                var isOn = await controller.ReadIo(channel.Address, channel.IsOutput, cancellationToken);
+                var isOn = controller.ReadIo(channel.Address, channel.IsOutput, cancellationToken);
 
                 if (isOn.HasValue)
                 {
@@ -1271,5 +1271,3 @@ public sealed class CMotionManager {
         public string Description { get; } = description;
     }
 }
-
-

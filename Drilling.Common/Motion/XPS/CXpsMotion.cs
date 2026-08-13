@@ -19,11 +19,11 @@ internal sealed class CXpsMotion(CInterfaceManager? interfaceManager, int device
         }
     }
 
-    public override async Task<ST_MOTOR_AXIS_STATUS?> ReadAxisStatus(
+    public override ST_MOTOR_AXIS_STATUS? ReadAxisStatus(
         ST_MOTOR_DATA axis,
         CancellationToken cancellationToken = default)
     {
-        var response = await Send(
+        var response = Send(
             BuildAxisCommand(axis, EN_MOTION_COMMAND.Refresh, 0.0),
             cancellationToken);
 

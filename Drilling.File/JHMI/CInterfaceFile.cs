@@ -62,7 +62,7 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
         ["ARG5"]
     ];
 
-    public override Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_INTERFACE_DATA> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -89,10 +89,10 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
             .ThenBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<ST_INTERFACE_DATA>>(rows);
+        return rows;
     }
 
-    public override Task SaveAll(
+    public override void SaveAll(
         IReadOnlyList<ST_INTERFACE_DATA> interfaces,
         CancellationToken cancellationToken = default)
     {
@@ -129,7 +129,7 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
         WriteModifyLog(oldRows, interfaces);
         _logManager.WriteSettingSave(EN_SETTING_TAB.Interface);
 
-        return Task.CompletedTask;
+        return;
     }
 
     private IReadOnlyList<ST_INTERFACE_DATA> LoadInterfaceRows()
@@ -667,10 +667,3 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
         return value.Trim().ToUpperInvariant();
     }
 }
-
-
-
-
-
-
-

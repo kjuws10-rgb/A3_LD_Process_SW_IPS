@@ -20,21 +20,21 @@ public sealed class CBETFile(string configRoot) : CBETFileBase
         "SPOTSIZE"
     ];
 
-    public override Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_BET_TABLE_DATA> Load(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
 
-        return Task.FromResult<IReadOnlyList<ST_BET_TABLE_DATA>>(ReadTable(GetFormPath()));
+        return ReadTable(GetFormPath());
     }
 
-    public override Task Save(
+    public override void Save(
         IReadOnlyList<ST_BET_TABLE_DATA> table,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         WriteTable(GetFormPath(), table);
-        return Task.CompletedTask;
+        return;
     }
 
     private void EnsureFiles()
@@ -132,8 +132,3 @@ public sealed class CBETFile(string configRoot) : CBETFileBase
             : defaultValue;
     }
 }
-
-
-
-
-

@@ -19,6 +19,7 @@ internal static class Program
             TestNamedPropertyChangeBinding();
             TestButtonCommandBehavior();
             TestCoordinateBehavior();
+            TestMenuBuildAndShutdown();
             Console.WriteLine("WPF_REGRESSION_PASS");
             return 0;
         }
@@ -72,6 +73,29 @@ internal static class Program
         CPreviewCoordinateBehavior.SetUseStretchScale(presenter, true);
         Assert(Canvas.GetLeft(presenter) == 95.0 && Canvas.GetTop(presenter) == 47.0,
             "Stretch coordinate behavior result changed.");
+    }
+
+    private static void TestMenuBuildAndShutdown()
+    {
+        CRootView? rootView = null;
+
+        try
+        {
+            rootView = CAppStartup.CreateMainViewModel();
+
+            foreach (var menuItem in rootView.Menus)
+            {
+                rootView.SelectedMenu = menuItem;
+                Assert(
+                    rootView.CurrentScreen.Menu == menuItem.Menu,
+                    "Menu screen build result changed: " + menuItem.Menu);
+            }
+        }
+        finally
+        {
+            CAppStartup.StopInitialization();
+            rootView?.Shutdown();
+        }
     }
 
     private static void ExecuteCommand(object? parameter)

@@ -19,4 +19,3 @@ internal sealed class CPmacMotion(CInterfaceManager? interfaceManager, int devic
         }
     }
 }
-

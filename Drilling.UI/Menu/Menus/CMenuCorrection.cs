@@ -25,7 +25,7 @@ public sealed class CMenuCorrection : CMenuBase
     private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _statusReporter;
-    private readonly Func<Task> _refreshCurrentScreen;
+    private readonly Action _refreshCurrentScreen;
     private readonly List<ST_CORRECTION_HISTORY_ROW> _reviewDataHistory = [];
     private readonly HashSet<string> _appliedReviewResultPaths = new(StringComparer.OrdinalIgnoreCase);
     private ST_REVIEW_RESULT_FILE_DATA? _loadedReviewResult;
@@ -43,7 +43,7 @@ public sealed class CMenuCorrection : CMenuBase
         CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> statusReporter,
-        Func<Task> refreshCurrentScreen)
+        Action refreshCurrentScreen)
     {
         _reviewResultFile = reviewResultFile;
         _recipeManager = recipeManager;
@@ -54,9 +54,9 @@ public sealed class CMenuCorrection : CMenuBase
 
         SelectTabCommand = new CButtonCommand(SelectTab);
 
-        async void HandleExecuteCommand1(object? parameter)
+        void HandleExecuteCommand1(object? parameter)
         {
-            await Execute(parameter);
+            Execute(parameter);
         }
 
         ExecuteCommand = new CButtonCommand(HandleExecuteCommand1);
@@ -176,7 +176,7 @@ public sealed class CMenuCorrection : CMenuBase
 
     public CButtonCommand ExecuteCommand { get; }
 
-    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -198,7 +198,7 @@ public sealed class CMenuCorrection : CMenuBase
             ],
             correction: this);
 
-        return Task.FromResult(screen);
+        return (screen);
     }
 
     private void SelectTab(object? parameter)
@@ -222,10 +222,10 @@ public sealed class CMenuCorrection : CMenuBase
 
         _selectedTab = normalizedTab;
         _statusReporter($"Correction tab selected: {_selectedTab}.");
-        _ = _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Execute(object? parameter)
+    private void Execute(object? parameter)
     {
         var command = parameter?.ToString()?.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(command))
@@ -235,25 +235,25 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (IsReviewDataTab && command == "LOAD")
         {
-            await LoadReviewResult();
+            LoadReviewResult();
             return;
         }
 
         if (IsReviewDataTab && command == "CALCULATE")
         {
-            await CalculateReviewOffsets();
+            CalculateReviewOffsets();
             return;
         }
 
         if (IsReviewDataTab && command == "APPLY")
         {
-            await ApplyReviewOffsets();
+            ApplyReviewOffsets();
             return;
         }
 
         if (IsReviewDataTab && command == "SAVE")
         {
-            await SaveAppliedReviewOffsets();
+            SaveAppliedReviewOffsets();
             return;
         }
 
@@ -293,7 +293,7 @@ public sealed class CMenuCorrection : CMenuBase
         (SummaryItems, SourceRows, CandidateRows, ApplyRows, DetailItems, HistoryRows) = EvaluateSelectedTabSwitch1();
     }
 
-    private async Task LoadReviewResult()
+    private void LoadReviewResult()
     {
         var dialog = new OpenFileDialog
         {
@@ -314,13 +314,13 @@ public sealed class CMenuCorrection : CMenuBase
 
         try
         {
-            var result = await _reviewResultFile.Load(dialog.FileName);
+            var result = _reviewResultFile.Load(dialog.FileName);
             ValidateSelectedRecipe(result);
 
             _loadedReviewResult = result;
             _isLoadedReviewResultApplied = _appliedReviewResultPaths.Contains(
                 GetReviewResultIdentity(result));
-            _currentSettingState = await LoadCurrentSettingState();
+            _currentSettingState = LoadCurrentSettingState();
             _currentReviewOffsetRecipeName = "Recipe: -";
             ST_CORRECTION_REVIEW_RESULT_ROW SelectRow4(ST_REVIEW_RESULT_FILE_ROW row)
             {
@@ -340,7 +340,7 @@ public sealed class CMenuCorrection : CMenuBase
             string? offsetLoadWarning = null;
             try
             {
-                CurrentOffsetRows = await LoadCurrentReviewOffsets(result);
+                CurrentOffsetRows = LoadCurrentReviewOffsets(result);
             }
             catch (Exception exception)
             {
@@ -371,7 +371,7 @@ public sealed class CMenuCorrection : CMenuBase
             ApplyTabData(_selectedTab);
             _statusReporter(
                 $"Review Result loaded: {result.FileName} / {result.Rows.Count} rows.");
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
         }
         catch (Exception exception)
         {
@@ -388,15 +388,15 @@ public sealed class CMenuCorrection : CMenuBase
                 "NG"));
             ApplyTabData(_selectedTab);
             _statusReporter(message);
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
         }
     }
 
-    private async Task CalculateReviewOffsets()
+    private void CalculateReviewOffsets()
     {
         if (_loadedReviewResult is null)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Calculate",
                 "Load a Review Result CSV before calculating.",
                 "WARN");
@@ -405,7 +405,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (_isLoadedReviewResultApplied)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Calculate",
                 "This Review Result was already saved. Load a new Review Result before recalculating.",
                 "WARN");
@@ -414,7 +414,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (_hasPendingReviewOffsetApply)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Calculate",
                 "Review Offsets are pending save. Save or load the Review Result again before recalculating.",
                 "WARN");
@@ -423,7 +423,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         try
         {
-            var axisMode = await LoadCurrentVisionAxisMode();
+            var axisMode = LoadCurrentVisionAxisMode();
             _currentSettingState = $"Vision Flip: {CReviewCoordinateTransformer.FormatVisionAxisMode(axisMode)}";
 
             var calculatedRows = new List<ST_CORRECTION_REVIEW_OFFSET_ROW>();
@@ -451,7 +451,7 @@ public sealed class CMenuCorrection : CMenuBase
             CalculatedOffsetRows = calculatedRows;
             ApplyPreviewRows = [];
 
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Calculate",
                 $"{calculatedRows.Count} Review Offsets calculated. Select Apply to create Apply Preview.",
                 "OK",
@@ -461,18 +461,18 @@ public sealed class CMenuCorrection : CMenuBase
         {
             CalculatedOffsetRows = [];
             ApplyPreviewRows = [];
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Calculate",
                 $"Review Offset calculation failed: {exception.Message}",
                 "NG");
         }
     }
 
-    private async Task ApplyReviewOffsets()
+    private void ApplyReviewOffsets()
     {
         if (_loadedReviewResult is null)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 "Load and calculate a Review Result before applying.",
                 "WARN");
@@ -481,7 +481,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (_isLoadedReviewResultApplied)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 "This Review Result was already saved. Load a new Review Result before applying again.",
                 "WARN");
@@ -490,7 +490,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (_hasPendingReviewOffsetApply)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 "The calculated offsets are already applied to the Review Offsets and pending save.",
                 "WARN");
@@ -499,7 +499,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (CalculatedOffsetRows.Count == 0)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 "Calculate the Review Offsets before applying.",
                 "WARN");
@@ -508,7 +508,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (CalculatedOffsetRows.Count != CurrentOffsetRows.Count)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 $"Current Review Offset is incomplete: {CurrentOffsetRows.Count}/{CalculatedOffsetRows.Count} rows.",
                 "NG");
@@ -529,7 +529,7 @@ public sealed class CMenuCorrection : CMenuBase
 
         if (CalculatedOffsetRows.Any(CheckRow6))
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 "Calculated Review Offset contains a Hole that is not present in the current Review Offsets.",
                 "NG");
@@ -581,7 +581,7 @@ HandleCurrentOffsets9,
 
         if (!_hasPendingReviewOffsetApply)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Apply",
                 "There are no Review Offset changes to apply.",
                 "OK",
@@ -598,18 +598,18 @@ HandleCurrentOffsets9,
             return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
         }
 
-        await ReportReviewDataCommand(
+        ReportReviewDataCommand(
             "Apply",
             $"{ApplyPreviewRows.Count(CountRowCallback12)} calculated values are shown in Apply Preview. Save is required.",
             "WARN",
             $"{ApplyPreviewRows.Count(CountRowCallback13)} Rows / Pending Save");
     }
 
-    private async Task SaveAppliedReviewOffsets()
+    private void SaveAppliedReviewOffsets()
     {
         if (_loadedReviewResult is null || !_hasPendingReviewOffsetApply)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Save",
                 "Apply the calculated Review Offsets before saving.",
                 "WARN");
@@ -630,7 +630,7 @@ HandleCurrentOffsets9,
                                         StringComparison.OrdinalIgnoreCase);
             }
 
-            var recipe = (await _recipeManager.LoadRecipes())
+            var recipe = (_recipeManager.LoadRecipes())
                 .FirstOrDefault(MatchItem14)
                 ?? throw new InvalidOperationException(
                     $"Selected recipe could not be loaded: {selectedRecipeId}.");
@@ -647,7 +647,7 @@ HandleCurrentOffsets9,
                 UpsertReviewOffsetParameter(parameters, row, "Y", row.OffsetYValue);
             }
 
-            await _recipeManager.SaveRecipe(recipe with { Parameters = parameters });
+            _recipeManager.SaveRecipe(recipe with { Parameters = parameters });
             ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow16(ST_CORRECTION_REVIEW_OFFSET_ROW row)
             {
                 return row with
@@ -674,7 +674,7 @@ HandleCurrentOffsets9,
             _appliedReviewResultPaths.Add(GetReviewResultIdentity(_loadedReviewResult));
             _currentReviewOffsetRecipeName = $"Recipe: {recipe.Id}.csv";
 
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Save",
                 $"{savedCount} Review Offsets saved to {recipe.Id}.csv.",
                 "OK",
@@ -682,7 +682,7 @@ HandleCurrentOffsets9,
         }
         catch (Exception exception)
         {
-            await ReportReviewDataCommand(
+            ReportReviewDataCommand(
                 "Save",
                 $"Review Offset save failed: {exception.Message}",
                 "NG");
@@ -750,7 +750,7 @@ HandleCurrentOffsets9,
                Math.Abs(before.OffsetYValue - after.OffsetYValue) >= comparisonTolerance;
     }
 
-    private async Task ReportReviewDataCommand(
+    private void ReportReviewDataCommand(
         string item,
         string message,
         string result,
@@ -769,10 +769,10 @@ HandleCurrentOffsets9,
 
         ApplyTabData(_selectedTab);
         _statusReporter(message);
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task<IReadOnlyList<ST_CORRECTION_REVIEW_OFFSET_ROW>> LoadCurrentReviewOffsets(
+    private IReadOnlyList<ST_CORRECTION_REVIEW_OFFSET_ROW> LoadCurrentReviewOffsets(
         ST_REVIEW_RESULT_FILE_DATA result)
     {
         var selectedRecipeId = NormalizeRecipeId(_selectedRecipeIdProvider());
@@ -785,7 +785,7 @@ HandleCurrentOffsets9,
             return NormalizeRecipeId(item.Id).Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
         }
 
-        var recipe = (await _recipeManager.LoadRecipes())
+        var recipe = (_recipeManager.LoadRecipes())
             .FirstOrDefault(MatchItem19);
         if (recipe is null)
         {
@@ -818,23 +818,23 @@ HandleCurrentOffsets9,
             .ToArray();
     }
 
-    private async Task<string> LoadCurrentSettingState()
+    private string LoadCurrentSettingState()
     {
-        var axisMode = await LoadCurrentVisionAxisMode();
+        var axisMode = LoadCurrentVisionAxisMode();
         return $"Vision Flip: {CReviewCoordinateTransformer.FormatVisionAxisMode(axisMode)}";
     }
 
-    private async Task<EN_VISION_AXIS_MODE> LoadCurrentVisionAxisMode()
+    private EN_VISION_AXIS_MODE LoadCurrentVisionAxisMode()
     {
-        var xFlipValue = await _settingManager.GetValue(
+        var xFlipValue = _settingManager.GetValue(
             EN_SETTING_TAB.Option,
             "VisionXFlip",
             "");
-        var yFlipValue = await _settingManager.GetValue(
+        var yFlipValue = _settingManager.GetValue(
             EN_SETTING_TAB.Option,
             "VisionYFlip",
             "");
-        var xyFlipValue = await _settingManager.GetValue(
+        var xyFlipValue = _settingManager.GetValue(
             EN_SETTING_TAB.Option,
             "VisionXyFlip",
             "");

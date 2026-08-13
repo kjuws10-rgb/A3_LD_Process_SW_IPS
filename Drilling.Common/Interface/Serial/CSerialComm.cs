@@ -16,9 +16,8 @@ internal class CSerialComm(
     ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option)
 {
     protected SerialPort? SerialPort;
-    protected readonly SemaphoreSlim SerialLock = new(1, 1);
 
-    public override Task Connect(CancellationToken cancellationToken = default)
+    protected override void ConnectCore(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         CloseSerialPort();
@@ -28,7 +27,7 @@ internal class CSerialComm(
             if (string.IsNullOrWhiteSpace(Option.SerialPort) || Option.BaudRate <= 0)
             {
                 SetError("Serial port option is invalid.");
-                return Task.CompletedTask;
+                return;
             }
 
             SerialPort = new SerialPort(
@@ -53,41 +52,29 @@ internal class CSerialComm(
             CloseSerialPort();
             SetError(ex);
         }
-
-        return Task.CompletedTask;
     }
 
-    public override Task Disconnect(CancellationToken cancellationToken = default)
+    protected override void DisconnectCore(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         CloseSerialPort();
         SetState(EN_COMM_STATE.Offline);
-        return Task.CompletedTask;
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        await SerialLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            return await ExecuteSerial(function, cancellationToken);
-        }
-        finally
-        {
-            SerialLock.Release();
-        }
+        return ExecuteSerial(function, cancellationToken);
     }
 
-    private async Task<string> ExecuteSerial(
+    private string ExecuteSerial(
         string function,
         CancellationToken cancellationToken)
     {
         if (SerialPort is null || !SerialPort.IsOpen)
         {
-            await Connect(cancellationToken);
+            ConnectCore(cancellationToken);
         }
 
         if (SerialPort is null || !SerialPort.IsOpen)
@@ -99,20 +86,17 @@ internal class CSerialComm(
 
         try
         {
-            string RunTask1()
-            {
-                SerialPort.WriteLine(LastSent);
+            cancellationToken.ThrowIfCancellationRequested();
+            SerialPort.WriteLine(LastSent);
 
-                try
-                {
-                    return SerialPort.ReadLine();
-                }
-                catch (TimeoutException)
-                {
-                    return SerialPort.ReadExisting().Trim();
-                }
+            try
+            {
+                LastReceived = SerialPort.ReadLine();
             }
-            LastReceived = await Task.Run(RunTask1, cancellationToken);
+            catch (TimeoutException)
+            {
+                LastReceived = SerialPort.ReadExisting().Trim();
+            }
 
             LastError = string.IsNullOrWhiteSpace(LastReceived)
                 ? "Serial response timeout."
@@ -214,5 +198,3 @@ internal class CSerialComm(
             .Trim();
     }
 }
-
-

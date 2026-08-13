@@ -45,22 +45,22 @@ public sealed record ST_SETTING_HISTORY(
 
 public abstract class CSettingFileBase
 {
-    public abstract Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
+    public abstract IReadOnlyList<ST_SYSTEM_PARAMETER> Load(
             EN_SETTING_TAB section,
             CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract void Save(
             EN_SETTING_TAB section,
             IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
             CancellationToken cancellationToken = default);
-    public abstract Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
+    public abstract IReadOnlyList<ST_SETTING_HISTORY> LoadHistory(
             EN_SETTING_TAB section,
             CancellationToken cancellationToken = default);
 }
 
 public abstract class CInterfaceFileBase
 {
-    public abstract Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default);
-    public abstract Task SaveAll(
+    public abstract IReadOnlyList<ST_INTERFACE_DATA> LoadAll(CancellationToken cancellationToken = default);
+    public abstract void SaveAll(
             IReadOnlyList<ST_INTERFACE_DATA> interfaces,
             CancellationToken cancellationToken = default);
 }
@@ -69,14 +69,14 @@ public sealed class CSettingManager(
     CSettingFileBase settingFile,
     CInterfaceFileBase interfaceFile,
     CInterfaceManager interfaceManager) {
-    public Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> LoadSection(
+    public IReadOnlyList<ST_SYSTEM_PARAMETER> LoadSection(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
     {
         return settingFile.Load(section, cancellationToken);
     }
 
-    public async Task<string> GetValue(
+    public string GetValue(
         EN_SETTING_TAB section,
         string name,
         string defaultValue = "",
@@ -84,7 +84,7 @@ public sealed class CSettingManager(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        var parameters = await LoadSection(section, cancellationToken);
+        var parameters = LoadSection(section, cancellationToken);
         bool MatchItem1(ST_SYSTEM_PARAMETER item)
         {
             return item.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
@@ -98,7 +98,7 @@ public sealed class CSettingManager(
             : parameter.Value;
     }
 
-    public async Task SetValue(
+    public void SetValue(
         EN_SETTING_TAB section,
         string name,
         string value,
@@ -106,7 +106,7 @@ public sealed class CSettingManager(
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
-        var parameters = await LoadSection(section, cancellationToken);
+        var parameters = LoadSection(section, cancellationToken);
         var found = false;
         ST_SYSTEM_PARAMETER SelectParameter2(ST_SYSTEM_PARAMETER parameter)
         {
@@ -131,60 +131,59 @@ public sealed class CSettingManager(
             throw new InvalidDataException($"Setting parameter is not defined: {section}/{name}");
         }
 
-        await SaveSection(section, editedParameters, cancellationToken);
+        SaveSection(section, editedParameters, cancellationToken);
     }
 
-    public Task SaveSection(
+    public void SaveSection(
         EN_SETTING_TAB section,
         IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
         CancellationToken cancellationToken = default)
     {
-        return settingFile.Save(section, parameters, cancellationToken);
+        settingFile.Save(section, parameters, cancellationToken);
     }
 
-    public Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
+    public IReadOnlyList<ST_SETTING_HISTORY> LoadHistory(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
     {
         return settingFile.LoadHistory(section, cancellationToken);
     }
 
-    public Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadInterfaceList(
+    public IReadOnlyList<ST_INTERFACE_DATA> LoadInterfaceList(
         CancellationToken cancellationToken = default)
     {
         return interfaceFile.LoadAll(cancellationToken);
     }
 
-    public async Task SaveInterfaceList(
+    public void SaveInterfaceList(
         IReadOnlyList<ST_INTERFACE_DATA> interfaces,
         CancellationToken cancellationToken = default)
     {
-        await interfaceFile.SaveAll(interfaces, cancellationToken);
-        await interfaceManager.Reload(interfaces, reconnect: false, cancellationToken);
+        interfaceFile.SaveAll(interfaces, cancellationToken);
+        interfaceManager.Reload(interfaces, reconnect: false, cancellationToken);
     }
 
-    public Task ConnectInterface(
+    public void ConnectInterface(
         EN_EQP_MODULE module,
         int number,
         CancellationToken cancellationToken = default)
     {
-        return interfaceManager.Connect(module, number, cancellationToken: cancellationToken);
+        interfaceManager.Connect(module, number, cancellationToken: cancellationToken);
     }
 
-    public Task DisconnectInterface(
+    public void DisconnectInterface(
         EN_EQP_MODULE module,
         int number,
         CancellationToken cancellationToken = default)
     {
-        return interfaceManager.Disconnect(module, number, cancellationToken);
+        interfaceManager.Disconnect(module, number, cancellationToken);
     }
 
-    public Task ReconnectInterface(
+    public void ReconnectInterface(
         EN_EQP_MODULE module,
         int number,
         CancellationToken cancellationToken = default)
     {
-        return interfaceManager.Reconnect(module, number, cancellationToken);
+        interfaceManager.Reconnect(module, number, cancellationToken);
     }
 }
-

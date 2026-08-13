@@ -51,6 +51,27 @@ public partial class CApp : Application
         }
     }
 
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            CAppStartup.StopInitialization();
+
+            if (MainWindow?.DataContext is CRootView rootView)
+            {
+                rootView.Shutdown();
+            }
+        }
+        catch (Exception exception)
+        {
+            CProgramOpenLog.Write("PROGRAM_CLOSE_FAILED", exception);
+        }
+        finally
+        {
+            base.OnExit(e);
+        }
+    }
+
     private void RegisterExceptionHandlers()
     {
         void DispatcherUnhandledExceptionHandler1(object _, DispatcherUnhandledExceptionEventArgs args)
@@ -66,11 +87,6 @@ public partial class CApp : Application
                 exception?.ToString() ?? args.ExceptionObject?.ToString() ?? "Unknown unhandled exception.");
         }
         AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler2;
-        void UnobservedTaskExceptionHandler3(object? _, UnobservedTaskExceptionEventArgs args)
-        {
-            CProgramOpenLog.Write("TASK_UNOBSERVED", args.Exception);
-        }
-        TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler3;
     }
 
     private void ConfigureMainWindowBounds(Window window)
@@ -201,5 +217,3 @@ public partial class CApp : Application
         public int Bottom;
     }
 }
-
-

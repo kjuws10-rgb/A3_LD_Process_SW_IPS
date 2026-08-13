@@ -41,7 +41,7 @@ public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
         ["POLL_MS", "POLL MS", "POLL"]
     ];
 
-    public override Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_MELSEC_MAP_DATA> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
@@ -80,7 +80,7 @@ public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
             .ToArray();
 
         Validate(rows);
-        return Task.FromResult<IReadOnlyList<ST_MELSEC_MAP_DATA>>(rows);
+        return rows;
     }
 
     private ST_MELSEC_MAP_DATA Parse(

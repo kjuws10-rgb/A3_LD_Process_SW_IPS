@@ -148,29 +148,30 @@ public sealed record ST_CONFIG_FILE_STATUS(
 
 public abstract class CConfigStructureFileBase
 {
-    public abstract Task<IReadOnlyList<ST_CONFIG_FILE_STATUS>> Validate(
+    public abstract IReadOnlyList<ST_CONFIG_FILE_STATUS> Validate(
             CancellationToken cancellationToken = default);
 }
 
 public abstract class CManualScanFileBase
 {
-    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-    public abstract Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default);
-    public abstract Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default);
-    public abstract Task<ST_MANUAL_SCAN_PARAM> Load(string settingName, CancellationToken cancellationToken = default);
-    public abstract Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract IReadOnlyList<string> List(CancellationToken cancellationToken = default);
+    public abstract IReadOnlyList<ST_MANUAL_SCAN_FORM> LoadForm(CancellationToken cancellationToken = default);
+    public abstract ST_MANUAL_SCAN_PARAM Load(CancellationToken cancellationToken = default);
+    public abstract ST_MANUAL_SCAN_PARAM Load(string settingName, CancellationToken cancellationToken = default);
+    public abstract void Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default);
+    public abstract void Save(
             string settingName,
             ST_MANUAL_SCAN_PARAM settings,
             CancellationToken cancellationToken = default);
-    public abstract Task Rename(
+    public abstract void Rename(
             string oldSettingName,
             string newSettingName,
             CancellationToken cancellationToken = default);
-    public abstract Task Delete(string settingName, CancellationToken cancellationToken = default);
+    public abstract void Delete(string settingName, CancellationToken cancellationToken = default);
 }
 public sealed class CManager
 {
+    private delegate void CInitializeStepAction();
     private readonly string _configRoot;
 
     private readonly CRecipeFileBase _recipeFile;
@@ -392,50 +393,52 @@ public sealed class CManager
         SetSimul(enabled);
     }
 
-    public async Task Initialize(CancellationToken cancellationToken = default)
+    public void Initialize(CancellationToken cancellationToken = default)
     {
-        Task RunInitializeStepCallbackCallback1()
+        void RunInitializeStepCallbackCallback1()
         {
-            return _interfaceManager.Initialize(cancellationToken);
+            _interfaceManager.Initialize(cancellationToken);
         }
 
-        await RunInitializeStep(
+        RunInitializeStep(
             "Initialize Interface Connection",
 RunInitializeStepCallbackCallback1,
             cancellationToken);
-        Task RunInitializeStepCallbackCallback2()
+        void RunInitializeStepCallbackCallback2()
         {
-            return _motionManager.Initialize(cancellationToken);
+            _motionManager.Initialize(cancellationToken);
         }
 
-        await RunInitializeStep(
+        RunInitializeStep(
             "Initialize Motion Controller",
 RunInitializeStepCallbackCallback2,
             cancellationToken);
     }
 
-    public async Task Destroy(CancellationToken cancellationToken = default)
+    public void Destroy(CancellationToken cancellationToken = default)
     {
-        await _motionManager.Destroy(cancellationToken);
-        await _interfaceManager.Destroy(cancellationToken);
+        _reviewManager.Shutdown();
+        _stationManager.Destroy();
+        _motionManager.Destroy(cancellationToken);
+        _interfaceManager.Destroy(cancellationToken);
     }
 
-    public Task<int> ConnectInterface(CancellationToken cancellationToken = default)
+    public int ConnectInterface(CancellationToken cancellationToken = default)
     {
         return _interfaceManager.Connect(cancellationToken: cancellationToken);
     }
 
-    public Task<int> DisconnectInterface(CancellationToken cancellationToken = default)
+    public int DisconnectInterface(CancellationToken cancellationToken = default)
     {
         return _interfaceManager.Disconnect(cancellationToken);
     }
 
-    public Task ReconnectInterface(
+    public void ReconnectInterface(
         EN_EQP_MODULE module,
         int number,
         CancellationToken cancellationToken = default)
     {
-        return _interfaceManager.Reconnect(module, number, cancellationToken);
+        _interfaceManager.Reconnect(module, number, cancellationToken);
     }
 
     public CStationManager Station()
@@ -591,10 +594,7 @@ RunInitializeStepCallbackCallback2,
 
         try
         {
-            var statuses = _configStructureFile
-                .Validate()
-                .GetAwaiter()
-                .GetResult();
+            var statuses = _configStructureFile.Validate();
 
             foreach (var status in statuses)
             {
@@ -614,7 +614,7 @@ RunInitializeStepCallbackCallback2,
     {
         try
         {
-            var interfaceData = _interfaceFile.LoadAll().GetAwaiter().GetResult();
+            var interfaceData = _interfaceFile.LoadAll();
             _loadedInterfaceCount = interfaceData.Count;
 
             AddStartupStep(
@@ -662,7 +662,7 @@ RunInitializeStepCallbackCallback2,
     {
         try
         {
-            var motorData = _motorFile.LoadAll().GetAwaiter().GetResult();
+            var motorData = _motorFile.LoadAll();
             _loadedMotorCount = motorData.Count;
             AddStartupStep(
                 "Load JHMI_MOTOR",
@@ -682,7 +682,7 @@ RunInitializeStepCallbackCallback2,
     {
         try
         {
-            var ioData = _ioFile.LoadAll().GetAwaiter().GetResult();
+            var ioData = _ioFile.LoadAll();
             _loadedIoCount = ioData.Count;
             AddStartupStep(
                 "Load JHMI_IO",
@@ -702,7 +702,7 @@ RunInitializeStepCallbackCallback2,
     {
         try
         {
-            var melsecMapData = _melsecMapFile.LoadAll().GetAwaiter().GetResult();
+            var melsecMapData = _melsecMapFile.LoadAll();
             _loadedMelsecMapCount = melsecMapData.Count;
             AddStartupStep(
                 "Load JHMI_MELSEC_MAP",
@@ -722,7 +722,7 @@ RunInitializeStepCallbackCallback2,
     {
         try
         {
-            _productManager.LoadActive().GetAwaiter().GetResult();
+            _productManager.LoadActive();
             _activeProductLoaded = true;
             AddStartupStep(
                 "Load Active Product",
@@ -735,15 +735,15 @@ RunInitializeStepCallbackCallback2,
         }
     }
 
-    private async Task RunInitializeStep(
+    private void RunInitializeStep(
         string stepName,
-        Func<Task> action,
+        CInitializeStepAction action,
         CancellationToken cancellationToken)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            await action();
+            action();
             AddStartupStep(
                 stepName,
                 EN_MANAGER_STARTUP_RESULT.Ready,
@@ -815,8 +815,6 @@ RunInitializeStepCallbackCallback2,
 
         var settingPath = _settingFile
             .Load(EN_SETTING_TAB.Option)
-            .GetAwaiter()
-            .GetResult()
             .FirstOrDefault(MatchParameter4)
             ?.Value;
 
@@ -871,5 +869,3 @@ RunInitializeStepCallbackCallback2,
         return $"{requiredText}, {existsText}, {status.Message} | {status.Path}";
     }
 }
-
-

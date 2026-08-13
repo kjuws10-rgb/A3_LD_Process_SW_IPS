@@ -67,7 +67,7 @@ internal abstract class CMotionController(
             _interfaceManager?.IsSimul(interfaceData.Device, interfaceData.Number) != false;
     }
 
-    public virtual async Task Initialize(
+    public virtual void Initialize(
         IReadOnlyList<ST_MOTOR_DATA> axes,
         CancellationToken cancellationToken = default)
     {
@@ -82,14 +82,14 @@ internal abstract class CMotionController(
 
         if (!_interfaceManager.IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await _interfaceManager.Connect(
+            _interfaceManager.Connect(
                 interfaceData.Device,
                 interfaceData.Number,
                 cancellationToken: cancellationToken);
         }
     }
 
-    public virtual async Task Destroy(CancellationToken cancellationToken = default)
+    public virtual void Destroy(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -102,46 +102,46 @@ internal abstract class CMotionController(
 
         if (_interfaceManager.IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await _interfaceManager.Disconnect(interfaceData.Device, interfaceData.Number, cancellationToken);
+            _interfaceManager.Disconnect(interfaceData.Device, interfaceData.Number, cancellationToken);
         }
     }
 
-    public virtual async Task ExecuteAxisCommand(
+    public virtual void ExecuteAxisCommand(
         ST_MOTOR_DATA axis,
         EN_MOTION_COMMAND command,
         double parameter,
         CancellationToken cancellationToken = default)
     {
-        await Send(BuildAxisCommand(axis, command, parameter), cancellationToken);
+        Send(BuildAxisCommand(axis, command, parameter), cancellationToken);
     }
 
-    public virtual async Task SetOutput(
+    public virtual void SetOutput(
         string address,
         bool isOn,
         CancellationToken cancellationToken = default)
     {
-        await Send(
+        Send(
             $"{CommandPrefix}:IO:{address}:{(isOn ? "ON" : "OFF")}",
             cancellationToken);
     }
 
-    public virtual async Task<ST_MOTOR_AXIS_STATUS?> ReadAxisStatus(
+    public virtual ST_MOTOR_AXIS_STATUS? ReadAxisStatus(
         ST_MOTOR_DATA axis,
         CancellationToken cancellationToken = default)
     {
-        var response = await Send(
+        var response = Send(
             BuildAxisCommand(axis, EN_MOTION_COMMAND.Refresh, 0.0),
             cancellationToken);
 
         return TryParseAxisStatus(axis, response);
     }
 
-    public virtual async Task<bool?> ReadIo(
+    public virtual bool? ReadIo(
         string address,
         bool isOutput,
         CancellationToken cancellationToken = default)
     {
-        var response = await Send(
+        var response = Send(
             $"{CommandPrefix}:IO:{address}:READ",
             cancellationToken);
 
@@ -191,7 +191,7 @@ internal abstract class CMotionController(
         return $"{CommandPrefix}:AXIS:{axis.Axis}:{axis.Name}:{commandText}";
     }
 
-    protected async Task<string> Send(
+    protected string Send(
         string command,
         CancellationToken cancellationToken)
     {
@@ -206,7 +206,7 @@ internal abstract class CMotionController(
 
         if (!_interfaceManager.IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await _interfaceManager.Connect(
+            _interfaceManager.Connect(
                 interfaceData.Device,
                 interfaceData.Number,
                 cancellationToken: cancellationToken);
@@ -218,7 +218,7 @@ internal abstract class CMotionController(
                 $"{Controller} motion interface is offline: {interfaceData.Device}[{interfaceData.Number}]/{interfaceData.NickName}");
         }
 
-        var response = await _interfaceManager.ExecuteFunction(
+        var response = _interfaceManager.ExecuteFunction(
             interfaceData.Device,
             interfaceData.Number,
             command,
@@ -318,5 +318,3 @@ internal abstract class CMotionController(
             .FirstOrDefault();
     }
 }
-
-

@@ -59,7 +59,7 @@ public sealed class CProductFile(string configRoot) : CProductFileBase
         "Data",
         "Product");
 
-    public override Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
+    public override ST_PRODUCT_DATA? LoadActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -73,13 +73,13 @@ public sealed class CProductFile(string configRoot) : CProductFileBase
 
         if (productRow is null)
         {
-            return Task.FromResult<ST_PRODUCT_DATA?>(null);
+            return null;
         }
 
         var productId = CCsvParser.Get(productRow, "PRODUCT_ID");
         if (string.IsNullOrWhiteSpace(productId))
         {
-            return Task.FromResult<ST_PRODUCT_DATA?>(null);
+            return null;
         }
         bool FilterRow2(IReadOnlyDictionary<string, string> row)
         {
@@ -144,10 +144,10 @@ HandleParameters6,
             parameters,
             heads);
 
-        return Task.FromResult<ST_PRODUCT_DATA?>(product);
+        return product;
     }
 
-    public override Task SaveActive(
+    public override void SaveActive(
         ST_PRODUCT_DATA product,
         CancellationToken cancellationToken = default)
     {
@@ -185,26 +185,26 @@ HandleParameters6,
             .Select(SelectHead12));
 
         CCsvParser.Write(GetActiveProductPath(), ActiveHeaders, rows);
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task ClearActive(CancellationToken cancellationToken = default)
+    public override void ClearActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         DeleteIfExists(GetActiveProductPath());
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task AppendHistory(
+    public override void AppendHistory(
         ST_PRODUCT_HISTORY history,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         AppendRow(GetHistoryPath(history.OccurredAt), HistoryHeaders, ToHistoryRow(history));
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task AppendHeadResults(
+    public override void AppendHeadResults(
         ST_PRODUCT_DATA product,
         CancellationToken cancellationToken = default)
     {
@@ -221,10 +221,10 @@ HandleParameters6,
             AppendRow(path, HistoryHeaders, ToHeadResultRow(product, head));
         }
 
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+    public override IReadOnlyList<ST_PRODUCT_HISTORY> LoadHistory(
         int maxRows = 100,
         int days = 14,
         CancellationToken cancellationToken = default)
@@ -257,7 +257,7 @@ HandleParameters6,
             .Take(Math.Max(1, maxRows))
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<ST_PRODUCT_HISTORY>>(histories);
+        return histories;
     }
 
     private string GetActiveProductPath()

@@ -68,21 +68,21 @@ public sealed record ST_POWER_METER_TABLE_DATA(
 
 public abstract class CPowerMeterFileBase
 {
-    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-    public abstract Task Create(
+    public abstract IReadOnlyList<string> List(CancellationToken cancellationToken = default);
+    public abstract void Create(
             string processFile,
             CancellationToken cancellationToken = default);
-    public abstract Task Delete(
+    public abstract void Delete(
             string processFile,
             CancellationToken cancellationToken = default);
-    public abstract Task Rename(
+    public abstract void Rename(
             string oldProcessFile,
             string newProcessFile,
             CancellationToken cancellationToken = default);
-    public abstract Task<ST_POWER_METER_TABLE_DATA> Load(
+    public abstract ST_POWER_METER_TABLE_DATA Load(
             string processFile = "",
             CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract void Save(
             string processFile,
             IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
             CancellationToken cancellationToken = default);

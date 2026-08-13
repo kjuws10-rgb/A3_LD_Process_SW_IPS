@@ -157,29 +157,20 @@ internal sealed class CConex_AGP(
         return EvaluateCommandSwitch2();
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        await SerialLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            return await ExecuteConex(function, cancellationToken);
-        }
-        finally
-        {
-            SerialLock.Release();
-        }
+        return ExecuteConex(function, cancellationToken);
     }
 
-    private async Task<string> ExecuteConex(
+    private string ExecuteConex(
         string function,
         CancellationToken cancellationToken)
     {
         if (SerialPort is null || !SerialPort.IsOpen)
         {
-            await Connect(cancellationToken);
+            ConnectCore(cancellationToken);
         }
 
         if (SerialPort is null || !SerialPort.IsOpen)
@@ -191,12 +182,8 @@ internal sealed class CConex_AGP(
 
         try
         {
-            string RunTask1()
-            {
-                return ExecuteConex(function);
-            }
-
-            LastReceived = await Task.Run(RunTask1, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            LastReceived = ExecuteConex(function);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";
@@ -488,5 +475,3 @@ public sealed record ST_ATTENUATOR_STATUS(
     bool CommOk = true,
     EN_CONEX_AGP_ERROR LastError = EN_CONEX_AGP_ERROR.Ok,
     DateTimeOffset? UpdatedAt = null);
-
-

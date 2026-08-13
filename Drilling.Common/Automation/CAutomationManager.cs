@@ -57,21 +57,21 @@ public sealed class CAutomationManager {
             : defaultLocalScriptDirectory;
     }
 
-    public Task Connect(
+    public void Connect(
         int number = 0,
         CancellationToken cancellationToken = default)
     {
-        return _interfaceManager.Connect(
+        _interfaceManager.Connect(
             EN_EQP_MODULE.Automation1,
             number,
             cancellationToken: cancellationToken);
     }
 
-    public Task Disconnect(
+    public void Disconnect(
         int number = 0,
         CancellationToken cancellationToken = default)
     {
-        return _interfaceManager.Disconnect(
+        _interfaceManager.Disconnect(
             EN_EQP_MODULE.Automation1,
             number,
             cancellationToken);
@@ -87,14 +87,14 @@ public sealed class CAutomationManager {
         return _interfaceManager.IsSimul(EN_EQP_MODULE.Automation1, number);
     }
 
-    public Task<string> ReadStatus(
+    public string ReadStatus(
         int number = 0,
         CancellationToken cancellationToken = default)
     {
         return ExecuteRaw("AUTOMATION1:STATUS", number, cancellationToken);
     }
 
-    private Task<string> ExecuteRaw(
+    private string ExecuteRaw(
         string command,
         int number,
         CancellationToken cancellationToken)
@@ -108,7 +108,7 @@ public sealed class CAutomationManager {
             cancellationToken);
     }
 
-    public Task<string> Move(
+    public string Move(
         string axisName,
         double targetPosition,
         double velocity = 100.0,
@@ -122,7 +122,7 @@ public sealed class CAutomationManager {
             cancellationToken);
     }
 
-    public Task<string> MoveRel(
+    public string MoveRel(
         string axisName,
         double distance,
         double velocity = 100.0,
@@ -136,7 +136,7 @@ public sealed class CAutomationManager {
             cancellationToken);
     }
 
-    public Task<string> Stop(
+    public string Stop(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -144,7 +144,7 @@ public sealed class CAutomationManager {
         return ExecuteAxis(axisName, "STOP", number, cancellationToken);
     }
 
-    public Task<string> ServoOn(
+    public string ServoOn(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -152,7 +152,7 @@ public sealed class CAutomationManager {
         return ExecuteAxis(axisName, "SERVO_ON", number, cancellationToken);
     }
 
-    public Task<string> ServoOff(
+    public string ServoOff(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -160,7 +160,7 @@ public sealed class CAutomationManager {
         return ExecuteAxis(axisName, "SERVO_OFF", number, cancellationToken);
     }
 
-    public Task<string> Home(
+    public string Home(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -168,7 +168,7 @@ public sealed class CAutomationManager {
         return ExecuteAxis(axisName, "HOME", number, cancellationToken);
     }
 
-    public Task<string> ResetAlarm(
+    public string ResetAlarm(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -176,7 +176,7 @@ public sealed class CAutomationManager {
         return ExecuteAxis(axisName, "RESET_ALARM", number, cancellationToken);
     }
 
-    public Task<string> ReadAxis(
+    public string ReadAxis(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -184,7 +184,7 @@ public sealed class CAutomationManager {
         return ExecuteAxis(axisName, "READ", number, cancellationToken);
     }
 
-    public async Task<ST_AUTOMATION_AXIS_STATUS> ReadAxisStatus(
+    public ST_AUTOMATION_AXIS_STATUS ReadAxisStatus(
         string axisName,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -197,11 +197,11 @@ public sealed class CAutomationManager {
             return CreateSimulationAxisStatus(number, normalizedAxis);
         }
 
-        var response = await ReadAxis(normalizedAxis, number, cancellationToken);
+        var response = ReadAxis(normalizedAxis, number, cancellationToken);
         return ParseAxisStatus(number, normalizedAxis, response);
     }
 
-    public async Task<string> RunLocalScript(
+    public string RunLocalScript(
         string localScriptPath,
         string controllerFileName = "",
         int taskIndex = 1,
@@ -209,51 +209,51 @@ public sealed class CAutomationManager {
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(localScriptPath);
-        var resolvedLocalScriptPath = await ResolveLocalScriptPath(localScriptPath, cancellationToken);
+        var resolvedLocalScriptPath = ResolveLocalScriptPath(localScriptPath, cancellationToken);
         var resolvedControllerFileName = string.IsNullOrWhiteSpace(controllerFileName)
-            ? await CreateControllerFileName(localScriptPath, cancellationToken)
-            : await CreateControllerFileName(controllerFileName, cancellationToken);
+            ? CreateControllerFileName(localScriptPath, cancellationToken)
+            : CreateControllerFileName(controllerFileName, cancellationToken);
 
-        return await ExecuteRaw(
+        return ExecuteRaw(
             $"AUTOMATION1:SCRIPT|RUN_LOCAL|{taskIndex}|{resolvedLocalScriptPath}|{resolvedControllerFileName}",
             number,
             cancellationToken);
     }
 
-    public async Task<string> UploadScript(
+    public string UploadScript(
         string localScriptPath,
         string scriptFileName = "",
         int number = 0,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(localScriptPath);
-        var resolvedLocalScriptPath = await ResolveLocalScriptPath(localScriptPath, cancellationToken);
+        var resolvedLocalScriptPath = ResolveLocalScriptPath(localScriptPath, cancellationToken);
         var controllerFileName = string.IsNullOrWhiteSpace(scriptFileName)
-            ? await CreateControllerFileName(localScriptPath, cancellationToken)
-            : await CreateControllerFileName(scriptFileName, cancellationToken);
+            ? CreateControllerFileName(localScriptPath, cancellationToken)
+            : CreateControllerFileName(scriptFileName, cancellationToken);
 
-        return await ExecuteRaw(
+        return ExecuteRaw(
             $"AUTOMATION1:SCRIPT|UPLOAD|{resolvedLocalScriptPath}|{controllerFileName}",
             number,
             cancellationToken);
     }
 
-    public async Task<string> RunScript(
+    public string RunScript(
         string scriptFileName,
         int taskIndex = 1,
         int number = 0,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(scriptFileName);
-        var controllerFileName = await CreateControllerFileName(scriptFileName, cancellationToken);
+        var controllerFileName = CreateControllerFileName(scriptFileName, cancellationToken);
 
-        return await ExecuteRaw(
+        return ExecuteRaw(
             $"AUTOMATION1:SCRIPT|RUN|{taskIndex}|{controllerFileName}",
             number,
             cancellationToken);
     }
 
-    public async Task<string> RunBufferedScript(
+    public string RunBufferedScript(
         string localScriptPath,
         string scriptFileName = "",
         int taskIndex = 1,
@@ -263,7 +263,7 @@ public sealed class CAutomationManager {
         int timeoutMs = 600000,
         CancellationToken cancellationToken = default)
     {
-        return await RunBufferedScripts(
+        return RunBufferedScripts(
             [new ST_BUFFERED_SCRIPT_RUN_ITEM(localScriptPath, scriptFileName, taskIndex)],
             number,
             queueSize,
@@ -272,7 +272,7 @@ public sealed class CAutomationManager {
             cancellationToken);
     }
 
-    public async Task<string> RunBufferedScripts(
+    public string RunBufferedScripts(
         IReadOnlyList<ST_BUFFERED_SCRIPT_RUN_ITEM> scripts,
         int number = 0,
         int queueSize = 100,
@@ -301,10 +301,10 @@ public sealed class CAutomationManager {
         foreach (var script in scripts)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(script.LocalScriptPath);
-            var resolvedLocalScriptPath = await ResolveLocalScriptPath(script.LocalScriptPath, cancellationToken);
+            var resolvedLocalScriptPath = ResolveLocalScriptPath(script.LocalScriptPath, cancellationToken);
             ValidateBufferedRunScriptFile(resolvedLocalScriptPath);
 
-            var controllerFileName = await CreateBufferedRunControllerFileName(
+            var controllerFileName = CreateBufferedRunControllerFileName(
                 script,
                 resolvedLocalScriptPath,
                 cancellationToken);
@@ -314,7 +314,7 @@ public sealed class CAutomationManager {
                     $"Automation1 buffered run controller file is duplicated: {controllerFileName}");
             }
 
-            var uploadResponse = await UploadScript(
+            var uploadResponse = UploadScript(
                 resolvedLocalScriptPath,
                 controllerFileName,
                 number,
@@ -327,7 +327,7 @@ public sealed class CAutomationManager {
             fields.Add(controllerFileName);
         }
 
-        var response = await ExecuteRaw(
+        var response = ExecuteRaw(
             string.Join("|", fields),
             number,
             cancellationToken);
@@ -335,7 +335,7 @@ public sealed class CAutomationManager {
         return response;
     }
 
-    private async Task<string> CreateBufferedRunControllerFileName(
+    private string CreateBufferedRunControllerFileName(
         ST_BUFFERED_SCRIPT_RUN_ITEM script,
         string resolvedLocalScriptPath,
         CancellationToken cancellationToken)
@@ -344,7 +344,7 @@ public sealed class CAutomationManager {
             ? CreateTaskScopedScriptFileName(script.TaskIndex, resolvedLocalScriptPath)
             : script.ScriptFileName;
 
-        return await CreateControllerFileName(fileName, cancellationToken);
+        return CreateControllerFileName(fileName, cancellationToken);
     }
 
     private static string CreateTaskScopedScriptFileName(
@@ -360,7 +360,7 @@ public sealed class CAutomationManager {
         return $"T{taskIndex.ToString(CultureInfo.InvariantCulture)}_{fileName}";
     }
 
-    public Task<string> StopTask(
+    public string StopTask(
         int taskIndex = 1,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -371,7 +371,7 @@ public sealed class CAutomationManager {
             cancellationToken);
     }
 
-    public Task<string> ReadTaskStatus(
+    public string ReadTaskStatus(
         int taskIndex = 1,
         int number = 0,
         CancellationToken cancellationToken = default)
@@ -382,7 +382,7 @@ public sealed class CAutomationManager {
             cancellationToken);
     }
 
-    private Task<string> ExecuteAxis(
+    private string ExecuteAxis(
         string axisName,
         string command,
         int number,
@@ -645,7 +645,7 @@ public sealed class CAutomationManager {
             !normalized.Equals("None", StringComparison.OrdinalIgnoreCase);
     }
 
-    private async Task<string> ResolveLocalScriptPath(
+    private string ResolveLocalScriptPath(
         string fileNameOrPath,
         CancellationToken cancellationToken)
     {
@@ -660,18 +660,18 @@ public sealed class CAutomationManager {
         var fileNameOnly = Path.GetFileName(trimmed);
         if (trimmed.Equals(fileNameOnly, StringComparison.OrdinalIgnoreCase))
         {
-            var scriptDirectory = await GetLocalScriptDirectory(cancellationToken);
+            var scriptDirectory = GetLocalScriptDirectory(cancellationToken);
             return Path.GetFullPath(Path.Combine(scriptDirectory, trimmed));
         }
 
         return Path.GetFullPath(Path.Combine(_projectRoot, trimmed));
     }
 
-    private async Task<string> GetLocalScriptDirectory(CancellationToken cancellationToken)
+    private string GetLocalScriptDirectory(CancellationToken cancellationToken)
     {
         var settingValue = _settingManager is null
             ? ""
-            : await _settingManager.GetValue(
+            : _settingManager.GetValue(
                 EN_SETTING_TAB.Option,
                 LocalScriptPathKey,
                 "",
@@ -693,7 +693,7 @@ public sealed class CAutomationManager {
             : Path.GetFullPath(Path.Combine(_projectRoot, value));
     }
 
-    private async Task<string> CreateControllerFileName(
+    private string CreateControllerFileName(
         string fileNameOrPath,
         CancellationToken cancellationToken)
     {
@@ -705,17 +705,17 @@ public sealed class CAutomationManager {
             return trimmed;
         }
 
-        var controllerDirectory = await GetControllerScriptDirectory(cancellationToken);
+        var controllerDirectory = GetControllerScriptDirectory(cancellationToken);
         var fileName = Path.GetFileName(trimmed);
 
         return CombineControllerPath(controllerDirectory, fileName);
     }
 
-    private async Task<string> GetControllerScriptDirectory(CancellationToken cancellationToken)
+    private string GetControllerScriptDirectory(CancellationToken cancellationToken)
     {
         var settingValue = _settingManager is null
             ? ""
-            : await _settingManager.GetValue(
+            : _settingManager.GetValue(
                 EN_SETTING_TAB.Option,
                 AutomationScriptPathKey,
                 "/",

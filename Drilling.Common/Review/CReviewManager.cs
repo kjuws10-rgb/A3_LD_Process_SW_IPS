@@ -1,7 +1,8 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Drilling.Common.Interface;
 using Drilling.Common.Managers;
 using Drilling.Common.Recipe;
+using Drilling.Common.Threading;
 
 namespace Drilling.Common.Review;
 
@@ -22,6 +23,20 @@ public enum EN_REVIEW_SEQUENCE_STATE
     Stopped,
     Completed,
     Failed
+}
+
+public enum EN_REVIEW_SEQUENCE_PROCESS
+{
+    Ready,
+    SelectPoint,
+    MoveStage,
+    MoveVision,
+    Measure,
+    WaitMeasurement,
+    ApplyMeasurement,
+    Complete,
+    Stop,
+    Error
 }
 
 public enum EN_REVIEW_RULE_TYPE
@@ -210,21 +225,21 @@ public abstract class CReviewResultFileBase
 {
     public abstract string RootPath { get; }
 
-    public abstract Task<ST_REVIEW_RESULT_FILE_DATA> Load(
+    public abstract ST_REVIEW_RESULT_FILE_DATA Load(
             string path,
             CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract void Save(
             ST_REVIEW_RESULT_DATA result,
             CancellationToken cancellationToken = default);
 }
 
 public abstract class CReviewRuleFileBase
 {
-    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-    public abstract Task<ST_REVIEW_RULE_DATA> Load(
+    public abstract IReadOnlyList<string> List(CancellationToken cancellationToken = default);
+    public abstract ST_REVIEW_RULE_DATA Load(
             string ruleFileName,
             CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract void Save(
             ST_REVIEW_RULE_DATA rule,
             CancellationToken cancellationToken = default);
 }
@@ -232,15 +247,27 @@ public abstract class CReviewRuleFileBase
 public sealed class CReviewManager(
     CReviewResultFileBase reviewResultFile,
     CInterfaceManager interfaceManager,
-    CSettingManager settingManager) {
+    CSettingManager settingManager) : CtrlThread
+{
     private const int MaxHeadCount = 8;
     private const int DefaultHeadCount = 8;
     private const int DefaultCellCount = 20;
     private const double ReviewSequenceRowTolerance = 0.001;
-    private readonly SemaphoreSlim _sequenceLock = new(1, 1);
     private readonly object _stateLock = new();
-    private bool _stopRequested;
+    private volatile bool _stopRequested;
     private ST_REVIEW_PLAN? _currentPlan;
+    private ST_REVIEW_PLAN? _workingPlan;
+    private IReadOnlyList<ST_REVIEW_PLAN_POINT> _orderedPoints = [];
+    private ST_REVIEW_PLAN_POINT? _currentPoint;
+    private ST_REVIEW_MEASURE_RESULT? _pendingMeasurement;
+    private Action<ST_REVIEW_PLAN>? _progress;
+    private CancellationTokenSource? _sequenceCancellation;
+    private CancellationToken _sequenceCancellationToken;
+    private volatile EN_REVIEW_SEQUENCE_PROCESS _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.Ready;
+    private volatile EN_REVIEW_SEQUENCE_STATE _sequenceState = EN_REVIEW_SEQUENCE_STATE.Idle;
+    private int _nextPointIndex;
+    private DateTimeOffset _measurementReadyAt;
+    private string _completedMessage = "Review sequence completed.";
 
     public ST_REVIEW_PLAN? CurrentPlan
     {
@@ -253,7 +280,25 @@ public sealed class CReviewManager(
         }
     }
 
-    public EN_REVIEW_SEQUENCE_STATE SequenceState { get; private set; } = EN_REVIEW_SEQUENCE_STATE.Idle;
+    public EN_REVIEW_SEQUENCE_STATE SequenceState
+    {
+        get
+        {
+            return _sequenceState;
+        }
+
+        private set
+        {
+            _sequenceState = value;
+        }
+    }
+
+    public ST_REVIEW_SEQUENCE_STATUS LastStatus { get; private set; } = new ST_REVIEW_SEQUENCE_STATUS(
+        EN_REVIEW_SEQUENCE_STATE.Idle,
+        0,
+        0,
+        0,
+        "Review sequence is idle.");
 
     public ST_REVIEW_PLAN CreatePlan(
         ST_RECIPE_DATA recipe,
@@ -288,113 +333,315 @@ CreatePlanCorePointCallback4);
         return CreatePlan(recipe, selectedKeys);
     }
 
-    public async Task<ST_REVIEW_SEQUENCE_STATUS> Start(
+    public ST_REVIEW_SEQUENCE_STATUS Start(
         ST_REVIEW_PLAN plan,
         Action<ST_REVIEW_PLAN>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!await _sequenceLock.WaitAsync(0, cancellationToken))
+        lock (_stateLock)
         {
-            return CreateStatus(
-                CurrentPlan ?? plan,
+            if (SequenceState is EN_REVIEW_SEQUENCE_STATE.Running or EN_REVIEW_SEQUENCE_STATE.Stopping)
+            {
+                LastStatus = CreateStatus(
+                    _currentPlan ?? plan,
+                    EN_REVIEW_SEQUENCE_STATE.Running,
+                    "Review sequence is already running.");
+                return LastStatus;
+            }
+
+            var workingPlan = ResetPlanForRun(plan);
+            var orderedPoints = OrderByReviewSequence(workingPlan.ReviewPoints).ToArray();
+            PrepareSequence(
+                workingPlan,
+                orderedPoints,
+                "Review sequence completed.",
+                progress,
+                cancellationToken);
+            LastStatus = CreateStatus(
+                workingPlan,
                 EN_REVIEW_SEQUENCE_STATE.Running,
-                "Review sequence is already running.");
+                "Review sequence started.");
+            SetCurrentPlan(workingPlan, progress);
+            base.Start(10, "ReviewSequence");
+            return LastStatus;
+        }
+    }
+
+    public new void Stop()
+    {
+        CancellationTokenSource? cancellation;
+        lock (_stateLock)
+        {
+            _stopRequested = true;
+            if (SequenceState == EN_REVIEW_SEQUENCE_STATE.Running)
+            {
+                SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopping;
+            }
+
+            cancellation = _sequenceCancellation;
         }
 
         try
         {
-            _stopRequested = false;
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Running;
-            var workingPlan = ResetPlanForRun(plan);
-            SetCurrentPlan(workingPlan, progress);
-
-            foreach (var point in OrderByReviewSequence(workingPlan.ReviewPoints))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (_stopRequested)
-                {
-                    SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-                    workingPlan = SetWaitingPointsReady(workingPlan);
-                    SetCurrentPlan(workingPlan, progress);
-                    return CreateStatus(workingPlan, SequenceState, "Review sequence stopped.");
-                }
-
-                var currentPoint = point with
-                {
-                    State = EN_REVIEW_POINT_STATE.Current,
-                    Judge = "WAIT"
-                };
-                workingPlan = UpdatePoint(workingPlan, currentPoint);
-                SetCurrentPlan(workingPlan, progress);
-
-                await MoveStageY(currentPoint, cancellationToken);
-
-                if (_stopRequested)
-                {
-                    SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-                    workingPlan = UpdatePoint(workingPlan, currentPoint with { State = EN_REVIEW_POINT_STATE.Ready });
-                    SetCurrentPlan(workingPlan, progress);
-                    return CreateStatus(workingPlan, SequenceState, "Review sequence stopped.");
-                }
-
-                await MoveVisionX(currentPoint, cancellationToken);
-
-                if (_stopRequested)
-                {
-                    SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-                    workingPlan = UpdatePoint(workingPlan, currentPoint with { State = EN_REVIEW_POINT_STATE.Ready });
-                    SetCurrentPlan(workingPlan, progress);
-                    return CreateStatus(workingPlan, SequenceState, "Review sequence stopped.");
-                }
-
-                var measurement = await MeasureVision(currentPoint, cancellationToken);
-
-                if (_stopRequested)
-                {
-                    SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-                    workingPlan = UpdatePoint(workingPlan, currentPoint with { State = EN_REVIEW_POINT_STATE.Ready });
-                    SetCurrentPlan(workingPlan, progress);
-                    return CreateStatus(workingPlan, SequenceState, "Review sequence stopped.");
-                }
-
-                var measuredPoint = ApplyMeasurement(workingPlan, currentPoint, measurement);
-                workingPlan = UpdatePoint(workingPlan, measuredPoint);
-                SetCurrentPlan(workingPlan, progress);
-            }
-
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Completed;
-            SetCurrentPlan(workingPlan, progress);
-            await SaveResult(workingPlan, workingPlan.ReviewPoints, cancellationToken);
-            return CreateStatus(workingPlan, SequenceState, "Review sequence completed.");
+            cancellation?.Cancel();
         }
-        catch (OperationCanceledException)
+        catch (ObjectDisposedException exception)
         {
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-            var stoppedPlan = SetWaitingPointsReady(CurrentPlan ?? plan);
-            SetCurrentPlan(stoppedPlan, progress);
-            return CreateStatus(stoppedPlan, SequenceState, "Review sequence canceled.");
-        }
-        catch (Exception ex)
-        {
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Failed;
-            var failedPlan = SetWaitingPointsReady(CurrentPlan ?? plan);
-            SetCurrentPlan(failedPlan, progress);
-            return CreateStatus(failedPlan, SequenceState, ex.Message);
-        }
-        finally
-        {
-            _sequenceLock.Release();
+            System.Diagnostics.Debug.WriteLine(
+                "Review cancellation was already disposed. " + exception.Message);
         }
     }
 
-    public void Stop()
+    public void Shutdown()
     {
-        _stopRequested = true;
-        if (SequenceState == EN_REVIEW_SEQUENCE_STATE.Running)
+        Stop();
+        base.Stop();
+        if (SequenceState is EN_REVIEW_SEQUENCE_STATE.Running or EN_REVIEW_SEQUENCE_STATE.Stopping)
         {
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopping;
+            ProcessStop();
         }
+    }
+
+    public override void Run()
+    {
+        try
+        {
+            if (_sequenceProcess == EN_REVIEW_SEQUENCE_PROCESS.Ready)
+            {
+                return;
+            }
+
+            if (_stopRequested || _sequenceCancellationToken.IsCancellationRequested)
+            {
+                _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.Stop;
+            }
+
+            switch (_sequenceProcess)
+            {
+                case EN_REVIEW_SEQUENCE_PROCESS.Ready:
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.SelectPoint:
+                    ProcessSelectPoint();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.MoveStage:
+                    ProcessMoveStage();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.MoveVision:
+                    ProcessMoveVision();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.Measure:
+                    ProcessMeasure();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.WaitMeasurement:
+                    ProcessWaitMeasurement();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.ApplyMeasurement:
+                    ProcessApplyMeasurement();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.Complete:
+                    ProcessComplete();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.Stop:
+                    ProcessStop();
+                    break;
+                case EN_REVIEW_SEQUENCE_PROCESS.Error:
+                    break;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            ProcessStop();
+        }
+        catch (Exception exception)
+        {
+            ProcessError(exception);
+        }
+    }
+
+    private void PrepareSequence(
+        ST_REVIEW_PLAN workingPlan,
+        IReadOnlyList<ST_REVIEW_PLAN_POINT> orderedPoints,
+        string completedMessage,
+        Action<ST_REVIEW_PLAN>? progress,
+        CancellationToken cancellationToken)
+    {
+        _stopRequested = false;
+        _workingPlan = workingPlan;
+        _orderedPoints = orderedPoints;
+        _currentPoint = null;
+        _pendingMeasurement = null;
+        _progress = progress;
+        _sequenceCancellation?.Dispose();
+        _sequenceCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        _sequenceCancellationToken = _sequenceCancellation.Token;
+        _nextPointIndex = 0;
+        _completedMessage = completedMessage;
+        SequenceState = EN_REVIEW_SEQUENCE_STATE.Running;
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.SelectPoint;
+    }
+
+    private void ProcessSelectPoint()
+    {
+        if (_workingPlan is null)
+        {
+            throw new InvalidOperationException("Review working plan is empty.");
+        }
+
+        if (_nextPointIndex >= _orderedPoints.Count)
+        {
+            _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.Complete;
+            return;
+        }
+
+        var point = _orderedPoints[_nextPointIndex];
+        _nextPointIndex++;
+        _currentPoint = point with
+        {
+            State = EN_REVIEW_POINT_STATE.Current,
+            Judge = "WAIT"
+        };
+        _workingPlan = UpdatePoint(_workingPlan, _currentPoint);
+        SetCurrentPlan(_workingPlan, _progress);
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.MoveStage;
+    }
+
+    private void ProcessMoveStage()
+    {
+        if (_currentPoint is null)
+        {
+            throw new InvalidOperationException("Review current point is empty.");
+        }
+
+        MoveStageY(_currentPoint, _sequenceCancellationToken);
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.MoveVision;
+    }
+
+    private void ProcessMoveVision()
+    {
+        if (_currentPoint is null)
+        {
+            throw new InvalidOperationException("Review current point is empty.");
+        }
+
+        MoveVisionX(_currentPoint, _sequenceCancellationToken);
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.Measure;
+    }
+
+    private void ProcessMeasure()
+    {
+        if (_currentPoint is null)
+        {
+            throw new InvalidOperationException("Review current point is empty.");
+        }
+
+        _pendingMeasurement = MeasureVision(_currentPoint, _sequenceCancellationToken);
+        if (IsReviewSimulation())
+        {
+            _measurementReadyAt = DateTimeOffset.Now.AddSeconds(3);
+            _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.WaitMeasurement;
+            return;
+        }
+
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.ApplyMeasurement;
+    }
+
+    private void ProcessWaitMeasurement()
+    {
+        if (DateTimeOffset.Now < _measurementReadyAt)
+        {
+            return;
+        }
+
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.ApplyMeasurement;
+    }
+
+    private void ProcessApplyMeasurement()
+    {
+        if (_workingPlan is null || _currentPoint is null || _pendingMeasurement is null)
+        {
+            throw new InvalidOperationException("Review measurement data is empty.");
+        }
+
+        var measuredPoint = ApplyMeasurement(_workingPlan, _currentPoint, _pendingMeasurement);
+        _workingPlan = UpdatePoint(_workingPlan, measuredPoint);
+        SetCurrentPlan(_workingPlan, _progress);
+        _currentPoint = null;
+        _pendingMeasurement = null;
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.SelectPoint;
+    }
+
+    private void ProcessComplete()
+    {
+        if (_workingPlan is null)
+        {
+            throw new InvalidOperationException("Review working plan is empty.");
+        }
+
+        SequenceState = EN_REVIEW_SEQUENCE_STATE.Completed;
+        LastStatus = CreateStatus(_workingPlan, SequenceState, _completedMessage);
+        SetCurrentPlan(_workingPlan, _progress);
+        SaveResult(_workingPlan, _workingPlan.ReviewPoints, _sequenceCancellationToken);
+        ResetSequenceProcess();
+    }
+
+    private void ProcessStop()
+    {
+        var stoppedPlan = SetWaitingPointsReady(_workingPlan ?? CurrentPlan ?? CreateEmptyPlan());
+        _workingPlan = stoppedPlan;
+        SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
+        var message = _stopRequested
+            ? "Review sequence stopped."
+            : _sequenceCancellationToken.IsCancellationRequested
+                ? "Review sequence canceled."
+                : "Review sequence stopped.";
+        LastStatus = CreateStatus(stoppedPlan, SequenceState, message);
+        SetCurrentPlan(stoppedPlan, _progress);
+        ResetSequenceProcess();
+    }
+
+    private void ProcessError(Exception exception)
+    {
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.Error;
+        var failedPlan = SetWaitingPointsReady(_workingPlan ?? CurrentPlan ?? CreateEmptyPlan());
+        _workingPlan = failedPlan;
+        SequenceState = EN_REVIEW_SEQUENCE_STATE.Failed;
+        LastStatus = CreateStatus(failedPlan, SequenceState, exception.Message);
+        SetCurrentPlan(failedPlan, _progress);
+        ResetSequenceProcess();
+    }
+
+    private void ResetSequenceProcess()
+    {
+        CancellationTokenSource? sequenceCancellation;
+        lock (_stateLock)
+        {
+            sequenceCancellation = _sequenceCancellation;
+            _sequenceCancellation = null;
+        }
+
+        _sequenceProcess = EN_REVIEW_SEQUENCE_PROCESS.Ready;
+        _stopRequested = false;
+        _currentPoint = null;
+        _pendingMeasurement = null;
+        _orderedPoints = [];
+        _nextPointIndex = 0;
+        _progress = null;
+        _sequenceCancellationToken = default;
+        sequenceCancellation?.Dispose();
+    }
+
+    private static ST_REVIEW_PLAN CreateEmptyPlan()
+    {
+        return new ST_REVIEW_PLAN(
+            "",
+            "",
+            0,
+            0,
+            0.0,
+            0.0,
+            EN_VISION_AXIS_MODE.Normal,
+            DateTimeOffset.Now,
+            []);
     }
 
     public ST_REVIEW_PLAN_POINT? ApplyReviewOffset(string holeKey)
@@ -438,47 +685,71 @@ CreatePlanCorePointCallback4);
         }
     }
 
-    public async Task<ST_REVIEW_SEQUENCE_STATUS> RetryRemaining(
+    public ST_REVIEW_SEQUENCE_STATUS RetryRemaining(
         Action<ST_REVIEW_PLAN>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var plan = CurrentPlan;
-        if (plan is null)
+        lock (_stateLock)
         {
-            return new ST_REVIEW_SEQUENCE_STATUS(
-                EN_REVIEW_SEQUENCE_STATE.Idle,
-                0,
-                0,
-                0,
-                "Review plan is empty.");
+            if (SequenceState is EN_REVIEW_SEQUENCE_STATE.Running or EN_REVIEW_SEQUENCE_STATE.Stopping)
+            {
+                var runningPlan = _currentPlan ?? CreateEmptyPlan();
+                LastStatus = CreateStatus(
+                    runningPlan,
+                    EN_REVIEW_SEQUENCE_STATE.Running,
+                    "Review sequence is already running.");
+                return LastStatus;
+            }
+
+            var plan = _currentPlan;
+            if (plan is null)
+            {
+                LastStatus = new ST_REVIEW_SEQUENCE_STATUS(
+                    EN_REVIEW_SEQUENCE_STATE.Idle,
+                    0,
+                    0,
+                    0,
+                    "Review plan is empty.");
+                return LastStatus;
+            }
+
+            plan = SetWaitingPointsReady(plan);
+            bool FilterPoint6(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.State == EN_REVIEW_POINT_STATE.Ready;
+            }
+
+            var points = plan.ReviewPoints.Where(FilterPoint6);
+            var orderedPoints = OrderByReviewSequence(points).ToArray();
+
+            if (orderedPoints.Length == 0)
+            {
+                LastStatus = CreateStatus(plan, SequenceState, "Ready review point is empty.");
+                return LastStatus;
+            }
+
+            PrepareSequence(
+                plan,
+                orderedPoints,
+                "Review ready point retry completed.",
+                progress,
+                cancellationToken);
+            LastStatus = CreateStatus(
+                plan,
+                EN_REVIEW_SEQUENCE_STATE.Running,
+                "Review ready point retry started.");
+            SetCurrentPlan(plan, progress);
+            base.Start(10, "ReviewSequence");
+            return LastStatus;
         }
-
-        plan = SetWaitingPointsReady(plan);
-        SetCurrentPlan(plan, progress);
-        bool FilterPoint6(ST_REVIEW_PLAN_POINT point)
-        {
-            return point.State == EN_REVIEW_POINT_STATE.Ready;
-        }
-
-        var points = plan.ReviewPoints
-            .Where(FilterPoint6);
-        var orderedPoints = OrderByReviewSequence(points)
-            .ToArray();
-
-        if (orderedPoints.Length == 0)
-        {
-            return CreateStatus(plan, SequenceState, "Ready review point is empty.");
-        }
-
-        return await RunRetryPoints(orderedPoints, "Review ready point retry completed.", progress, cancellationToken);
     }
 
-    public Task SaveResult(
+    public void SaveResult(
         ST_REVIEW_PLAN plan,
         IReadOnlyList<ST_REVIEW_PLAN_POINT> results,
         CancellationToken cancellationToken = default)
     {
-        return reviewResultFile.Save(
+        reviewResultFile.Save(
             new ST_REVIEW_RESULT_DATA(plan, results, DateTimeOffset.Now),
             cancellationToken);
     }
@@ -523,8 +794,7 @@ CreatePlanCorePointCallback4);
     {
         var optionSettings = settingManager
             .LoadSection(EN_SETTING_TAB.Option)
-            .GetAwaiter()
-            .GetResult();
+            ;
         var visionAxisMode = CReviewCoordinateTransformer.ParseVisionAxisMode(
             ReadSettingText(optionSettings, "", "VisionXFlip"),
             ReadSettingText(optionSettings, "", "VisionYFlip"),
@@ -968,7 +1238,7 @@ CreatePlanCorePointCallback4);
             .ToArray();
     }
 
-    private async Task MoveStageY(
+    private void MoveStageY(
         ST_REVIEW_PLAN_POINT point,
         CancellationToken cancellationToken)
     {
@@ -981,14 +1251,14 @@ CreatePlanCorePointCallback4);
             ("HOLE", point.HoleNo.ToString(CultureInfo.InvariantCulture)),
             ("Y", FormatDouble(point.ReviewTargetY)));
 
-        await interfaceManager.ExecuteFunction(
+        interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.WonikCtrl,
             0,
             command,
             cancellationToken);
     }
 
-    private async Task MoveVisionX(
+    private void MoveVisionX(
         ST_REVIEW_PLAN_POINT point,
         CancellationToken cancellationToken)
     {
@@ -1001,14 +1271,14 @@ CreatePlanCorePointCallback4);
             ("HOLE", point.HoleNo.ToString(CultureInfo.InvariantCulture)),
             ("X", FormatDouble(point.ReviewTargetX)));
 
-        await interfaceManager.ExecuteFunction(
+        interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.WonikCtrl,
             0,
             command,
             cancellationToken);
     }
 
-    private async Task<ST_REVIEW_MEASURE_RESULT> MeasureVision(
+    private ST_REVIEW_MEASURE_RESULT MeasureVision(
         ST_REVIEW_PLAN_POINT point,
         CancellationToken cancellationToken)
     {
@@ -1021,32 +1291,13 @@ CreatePlanCorePointCallback4);
             ("HOLE", point.HoleNo.ToString(CultureInfo.InvariantCulture)),
             ("X", FormatDouble(point.ReviewTargetX)),
             ("Y", FormatDouble(point.ReviewTargetY)));
-        var response = await interfaceManager.ExecuteFunction(
+        var response = interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.Vision,
             0,
             command,
             cancellationToken);
-        await DelayForSimulation(cancellationToken);
 
         return ParseVisionResponse(response, point);
-    }
-
-    private async Task DelayForSimulation(CancellationToken cancellationToken)
-    {
-        if (!IsReviewSimulation())
-        {
-            return;
-        }
-
-        for (var step = 0; step < 30; step++)
-        {
-            if (_stopRequested)
-            {
-                return;
-            }
-
-            await Task.Delay(100, cancellationToken);
-        }
     }
 
     private bool IsReviewSimulation()
@@ -1270,84 +1521,6 @@ CreatePlanCorePointCallback4);
             completedCount,
             ngCount,
             message);
-    }
-
-    private async Task<ST_REVIEW_SEQUENCE_STATUS> RunRetryPoints(
-        IReadOnlyList<ST_REVIEW_PLAN_POINT> retryPoints,
-        string completedMessage,
-        Action<ST_REVIEW_PLAN>? progress,
-        CancellationToken cancellationToken)
-    {
-        if (!await _sequenceLock.WaitAsync(0, cancellationToken))
-        {
-            return CreateStatus(
-                CurrentPlan!,
-                EN_REVIEW_SEQUENCE_STATE.Running,
-                "Review sequence is already running.");
-        }
-
-        try
-        {
-            var workingPlan = CurrentPlan!;
-            _stopRequested = false;
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Running;
-
-            foreach (var point in OrderByReviewSequence(retryPoints))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (_stopRequested)
-                {
-                    SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-                    return CreateStatus(workingPlan, SequenceState, "Review retry stopped.");
-                }
-
-                var currentPoint = point with
-                {
-                    State = EN_REVIEW_POINT_STATE.Current,
-                    Judge = "WAIT"
-                };
-                workingPlan = UpdatePoint(workingPlan, currentPoint);
-                SetCurrentPlan(workingPlan, progress);
-
-                await MoveStageY(currentPoint, cancellationToken);
-                await MoveVisionX(currentPoint, cancellationToken);
-                var measurement = await MeasureVision(currentPoint, cancellationToken);
-
-                if (_stopRequested)
-                {
-                    SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-                    workingPlan = UpdatePoint(workingPlan, currentPoint with { State = EN_REVIEW_POINT_STATE.Ready });
-                    SetCurrentPlan(workingPlan, progress);
-                    return CreateStatus(workingPlan, SequenceState, "Review retry stopped.");
-                }
-
-                var measuredPoint = ApplyMeasurement(workingPlan, currentPoint, measurement);
-                workingPlan = UpdatePoint(workingPlan, measuredPoint);
-                SetCurrentPlan(workingPlan, progress);
-            }
-
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Completed;
-            await SaveResult(workingPlan, workingPlan.ReviewPoints, cancellationToken);
-            return CreateStatus(workingPlan, SequenceState, completedMessage);
-        }
-        catch (OperationCanceledException)
-        {
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Stopped;
-            var stoppedPlan = SetWaitingPointsReady(CurrentPlan!);
-            SetCurrentPlan(stoppedPlan, progress);
-            return CreateStatus(stoppedPlan, SequenceState, "Review retry canceled.");
-        }
-        catch (Exception ex)
-        {
-            SequenceState = EN_REVIEW_SEQUENCE_STATE.Failed;
-            var failedPlan = SetWaitingPointsReady(CurrentPlan!);
-            SetCurrentPlan(failedPlan, progress);
-            return CreateStatus(failedPlan, SequenceState, ex.Message);
-        }
-        finally
-        {
-            _sequenceLock.Release();
-        }
     }
 
     private sealed record ST_REVIEW_MEASURE_RESULT(
@@ -1599,4 +1772,3 @@ CreatePlanCorePointCallback4);
         return "";
     }
 }
-

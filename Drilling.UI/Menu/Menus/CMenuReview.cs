@@ -88,7 +88,7 @@ public sealed class CMenuReview : CMenuBase
         BackToOneHoleCellMapCommand = new CButtonCommand(BackToOneHoleCellMap);
         void HandleApplyOneHoleReviewOffsetCommand3(object? _)
         {
-            _ = ApplyOneHoleReviewOffset();
+            ApplyOneHoleReviewOffset();
         }
 
         ApplyOneHoleReviewOffsetCommand = new CButtonCommand(HandleApplyOneHoleReviewOffsetCommand3);
@@ -99,7 +99,7 @@ public sealed class CMenuReview : CMenuBase
         BackToSampleGlassPreviewCommand = new CButtonCommand(BackToSampleGlassPreview);
         void HandleStartCommand4(object? _)
         {
-            _ = StartReviewSequence();
+            StartReviewSequence();
         }
 
         bool HandleStartCommand5(object? _)
@@ -118,19 +118,19 @@ HandleStartCommand5);
         StopCommand = new CButtonCommand(HandleStopCommand6);
         void HandleRetryCommand7(object? _)
         {
-            _ = RetryRemainingReviewPoints();
+            RetryRemainingReviewPoints();
         }
 
         RetryCommand = new CButtonCommand(HandleRetryCommand7);
         void HandleLoadRuleCommand8(object? _)
         {
-            _ = LoadSelectedReviewRule();
+            LoadSelectedReviewRule();
         }
 
         LoadRuleCommand = new CButtonCommand(HandleLoadRuleCommand8);
         void HandleSaveRuleCommand9(object? _)
         {
-            _ = SaveCurrentReviewRule();
+            SaveCurrentReviewRule();
         }
 
         SaveRuleCommand = new CButtonCommand(HandleSaveRuleCommand9);
@@ -567,15 +567,15 @@ HandleStartCommand5);
         _isSampleCellDetailVisible = false;
     }
 
-    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var recipe = await LoadSelectedRecipe(cancellationToken) ?? CreateFallbackRecipe();
+        var recipe = LoadSelectedRecipe(cancellationToken) ?? CreateFallbackRecipe();
         var allPlan = _reviewManager.CreatePlan(recipe, Array.Empty<string>());
         _lastAllPlan = allPlan;
         ApplyRecipeContext(recipe, allPlan);
-        await RefreshRuleFiles(cancellationToken);
+        RefreshRuleFiles(cancellationToken);
         ApplyScreenData(recipe, allPlan);
 
         return new CScreenViewModel(
@@ -604,9 +604,9 @@ HandleStartCommand5);
             []);
     }
 
-    private async Task<ST_RECIPE_DATA?> LoadSelectedRecipe(CancellationToken cancellationToken)
+    private ST_RECIPE_DATA? LoadSelectedRecipe(CancellationToken cancellationToken)
     {
-        var recipes = await _recipeManager.LoadRecipes(cancellationToken);
+        var recipes = _recipeManager.LoadRecipes(cancellationToken);
         if (recipes.Count == 0)
         {
             return null;
@@ -755,9 +755,9 @@ HandleStartCommand5);
         return "";
     }
 
-    private async Task RefreshRuleFiles(CancellationToken cancellationToken)
+    private void RefreshRuleFiles(CancellationToken cancellationToken)
     {
-        RuleFiles = await _reviewRuleFile.List(cancellationToken);
+        RuleFiles = _reviewRuleFile.List(cancellationToken);
 
         if (RuleFiles.Count == 0)
         {
@@ -1106,7 +1106,7 @@ HandleStartCommand5);
         _refreshScreen();
     }
 
-    private async Task ApplyOneHoleReviewOffset()
+    private void ApplyOneHoleReviewOffset()
     {
         if (!IsOneHoleTab || string.IsNullOrWhiteSpace(_displayedOneHoleMeasurementKey))
         {
@@ -1162,7 +1162,7 @@ HandleStartCommand5);
 
         try
         {
-            await SaveReviewOffsetToRecipe(pendingPoint);
+            SaveReviewOffsetToRecipe(pendingPoint);
         }
         catch (Exception ex)
         {
@@ -1237,16 +1237,16 @@ HandleStartCommand5);
             : $"+ {value.ToString("0.000", CultureInfo.InvariantCulture)}";
     }
 
-    private async Task SaveReviewOffsetToRecipe(ST_REVIEW_PLAN_POINT point)
+    private void SaveReviewOffsetToRecipe(ST_REVIEW_PLAN_POINT point)
     {
-        var recipe = await LoadSelectedRecipe(CancellationToken.None)
+        var recipe = LoadSelectedRecipe(CancellationToken.None)
             ?? throw new InvalidOperationException("No recipe is selected.");
         var parameters = recipe.Parameters.ToList();
 
         UpsertReviewOffsetParameter(parameters, point, "X", point.ReviewOffsetX);
         UpsertReviewOffsetParameter(parameters, point, "Y", point.ReviewOffsetY);
 
-        await _recipeManager.SaveRecipe(recipe with { Parameters = parameters });
+        _recipeManager.SaveRecipe(recipe with { Parameters = parameters });
     }
 
     private static void UpsertReviewOffsetParameter(
@@ -1378,7 +1378,7 @@ HandleStartCommand5);
         return _reviewManager.CreatePlan(recipe, targetKeys);
     }
 
-    private async Task StartReviewSequence()
+    private void StartReviewSequence()
     {
         if (IsReviewExecutionActive)
         {
@@ -1393,7 +1393,7 @@ HandleStartCommand5);
 
         try
         {
-            var recipe = await LoadSelectedRecipe(CancellationToken.None) ?? CreateFallbackRecipe();
+            var recipe = LoadSelectedRecipe(CancellationToken.None) ?? CreateFallbackRecipe();
             var allPlan = _reviewManager.CreatePlan(recipe, Array.Empty<string>());
             ApplyRecipeContext(recipe, allPlan);
             if (IsOneHoleTab && string.IsNullOrWhiteSpace(_oneHoleKey))
@@ -1412,14 +1412,30 @@ HandleStartCommand5);
             }
             void HandleStatus35(ST_REVIEW_PLAN plan)
             {
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher is not null && !dispatcher.CheckAccess())
+                {
+                    Action<ST_REVIEW_PLAN> callback = HandleStatus35;
+                    dispatcher.BeginInvoke(callback, plan);
+                    return;
+                }
+
                 if (isOneHoleRun)
                 {
                     CaptureOneHoleResult(plan, oneHoleRunKey);
                 }
 
+                var currentStatus = _reviewManager.LastStatus;
+                if (IsTerminalReviewState(currentStatus.State))
+                {
+                    _statusReporter($"{currentStatus.Message} ({currentStatus.CompletedCount}/{currentStatus.TotalCount}, NG={currentStatus.NgCount})");
+                    _isStartRequestPending = false;
+                    NotifyReviewExecutionCommandStates();
+                }
+
                 _refreshScreen();
             }
-            var status = await _reviewManager.Start(
+            var status = _reviewManager.Start(
                 reviewPlan,
 HandleStatus35,
                 CancellationToken.None);
@@ -1467,12 +1483,12 @@ HandleStatus35,
         _refreshScreen();
     }
 
-    private async Task LoadSelectedReviewRule()
+    private void LoadSelectedReviewRule()
     {
         try
         {
-            await RefreshRuleFiles(CancellationToken.None);
-            var rule = await _reviewRuleFile.Load(_selectedRuleFile, CancellationToken.None);
+            RefreshRuleFiles(CancellationToken.None);
+            var rule = _reviewRuleFile.Load(_selectedRuleFile, CancellationToken.None);
             ApplyReviewRule(rule);
             _statusReporter($"Review rule loaded: {rule.FileName} ({rule.RuleType}, {GetPlanHoleKeys(_lastAllPlan).Count} holes).");
             _refreshScreen();
@@ -1483,11 +1499,11 @@ HandleStatus35,
         }
     }
 
-    private async Task SaveCurrentReviewRule()
+    private void SaveCurrentReviewRule()
     {
         try
         {
-            await RefreshRuleFiles(CancellationToken.None);
+            RefreshRuleFiles(CancellationToken.None);
 
             var initialValue = Path.GetFileNameWithoutExtension(_selectedRuleFile);
             string HandleRuleFileName36(string value)
@@ -1508,8 +1524,8 @@ HandleRuleFileName36);
 
             _selectedRuleFile = NormalizeRuleFileInput(ruleFileName);
             var rule = CreateCurrentRuleData(_selectedRuleFile);
-            await _reviewRuleFile.Save(rule, CancellationToken.None);
-            await RefreshRuleFiles(CancellationToken.None);
+            _reviewRuleFile.Save(rule, CancellationToken.None);
+            RefreshRuleFiles(CancellationToken.None);
             _statusReporter($"Review rule saved: {_selectedRuleFile} ({rule.RuleType}, {rule.HoleKeys.Count} holes).");
             _refreshScreen();
         }
@@ -1519,16 +1535,31 @@ HandleRuleFileName36);
         }
     }
 
-    private async Task RetryRemainingReviewPoints()
+    private void RetryRemainingReviewPoints()
     {
         try
         {
-            void HandleStatus37(ST_REVIEW_PLAN _)
+            void HandleStatus37(ST_REVIEW_PLAN plan)
             {
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher is not null && !dispatcher.CheckAccess())
+                {
+                    Action<ST_REVIEW_PLAN> callback = HandleStatus37;
+                    dispatcher.BeginInvoke(callback, plan);
+                    return;
+                }
+
+                var currentStatus = _reviewManager.LastStatus;
+                if (IsTerminalReviewState(currentStatus.State))
+                {
+                    _statusReporter($"{currentStatus.Message} ({currentStatus.CompletedCount}/{currentStatus.TotalCount}, NG={currentStatus.NgCount})");
+                    NotifyReviewExecutionCommandStates();
+                }
+
                 _refreshScreen();
             }
 
-            var status = await _reviewManager.RetryRemaining(
+            var status = _reviewManager.RetryRemaining(
 HandleStatus37,
                 CancellationToken.None);
 
@@ -1539,6 +1570,13 @@ HandleStatus37,
         {
             _statusReporter($"Review retry failed: {exception.Message}");
         }
+    }
+
+    private static bool IsTerminalReviewState(EN_REVIEW_SEQUENCE_STATE state)
+    {
+        return state is EN_REVIEW_SEQUENCE_STATE.Stopped or
+            EN_REVIEW_SEQUENCE_STATE.Completed or
+            EN_REVIEW_SEQUENCE_STATE.Failed;
     }
 
     private void ApplyReviewRule(ST_REVIEW_RULE_DATA rule)

@@ -394,7 +394,7 @@ public abstract class CAutomation1ScriptBase
     public abstract void SetHomePos();
     public abstract void SetGalvoPosZero();
     public abstract void End(bool bufferedRun = false);
-    public abstract Task<ST_AUTOMATION1_SCRIPT> Save(CancellationToken cancellationToken = default);
+    public abstract ST_AUTOMATION1_SCRIPT Save(CancellationToken cancellationToken = default);
 }
 
 public abstract class CAutomationScriptFileBase
@@ -402,10 +402,10 @@ public abstract class CAutomationScriptFileBase
     public abstract string ScriptFileName { get; }
 
     public abstract CAutomation1ScriptBase Create(string? fileName = null);
-    public abstract Task<ST_AUTOMATION1_SCRIPT> Build(
+    public abstract ST_AUTOMATION1_SCRIPT Build(
             ST_PROCESS_MODEL processModel,
             CancellationToken cancellationToken = default);
-    public abstract Task<ST_AUTOMATION1_SCRIPT> Build(
+    public abstract ST_AUTOMATION1_SCRIPT Build(
             ST_PROCESS_MODEL processModel,
             string subDirectoryName,
             CancellationToken cancellationToken = default);
@@ -472,17 +472,17 @@ public sealed class CStationManager {
             scriptDirectory: scriptDirectory);
     }
 
-    public Task<ST_STATION_PROCESS_STATUS> GetStatus(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS GetStatus(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_processStation.Current);
+        return _processStation.Current;
     }
 
-    public Task<IReadOnlyList<ST_STATION_STATUS>> GetStationStatus(
+    public IReadOnlyList<ST_STATION_STATUS> GetStationStatus(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult<IReadOnlyList<ST_STATION_STATUS>>([_processStation.Status]);
+        return [_processStation.Status];
     }
 
     public IReadOnlyList<ST_STATION_PROCESS_FLOW_ITEM> GetProcessFlow()
@@ -490,29 +490,30 @@ public sealed class CStationManager {
         return CStationProcess.GetProcessFlow();
     }
 
-    public Task<ST_STATION_PROCESS_STATUS> PrepareProcessPlan(
+    public ST_STATION_PROCESS_STATUS PrepareProcessPlan(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken = default)
     {
         return _processStation.PrepareProcessPlan(processPlan, cancellationToken);
     }
 
-    public Task<ST_STATION_PROCESS_STATUS> Start(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS Start(CancellationToken cancellationToken = default)
     {
         return _processStation.Start(cancellationToken);
     }
 
-    public Task<ST_STATION_PROCESS_STATUS> Stop(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS Stop(CancellationToken cancellationToken = default)
     {
         return _processStation.Stop(cancellationToken);
     }
 
-    public Task<ST_STATION_PROCESS_STATUS> Reset(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS Reset(CancellationToken cancellationToken = default)
     {
         return _processStation.Reset(cancellationToken);
     }
+
+    public void Destroy()
+    {
+        _processStation.Shutdown();
+    }
 }
-
-
-
-

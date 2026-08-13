@@ -29,7 +29,7 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
 
     private readonly string _powerMeterDirectory = Path.Combine(configRoot, "PowerMeter");
 
-    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<string> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
@@ -51,10 +51,10 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
             .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<string>>(files);
+        return files;
     }
 
-    public override Task Create(
+    public override void Create(
         string processFile,
         CancellationToken cancellationToken = default)
     {
@@ -76,10 +76,10 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
         }
 
         WriteSteps(path, CreateDefaultSteps().Select(SelectStep3).ToArray());
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task Delete(
+    public override void Delete(
         string processFile,
         CancellationToken cancellationToken = default)
     {
@@ -97,10 +97,10 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
             WriteSteps(GetProcessPath(DefaultProcessFile), CreateDefaultSteps());
         }
 
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task Rename(
+    public override void Rename(
         string oldProcessFile,
         string newProcessFile,
         CancellationToken cancellationToken = default)
@@ -122,10 +122,10 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
         }
 
         System.IO.File.Move(oldPath, newPath);
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task<ST_POWER_METER_TABLE_DATA> Load(
+    public override ST_POWER_METER_TABLE_DATA Load(
         string processFile = "",
         CancellationToken cancellationToken = default)
     {
@@ -162,10 +162,10 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
             .Select(SelectName6)
             .ToArray();
 
-        return Task.FromResult(new ST_POWER_METER_TABLE_DATA(processes, selectedFile, steps));
+        return new ST_POWER_METER_TABLE_DATA(processes, selectedFile, steps);
     }
 
-    public override Task Save(
+    public override void Save(
         string processFile,
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
         CancellationToken cancellationToken = default)
@@ -173,7 +173,7 @@ public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
         WriteSteps(GetProcessPath(NormalizeProcessFile(processFile)), steps);
-        return Task.CompletedTask;
+        return;
     }
 
     private void EnsureFiles()

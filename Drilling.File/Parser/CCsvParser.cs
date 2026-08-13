@@ -470,5 +470,3 @@ internal static class CCsvParser
         return value.Trim().ToUpperInvariant();
     }
 }
-
-

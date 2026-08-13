@@ -21,7 +21,7 @@ public sealed class CMenuSetting : CMenuBase
     private readonly Action<string> _setStatusMessage;
     private readonly Action<EN_MENU, string> _showLoadingScreen;
     private readonly Action _refreshShellStatus;
-    private readonly Func<Task> _refreshCurrentScreen;
+    private readonly Action _refreshCurrentScreen;
     private ST_SETTING_INTERFACE_ROW? _selectedInterfaceRow;
 
     private static readonly EN_SETTING_TAB[] Sections =
@@ -43,7 +43,7 @@ public sealed class CMenuSetting : CMenuBase
         Action<string> setStatusMessage,
         Action<EN_MENU, string> showLoadingScreen,
         Action refreshShellStatus,
-        Func<Task> refreshCurrentScreen)
+        Action refreshCurrentScreen)
     {
         _settingManager = settingManager;
         _selectedTabProvider = selectedTabProvider;
@@ -56,23 +56,23 @@ public sealed class CMenuSetting : CMenuBase
         _refreshShellStatus = refreshShellStatus;
         _refreshCurrentScreen = refreshCurrentScreen;
 
-        async void HandleSelectTabCommand1(object? parameter)
+        void HandleSelectTabCommand1(object? parameter)
         {
-            await SelectTab(parameter);
+            SelectTab(parameter);
         }
 
         SelectTabCommand = new CButtonCommand(HandleSelectTabCommand1);
 
-        async void HandleSelectGroupCommand2(object? parameter)
+        void HandleSelectGroupCommand2(object? parameter)
         {
-            await SelectGroup(parameter);
+            SelectGroup(parameter);
         }
 
         SelectGroupCommand = new CButtonCommand(HandleSelectGroupCommand2);
 
-        async void HandleConnectInterfaceCommand3(object? _)
+        void HandleConnectInterfaceCommand3(object? _)
         {
-            await ConnectInterface();
+            ConnectInterface();
         }
 
         bool HandleConnectInterfaceCommand4(object? _)
@@ -82,9 +82,9 @@ public sealed class CMenuSetting : CMenuBase
 
         ConnectInterfaceCommand = new CButtonCommand(HandleConnectInterfaceCommand3, HandleConnectInterfaceCommand4);
 
-        async void HandleDisconnectInterfaceCommand5(object? _)
+        void HandleDisconnectInterfaceCommand5(object? _)
         {
-            await DisconnectInterface();
+            DisconnectInterface();
         }
 
         bool HandleDisconnectInterfaceCommand6(object? _)
@@ -94,23 +94,23 @@ public sealed class CMenuSetting : CMenuBase
 
         DisconnectInterfaceCommand = new CButtonCommand(HandleDisconnectInterfaceCommand5, HandleDisconnectInterfaceCommand6);
 
-        async void HandleSaveCommand7(object? _)
+        void HandleSaveCommand7(object? _)
         {
-            await Save();
+            Save();
         }
 
         SaveCommand = new CButtonCommand(HandleSaveCommand7);
 
-        async void HandleCancelCommand8(object? _)
+        void HandleCancelCommand8(object? _)
         {
-            await Cancel();
+            Cancel();
         }
 
         CancelCommand = new CButtonCommand(HandleCancelCommand8);
 
-        async void HandleReloadCommand9(object? _)
+        void HandleReloadCommand9(object? _)
         {
-            await Reload();
+            Reload();
         }
 
         ReloadCommand = new CButtonCommand(HandleReloadCommand9);
@@ -221,13 +221,13 @@ public sealed class CMenuSetting : CMenuBase
         }
     }
 
-    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
         var displaySections = new List<ST_SCREEN_SECTION>();
 
         foreach (var section in Sections)
         {
-            var sectionParameters = await _settingManager.LoadSection(section, cancellationToken);
+            var sectionParameters = _settingManager.LoadSection(section, cancellationToken);
             ST_DISPLAY_ITEM SelectItem10(ST_SYSTEM_PARAMETER item)
             {
                 return new ST_DISPLAY_ITEM(
@@ -245,10 +245,10 @@ public sealed class CMenuSetting : CMenuBase
         var selectedSection = ToSection(selectedTab);
         IReadOnlyList<ST_SYSTEM_PARAMETER> loadedParameters = selectedTab == "INTERFACE"
             ? []
-            : await _settingManager.LoadSection(selectedSection, cancellationToken);
+            : _settingManager.LoadSection(selectedSection, cancellationToken);
         var loadedRows = BuildParameterRows(loadedParameters);
         IReadOnlyList<ST_SETTING_INTERFACE_ROW> loadedInterfaceRows = selectedTab == "INTERFACE"
-            ? BuildInterfaceRows(await _settingManager.LoadInterfaceList(cancellationToken))
+            ? BuildInterfaceRows(_settingManager.LoadInterfaceList(cancellationToken))
             : [];
         var editScreen = _editScreenProvider();
         var allRows = GetEditRows(loadedRows, editScreen, selectedTab);
@@ -273,7 +273,7 @@ public sealed class CMenuSetting : CMenuBase
         var filteredInterfaceRows = selectedGroup == "ALL"
             ? allInterfaceRows
             : allInterfaceRows.Where(FilterRow12).ToArray();
-        var history = await _settingManager.LoadHistory(selectedSection, cancellationToken);
+        var history = _settingManager.LoadHistory(selectedSection, cancellationToken);
         ST_SETTING_GROUP SelectGroup13(string group)
         {
             return new ST_SETTING_GROUP(group, group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase));
@@ -305,7 +305,7 @@ public sealed class CMenuSetting : CMenuBase
             setting: this);
     }
 
-    private async Task SelectTab(object? parameter)
+    private void SelectTab(object? parameter)
     {
         if (parameter is not string tab || string.IsNullOrWhiteSpace(tab))
         {
@@ -317,10 +317,10 @@ public sealed class CMenuSetting : CMenuBase
         _selectedGroupSetter(GetDefaultGroup());
         _setStatusMessage($"Setting tab {selectedTab} selected.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectGroup(object? parameter)
+    private void SelectGroup(object? parameter)
     {
         if (parameter is not string group || string.IsNullOrWhiteSpace(group))
         {
@@ -331,10 +331,10 @@ public sealed class CMenuSetting : CMenuBase
         _selectedGroupSetter(selectedGroup);
         _setStatusMessage($"Setting group {SelectedTab} / {selectedGroup} selected.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task ConnectInterface()
+    private void ConnectInterface()
     {
         var row = SelectedInterfaceRow;
 
@@ -358,7 +358,7 @@ public sealed class CMenuSetting : CMenuBase
 
         try
         {
-            await _settingManager.ConnectInterface(
+            _settingManager.ConnectInterface(
                 ParseDevice(row.Device),
                 ReadInt(row.Number, row.NickName, "NUMBER"));
             _setStatusMessage($"{InterfaceRowLabel(row)} connect command sent.");
@@ -369,10 +369,10 @@ public sealed class CMenuSetting : CMenuBase
             return;
         }
 
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task DisconnectInterface()
+    private void DisconnectInterface()
     {
         var row = SelectedInterfaceRow;
 
@@ -396,7 +396,7 @@ public sealed class CMenuSetting : CMenuBase
 
         try
         {
-            await _settingManager.DisconnectInterface(
+            _settingManager.DisconnectInterface(
                 ParseDevice(row.Device),
                 ReadInt(row.Number, row.NickName, "NUMBER"));
             _setStatusMessage($"{InterfaceRowLabel(row)} disconnected.");
@@ -407,16 +407,16 @@ public sealed class CMenuSetting : CMenuBase
             return;
         }
 
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Save()
+    private void Save()
     {
         if (SelectedTab == "INTERFACE")
         {
             try
             {
-                await _settingManager.SaveInterfaceList(ToInterfaceData(AllInterfaceRows));
+                _settingManager.SaveInterfaceList(ToInterfaceData(AllInterfaceRows));
             }
             catch (InvalidDataException exception)
             {
@@ -432,7 +432,7 @@ public sealed class CMenuSetting : CMenuBase
             _setStatusMessage("JHMI_INTERFACE.csv saved, verified, and reloaded to InterfaceManager.");
             _showLoadingScreen(EN_MENU.Setting, "SETTING");
             _refreshShellStatus();
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
             return;
         }
 
@@ -459,7 +459,7 @@ public sealed class CMenuSetting : CMenuBase
 
         try
         {
-            await _settingManager.SaveSection(section, parameters);
+            _settingManager.SaveSection(section, parameters);
         }
         catch (InvalidDataException exception)
         {
@@ -475,23 +475,23 @@ public sealed class CMenuSetting : CMenuBase
         _setStatusMessage($"Setting.csv saved for {SelectedTab} and CSV verified.");
         _showLoadingScreen(EN_MENU.Setting, "SETTING");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Cancel()
+    private void Cancel()
     {
         _showLoadingScreen(EN_MENU.Setting, "SETTING");
         _setStatusMessage($"Setting edits canceled. Reloaded {SelectedTab} / {SelectedGroup} from CSV.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task Reload()
+    private void Reload()
     {
         _showLoadingScreen(EN_MENU.Setting, "SETTING");
         _setStatusMessage($"Setting {SelectedTab} / {SelectedGroup} reloaded from CSV.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
     private void Apply(
@@ -1750,7 +1750,3 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
         return value.Trim();
     }
 }
-
-
-
-

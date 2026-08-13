@@ -18,7 +18,7 @@ public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
 
     private readonly string _ruleDirectory = Path.Combine(configRoot, "ReviewRule");
 
-    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<string> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureDefaultRuleFile();
@@ -40,10 +40,10 @@ public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
             .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<string>>(ruleNames);
+        return ruleNames;
     }
 
-    public override Task<ST_REVIEW_RULE_DATA> Load(
+    public override ST_REVIEW_RULE_DATA Load(
         string ruleFileName,
         CancellationToken cancellationToken = default)
     {
@@ -98,7 +98,7 @@ public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
             return key;
         }
 
-        return Task.FromResult(new ST_REVIEW_RULE_DATA(
+        return new ST_REVIEW_RULE_DATA(
             normalizedName,
             ruleName,
             ruleType,
@@ -109,10 +109,10 @@ public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
                 .Where(FilterKey3)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(GetKeySortKey4, StringComparer.OrdinalIgnoreCase)
-                .ToArray()));
+                .ToArray());
     }
 
-    public override Task Save(
+    public override void Save(
         ST_REVIEW_RULE_DATA rule,
         CancellationToken cancellationToken = default)
     {
@@ -154,7 +154,7 @@ public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
 
         CCsvParser.Write(GetRulePath(normalizedName), Headers, rows);
         ValidateSavedRule(normalizedName, rule);
-        return Task.CompletedTask;
+        return;
     }
 
     private void EnsureDefaultRuleFile()
@@ -173,14 +173,14 @@ public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
             1,
             1,
             0,
-            [])).GetAwaiter().GetResult();
+            []));
     }
 
     private void ValidateSavedRule(
         string ruleFileName,
         ST_REVIEW_RULE_DATA expectedRule)
     {
-        var loadedRule = Load(ruleFileName).GetAwaiter().GetResult();
+        var loadedRule = Load(ruleFileName);
 
         if (loadedRule.RuleType != expectedRule.RuleType)
         {

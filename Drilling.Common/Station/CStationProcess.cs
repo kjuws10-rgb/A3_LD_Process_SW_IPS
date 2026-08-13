@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Runtime.ExceptionServices;
 using Drilling.Common.Log;
 using Drilling.Common.Interface;
@@ -10,11 +10,30 @@ using Drilling.Common.Product;
 using Drilling.Common.Automation;
 using Drilling.Common.Recipe;
 using Drilling.Common.Station;
+using Drilling.Common.Threading;
 
 namespace Drilling.Common.Station;
 
-public sealed class CStationProcess
+public enum EN_STATION_SEQUENCE
 {
+    Ready,
+    PreCheck,
+    OpticReady,
+    PowerCheck,
+    Align,
+    Process,
+    Inspection,
+    Complete,
+    Stop,
+    Reset,
+    Error
+}
+
+public sealed class CStationProcess : CtrlThread
+{
+    private delegate void CProcessStepAction(
+        ST_PROCESS_PLAN processPlan,
+        CancellationToken cancellationToken);
     private const string AutoStepIdle = "IDLE";
     private const string AutoStepPreCheck = "PRECHECK";
     private const string AutoStepOpticReady = "OPTIC_READY";
@@ -87,9 +106,12 @@ public sealed class CStationProcess
     private readonly CAutomationScriptFileBase _automationScriptFile;
     private readonly CAutomationManager _automationManager;
     private readonly CLogManager? _logManager;
-    private readonly SemaphoreSlim _runLock = new(1, 1);
+    private readonly object mobjSequenceLock = new object();
+    private readonly object mobjBufferedWorkerLock = new object();
     private readonly List<ST_PROCESS_LOG_ITEM> _processLogs = [];
     private readonly Dictionary<string, string> _autoStepStates = CreateAutoStepStateMap();
+    private readonly Dictionary<int, CBufferedRunGroupThread> mobjBufferedWorkers =
+        new Dictionary<int, CBufferedRunGroupThread>();
 
     private DateTimeOffset? _scriptCreatedAt;
     private DateTimeOffset? _scriptStartedAt;
@@ -100,6 +122,9 @@ public sealed class CStationProcess
     private ST_PROCESS_STATISTICS _statistics = EmptyStatistics();
     private ST_STATION_PROCESS_STATUS _snapshot;
     private ST_STATION_STATUS _stationStatus;
+    private EN_STATION_SEQUENCE meSequence = EN_STATION_SEQUENCE.Ready;
+    private CancellationTokenSource? mobjSequenceCancellation;
+    private string mstrSequenceError = "";
 
     public CStationProcess(
         CInterfaceManager interfaceManager,
@@ -135,6 +160,7 @@ public sealed class CStationProcess
             EN_SCRIPT_STATUS.NotCreated,
             "Station idle.",
             DateTimeOffset.Now);
+        base.Start(10, "StationProcess");
     }
 
     public ST_STATION_PROCESS_STATUS Current
@@ -153,12 +179,23 @@ public sealed class CStationProcess
         }
     }
 
+    public EN_STATION_SEQUENCE SequenceState
+    {
+        get
+        {
+            lock (mobjSequenceLock)
+            {
+                return meSequence;
+            }
+        }
+    }
+
     public static IReadOnlyList<ST_STATION_PROCESS_FLOW_ITEM> GetProcessFlow()
     {
         return ProcessFlowItems;
     }
 
-    public async Task<ST_STATION_PROCESS_STATUS> PrepareProcessPlan(
+    public ST_STATION_PROCESS_STATUS PrepareProcessPlan(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken = default)
     {
@@ -172,11 +209,11 @@ public sealed class CStationProcess
         _lastScript = null;
         ResetAutoStepStates();
 
-        processPlan = await BuildRuntimeProcessPlan(processPlan, cancellationToken);
+        processPlan = BuildRuntimeProcessPlan(processPlan, cancellationToken);
         _processModel = BuildProcessModel(processPlan);
         var preview = BuildPreview(_processModel, EN_HEAD_PROCESS_STATUS.Ready);
         _statistics = BuildStatistics(preview, 0.0, TimeSpan.Zero);
-        await CreateProduct(_processModel, preview, cancellationToken);
+        CreateProduct(_processModel, preview, cancellationToken);
 
         AddProcessLog("INFO", "SCAN_PC", $"Process plan prepared ({processPlan.ProcessId})");
         AddProcessLog("INFO", "PARSER", $"Head parameter parsed ({preview.Count} heads / {_statistics.TotalPoints} points)");
@@ -198,73 +235,180 @@ public sealed class CStationProcess
         return _snapshot;
     }
 
-    public async Task<ST_STATION_PROCESS_STATUS> Start(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS Start(CancellationToken cancellationToken = default)
     {
-        await _runLock.WaitAsync(cancellationToken);
-
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (mobjSequenceLock)
         {
-            EnsureStartAllowed();
-            var processPlan = CheckProcessPlan();
-            await ExecuteAutoStep(
-                AutoStepPreCheck,
-                processPlan,
-                RunPreCheck,
-                cancellationToken);
-            await ExecuteAutoStep(
-                AutoStepOpticReady,
-                processPlan,
-                RunOpticReadyStep,
-                cancellationToken);
-            await ExecuteOptionalAutoStep(
-                AutoStepPowerCheck,
-                SettingAutoPowerCheckUse,
-                processPlan,
-                RunPowerCheckStep,
-                cancellationToken);
-            await ExecuteOptionalAutoStep(
-                AutoStepAlign,
-                SettingAutoAlignUse,
-                processPlan,
-                RunAlignStep,
-                cancellationToken);
-            await ExecuteOptionalAutoStep(
-                AutoStepProcess,
-                SettingAutoProcessUse,
-                processPlan,
-                RunProcessStep,
-                cancellationToken);
-            await ExecuteOptionalAutoStep(
-                AutoStepInspection,
-                SettingAutoInspectionUse,
-                processPlan,
-                RunInspectionStep,
-                cancellationToken);
-            Task ExecuteAutoStepValueCallback1(ST_PROCESS_PLAN _, CancellationToken token)
+            if (meSequence != EN_STATION_SEQUENCE.Ready)
             {
-                return CompleteProcess(token);
+                return _snapshot;
             }
 
-            await ExecuteAutoStep(
-                AutoStepComplete,
-                processPlan,
-ExecuteAutoStepValueCallback1,
-                cancellationToken);
+            EnsureStartAllowed();
+            CheckProcessPlan();
+            mobjSequenceCancellation?.Dispose();
+            mobjSequenceCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            mstrSequenceError = "";
+            meSequence = EN_STATION_SEQUENCE.PreCheck;
+        }
 
-            return _snapshot;
+        base.Start(10, "StationProcess");
+        return _snapshot;
+    }
+
+    public override void Run()
+    {
+        EN_STATION_SEQUENCE sequence = SequenceState;
+        try
+        {
+            switch (sequence)
+            {
+                case EN_STATION_SEQUENCE.Ready:
+                    break;
+                case EN_STATION_SEQUENCE.PreCheck:
+                    RunSequenceStep(AutoStepPreCheck, RunPreCheck, EN_STATION_SEQUENCE.OpticReady);
+                    break;
+                case EN_STATION_SEQUENCE.OpticReady:
+                    RunSequenceStep(AutoStepOpticReady, RunOpticReadyStep, EN_STATION_SEQUENCE.PowerCheck);
+                    break;
+                case EN_STATION_SEQUENCE.PowerCheck:
+                    RunOptionalSequenceStep(
+                        AutoStepPowerCheck,
+                        SettingAutoPowerCheckUse,
+                        RunPowerCheckStep,
+                        EN_STATION_SEQUENCE.Align);
+                    break;
+                case EN_STATION_SEQUENCE.Align:
+                    RunOptionalSequenceStep(
+                        AutoStepAlign,
+                        SettingAutoAlignUse,
+                        RunAlignStep,
+                        EN_STATION_SEQUENCE.Process);
+                    break;
+                case EN_STATION_SEQUENCE.Process:
+                    RunOptionalSequenceStep(
+                        AutoStepProcess,
+                        SettingAutoProcessUse,
+                        RunProcessStep,
+                        EN_STATION_SEQUENCE.Inspection);
+                    break;
+                case EN_STATION_SEQUENCE.Inspection:
+                    RunOptionalSequenceStep(
+                        AutoStepInspection,
+                        SettingAutoInspectionUse,
+                        RunInspectionStep,
+                        EN_STATION_SEQUENCE.Complete);
+                    break;
+                case EN_STATION_SEQUENCE.Complete:
+                    RunCompleteSequence();
+                    break;
+                case EN_STATION_SEQUENCE.Stop:
+                    ProcessStop(CancellationToken.None);
+                    FinishSequence();
+                    break;
+                case EN_STATION_SEQUENCE.Reset:
+                    ProcessReset(CancellationToken.None);
+                    FinishSequence();
+                    break;
+                case EN_STATION_SEQUENCE.Error:
+                    SetAlarm(mstrSequenceError, CancellationToken.None);
+                    FinishSequence();
+                    break;
+            }
         }
         catch (OperationCanceledException)
         {
-            return await Stop(CancellationToken.None);
+            SetSequence(EN_STATION_SEQUENCE.Stop);
         }
         catch (Exception exception) when (
             exception is InvalidOperationException or TimeoutException or IOException or KeyNotFoundException)
         {
-            return await SetAlarm(exception.Message, CancellationToken.None);
+            mstrSequenceError = exception.Message;
+            SetSequence(EN_STATION_SEQUENCE.Error);
         }
-        finally
+    }
+
+    public void Shutdown()
+    {
+        lock (mobjSequenceLock)
         {
-            _runLock.Release();
+            mobjSequenceCancellation?.Cancel();
+        }
+
+        base.Stop();
+        ShutdownBufferedRunWorkers();
+        lock (mobjSequenceLock)
+        {
+            mobjSequenceCancellation?.Dispose();
+            mobjSequenceCancellation = null;
+            meSequence = EN_STATION_SEQUENCE.Ready;
+        }
+    }
+
+    private void RunSequenceStep(
+        string stepKey,
+        CProcessStepAction action,
+        EN_STATION_SEQUENCE nextSequence)
+    {
+        CancellationToken cancellationToken = GetSequenceCancellationToken();
+        ST_PROCESS_PLAN processPlan = GetSequenceProcessPlan();
+        ExecuteAutoStep(stepKey, processPlan, action, cancellationToken);
+        SetSequence(nextSequence);
+    }
+
+    private void RunOptionalSequenceStep(
+        string stepKey,
+        string settingKey,
+        CProcessStepAction action,
+        EN_STATION_SEQUENCE nextSequence)
+    {
+        CancellationToken cancellationToken = GetSequenceCancellationToken();
+        ST_PROCESS_PLAN processPlan = GetSequenceProcessPlan();
+        ExecuteOptionalAutoStep(stepKey, settingKey, processPlan, action, cancellationToken);
+        SetSequence(nextSequence);
+    }
+
+    private void RunCompleteSequence()
+    {
+        void CompleteStep(ST_PROCESS_PLAN unusedPlan, CancellationToken cancellationToken)
+        {
+            CompleteProcess(cancellationToken);
+        }
+
+        RunSequenceStep(AutoStepComplete, CompleteStep, EN_STATION_SEQUENCE.Ready);
+        FinishSequence();
+    }
+
+    private ST_PROCESS_PLAN GetSequenceProcessPlan()
+    {
+        return _snapshot.ProcessPlan ??
+            throw new InvalidOperationException("Process Plan is not loaded.");
+    }
+
+    private CancellationToken GetSequenceCancellationToken()
+    {
+        lock (mobjSequenceLock)
+        {
+            return mobjSequenceCancellation?.Token ?? CancellationToken.None;
+        }
+    }
+
+    private void SetSequence(EN_STATION_SEQUENCE sequence)
+    {
+        lock (mobjSequenceLock)
+        {
+            meSequence = sequence;
+        }
+    }
+
+    private void FinishSequence()
+    {
+        lock (mobjSequenceLock)
+        {
+            meSequence = EN_STATION_SEQUENCE.Ready;
+            mobjSequenceCancellation?.Dispose();
+            mobjSequenceCancellation = null;
         }
     }
 
@@ -302,10 +446,10 @@ ExecuteAutoStepValueCallback1,
             ?? throw new InvalidOperationException("Process Plan is not loaded.");
     }
 
-    private async Task ExecuteAutoStep(
+    private void ExecuteAutoStep(
         string stepKey,
         ST_PROCESS_PLAN processPlan,
-        Func<ST_PROCESS_PLAN, CancellationToken, Task> action,
+        CProcessStepAction action,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -330,7 +474,7 @@ ExecuteAutoStepValueCallback1,
 
         try
         {
-            await action(processPlan, cancellationToken);
+            action(processPlan, cancellationToken);
             SetAutoStepState(stepKey, stepKey == AutoStepComplete ? AutoStepDone : AutoStepOk);
             AddProcessLog("INFO", "STEP", $"{stepName} completed.");
             RefreshSnapshot();
@@ -344,14 +488,14 @@ ExecuteAutoStepValueCallback1,
         }
     }
 
-    private async Task ExecuteOptionalAutoStep(
+    private void ExecuteOptionalAutoStep(
         string stepKey,
         string settingKey,
         ST_PROCESS_PLAN processPlan,
-        Func<ST_PROCESS_PLAN, CancellationToken, Task> action,
+        CProcessStepAction action,
         CancellationToken cancellationToken)
     {
-        if (!await ReadSettingBool(settingKey, true, cancellationToken))
+        if (!ReadSettingBool(settingKey, true, cancellationToken))
         {
             SetAutoStepState(stepKey, AutoStepSkip);
             AddProcessLog("INFO", "STEP", $"{GetAutoStepName(stepKey)} skipped by setting option ({settingKey}=OFF).");
@@ -359,16 +503,16 @@ ExecuteAutoStepValueCallback1,
             return;
         }
 
-        await ExecuteAutoStep(stepKey, processPlan, action, cancellationToken);
+        ExecuteAutoStep(stepKey, processPlan, action, cancellationToken);
     }
 
-    private async Task RunPreCheck(
+    private void RunPreCheck(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
         AddProcessLog("INFO", "PRECHECK", "Auto run precheck started.");
         LoadRecipeProduct(processPlan);
-        var interLock = await GetInterLockSummary(cancellationToken);
+        var interLock = GetInterLockSummary(cancellationToken);
 
         _snapshot = CreateSnapshot(
             _snapshot.ProcessPlan,
@@ -406,7 +550,7 @@ ExecuteAutoStepValueCallback1,
             $"Head attenuator targets loaded ({string.Join(", ", attenuatorTargets)} deg)");
     }
 
-    private async Task RunAlignStep(
+    private void RunAlignStep(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -417,7 +561,7 @@ ExecuteAutoStepValueCallback1,
         var reviewCameraAlignKeyPosY = ReadDoubleAny(parameters, 0.0, "REVIEW_CAMERA_ALIGN_KEY_POS_Y");
         var stageYSpeed = ReadDoubleAny(parameters, 100.0, "STAGE_Y_SPEED");
 
-        await SendProcessControlCommand(
+        SendProcessControlCommand(
             "ALIGN_REVIEW_CAMERA_MOVE",
             [
                 ("CAMERA_X", FormatDouble(reviewCameraAlignKeyPosX)),
@@ -432,23 +576,23 @@ ExecuteAutoStepValueCallback1,
             $"Review camera align key position requested. CameraX={FormatDouble(reviewCameraAlignKeyPosX)}, StageY={FormatDouble(reviewCameraAlignKeyPosY)}");
     }
 
-    private async Task RunOpticReadyStep(
+    private void RunOpticReadyStep(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
         AddSequenceLog("INFO", "OPTIC", $"Optic Ready started. Recipe={processPlan.RecipeId}");
 
-        await EnsureOpticCommunicationReady(cancellationToken);
-        await PrepareLaserProcessReady(cancellationToken);
-        await PrepareChillerRun(cancellationToken);
-        await PrepareBET(processPlan, cancellationToken);
-        await PrepareAttenuator(processPlan, cancellationToken);
+        EnsureOpticCommunicationReady(cancellationToken);
+        PrepareLaserProcessReady(cancellationToken);
+        PrepareChillerRun(cancellationToken);
+        PrepareBET(processPlan, cancellationToken);
+        PrepareAttenuator(processPlan, cancellationToken);
         AddSequenceLog("INFO", "LASER", "Laser ready state is maintained. Automation script controls laser emission.");
 
         AddSequenceLog("INFO", "OPTIC", "Optic Ready completed.");
     }
 
-    private Task EnsureOpticCommunicationReady(CancellationToken cancellationToken)
+    private void EnsureOpticCommunicationReady(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         bool FilterStatus3(ST_INTERFACE_COMM_STATUS status)
@@ -475,7 +619,7 @@ ExecuteAutoStepValueCallback1,
         if (statuses.Length == 0)
         {
             AddSequenceLog("WARN", "OPTIC", "No optic interface is registered. Optic Ready device commands were skipped.");
-            return Task.CompletedTask;
+            return;
         }
 
         foreach (var status in statuses)
@@ -502,10 +646,10 @@ ExecuteAutoStepValueCallback1,
         }
 
         AddSequenceLog("INFO", "OPTIC", "Optic interface communication check OK.");
-        return Task.CompletedTask;
+        return;
     }
 
-    private async Task PrepareLaserProcessReady(CancellationToken cancellationToken)
+    private void PrepareLaserProcessReady(CancellationToken cancellationToken)
     {
         var devices = GetOpticDevices(EN_EQP_MODULE.TalonLaser);
 
@@ -517,7 +661,7 @@ ExecuteAutoStepValueCallback1,
 
         foreach (var device in devices)
         {
-            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback7(CancellationToken token)
+            ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback7(CancellationToken token)
             {
                 return _interfaceManager.ExecuteTalonLaserCommand(
                                     device.Number,
@@ -526,13 +670,13 @@ ExecuteAutoStepValueCallback1,
                                     token);
             }
 
-            await ExecuteOpticCommand(
+            ExecuteOpticCommand(
                 "LASER",
                 device,
                 "Laser ON",
 ExecuteOpticCommandTokenCallback7,
                 cancellationToken);
-            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback8(CancellationToken token)
+            ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback8(CancellationToken token)
             {
                 return _interfaceManager.ExecuteTalonLaserCommand(
                                     device.Number,
@@ -541,13 +685,13 @@ ExecuteOpticCommandTokenCallback7,
                                     token);
             }
 
-            await ExecuteOpticCommand(
+            ExecuteOpticCommand(
                 "LASER",
                 device,
                 "Gate OPEN",
 ExecuteOpticCommandTokenCallback8,
                 cancellationToken);
-            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback9(CancellationToken token)
+            ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback9(CancellationToken token)
             {
                 return _interfaceManager.ExecuteTalonLaserCommand(
                                     device.Number,
@@ -556,13 +700,13 @@ ExecuteOpticCommandTokenCallback8,
                                     token);
             }
 
-            await ExecuteOpticCommand(
+            ExecuteOpticCommand(
                 "LASER",
                 device,
                 "Shutter OPEN",
 ExecuteOpticCommandTokenCallback9,
                 cancellationToken);
-            Task<ST_LASER_STATUS> WaitForOpticReadyTokenCallback10(CancellationToken token)
+            ST_LASER_STATUS WaitForOpticReadyTokenCallback10(CancellationToken token)
             {
                 return _interfaceManager.GetLaserStatus(device.Number, token);
             }
@@ -572,7 +716,7 @@ ExecuteOpticCommandTokenCallback9,
                 return status.PowerOn && status.GateOn && status.ShutterOpen;
             }
 
-            await WaitForOpticReady(
+            WaitForOpticReady(
                 "LASER",
                 $"{FormatInterfaceName(device)} process ready state",
 WaitForOpticReadyTokenCallback10,
@@ -582,7 +726,7 @@ WaitForOpticReadyStatusCallback11,
         }
     }
 
-    private async Task ReturnLaserSafe(CancellationToken cancellationToken)
+    private void ReturnLaserSafe(CancellationToken cancellationToken)
     {
         var devices = GetOpticDevices(EN_EQP_MODULE.TalonLaser);
 
@@ -590,7 +734,7 @@ WaitForOpticReadyStatusCallback11,
         {
             try
             {
-                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback12(CancellationToken token)
+                ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback12(CancellationToken token)
                 {
                     return _interfaceManager.ExecuteTalonLaserCommand(
                                             device.Number,
@@ -599,13 +743,13 @@ WaitForOpticReadyStatusCallback11,
                                             token);
                 }
 
-                await ExecuteOpticCommand(
+                ExecuteOpticCommand(
                     "LASER",
                     device,
                     "Laser OFF",
 ExecuteOpticCommandTokenCallback12,
                     cancellationToken);
-                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback13(CancellationToken token)
+                ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback13(CancellationToken token)
                 {
                     return _interfaceManager.ExecuteTalonLaserCommand(
                                             device.Number,
@@ -614,13 +758,13 @@ ExecuteOpticCommandTokenCallback12,
                                             token);
                 }
 
-                await ExecuteOpticCommand(
+                ExecuteOpticCommand(
                     "LASER",
                     device,
                     "Gate CLOSE",
 ExecuteOpticCommandTokenCallback13,
                     cancellationToken);
-                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback14(CancellationToken token)
+                ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback14(CancellationToken token)
                 {
                     return _interfaceManager.ExecuteTalonLaserCommand(
                                             device.Number,
@@ -629,13 +773,13 @@ ExecuteOpticCommandTokenCallback13,
                                             token);
                 }
 
-                await ExecuteOpticCommand(
+                ExecuteOpticCommand(
                     "LASER",
                     device,
                     "Shutter CLOSE",
 ExecuteOpticCommandTokenCallback14,
                     cancellationToken);
-                Task<ST_LASER_STATUS> WaitForOpticReadyTokenCallback15(CancellationToken token)
+                ST_LASER_STATUS WaitForOpticReadyTokenCallback15(CancellationToken token)
                 {
                     return _interfaceManager.GetLaserStatus(device.Number, token);
                 }
@@ -645,7 +789,7 @@ ExecuteOpticCommandTokenCallback14,
                     return !status.PowerOn && !status.GateOn && !status.ShutterOpen;
                 }
 
-                await WaitForOpticReady(
+                WaitForOpticReady(
                     "LASER",
                     $"{FormatInterfaceName(device)} safe return state",
 WaitForOpticReadyTokenCallback15,
@@ -660,7 +804,7 @@ WaitForOpticReadyStatusCallback16,
         }
     }
 
-    private async Task PrepareChillerRun(CancellationToken cancellationToken)
+    private void PrepareChillerRun(CancellationToken cancellationToken)
     {
         var devices = GetOpticDevices(EN_EQP_MODULE.Chiller);
 
@@ -672,7 +816,7 @@ WaitForOpticReadyStatusCallback16,
 
         foreach (var device in devices)
         {
-            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback17(CancellationToken token)
+            ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback17(CancellationToken token)
             {
                 return _interfaceManager.ExecuteChillerCommand(
                                     device.Number,
@@ -680,13 +824,13 @@ WaitForOpticReadyStatusCallback16,
                                     cancellationToken: token);
             }
 
-            await ExecuteOpticCommand(
+            ExecuteOpticCommand(
                 "CHILLER",
                 device,
                 "Run",
 ExecuteOpticCommandTokenCallback17,
                 cancellationToken);
-            Task<ST_CHILLER_STATUS> WaitForOpticReadyTokenCallback18(CancellationToken token)
+            ST_CHILLER_STATUS WaitForOpticReadyTokenCallback18(CancellationToken token)
             {
                 return _interfaceManager.GetChillerStatus(device.Number, token);
             }
@@ -696,7 +840,7 @@ ExecuteOpticCommandTokenCallback17,
                 return status.Running && !status.AlarmOn;
             }
 
-            await WaitForOpticReady(
+            WaitForOpticReady(
                 "CHILLER",
                 $"{FormatInterfaceName(device)} run state",
 WaitForOpticReadyTokenCallback18,
@@ -706,7 +850,7 @@ WaitForOpticReadyStatusCallback19,
         }
     }
 
-    private async Task PrepareBET(
+    private void PrepareBET(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -718,13 +862,13 @@ WaitForOpticReadyStatusCallback19,
             return;
         }
 
-        var target = await ReadBETTarget(processPlan, cancellationToken);
+        var target = ReadBETTarget(processPlan, cancellationToken);
 
         foreach (var device in devices)
         {
             if (target is null)
             {
-                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback20(CancellationToken token)
+                ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback20(CancellationToken token)
                 {
                     return _interfaceManager.ExecuteBETCommand(
                                             device.Number,
@@ -732,14 +876,14 @@ WaitForOpticReadyStatusCallback19,
                                             cancellationToken: token);
                 }
 
-                await ExecuteOpticCommand(
+                ExecuteOpticCommand(
                     "BET",
                     device,
                     "Refresh",
 ExecuteOpticCommandTokenCallback20,
                     cancellationToken);
 
-                var status = await _interfaceManager.GetBETStatus(device.Number, cancellationToken);
+                var status = _interfaceManager.GetBETStatus(device.Number, cancellationToken);
                 ValidateBETStatus(device, status);
                 AddSequenceLog("INFO", "BET", $"{FormatInterfaceName(device)} refresh OK. {FormatBETStatus(status)}");
                 continue;
@@ -747,7 +891,7 @@ ExecuteOpticCommandTokenCallback20,
 
             if (target.TableIndex is not null)
             {
-                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback21(CancellationToken token)
+                ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback21(CancellationToken token)
                 {
                     return _interfaceManager.ExecuteBETCommand(
                                             device.Number,
@@ -756,7 +900,7 @@ ExecuteOpticCommandTokenCallback20,
                                             cancellationToken: token);
                 }
 
-                await ExecuteOpticCommand(
+                ExecuteOpticCommand(
                     "BET",
                     device,
                     $"MoveTable {target.TableIndex.Value}",
@@ -765,7 +909,7 @@ ExecuteOpticCommandTokenCallback21,
             }
             else
             {
-                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback22(CancellationToken token)
+                ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback22(CancellationToken token)
                 {
                     return _interfaceManager.ExecuteBETCommand(
                                             device.Number,
@@ -775,14 +919,14 @@ ExecuteOpticCommandTokenCallback21,
                                             token);
                 }
 
-                await ExecuteOpticCommand(
+                ExecuteOpticCommand(
                     "BET",
                     device,
                     $"MoveManual MAG={FormatDouble(target.Magnification)}, DIV={FormatDouble(target.Divergence)}",
 ExecuteOpticCommandTokenCallback22,
                     cancellationToken);
             }
-            Task<ST_BET_STATUS> WaitForOpticReadyTokenCallback23(CancellationToken token)
+            ST_BET_STATUS WaitForOpticReadyTokenCallback23(CancellationToken token)
             {
                 return _interfaceManager.GetBETStatus(device.Number, token);
             }
@@ -794,7 +938,7 @@ ExecuteOpticCommandTokenCallback22,
                                     IsNear(status.CurrentDivergence, target.Divergence, OpticReadyPositionTolerance);
             }
 
-            await WaitForOpticReady(
+            WaitForOpticReady(
                 "BET",
                 $"{FormatInterfaceName(device)} target position",
 WaitForOpticReadyTokenCallback23,
@@ -804,7 +948,7 @@ WaitForOpticReadyStatusCallback24,
         }
     }
 
-    private async Task PrepareAttenuator(
+    private void PrepareAttenuator(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -823,7 +967,7 @@ WaitForOpticReadyStatusCallback24,
                 processPlan.Parameters,
                 23.50,
                 CreateHeadKeys(headNo, "ATTENUATOR_POSITION"));
-            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback25(CancellationToken token)
+            ST_DEVICE_COMMAND_RESULT ExecuteOpticCommandTokenCallback25(CancellationToken token)
             {
                 return _interfaceManager.ExecuteAttenuatorCommand(
                                     device.Number,
@@ -832,13 +976,13 @@ WaitForOpticReadyStatusCallback24,
                                     token);
             }
 
-            await ExecuteOpticCommand(
+            ExecuteOpticCommand(
                 "ATT",
                 device,
                 $"H{headNo:00} MoveAbs {FormatDouble(target)}",
 ExecuteOpticCommandTokenCallback25,
                 cancellationToken);
-            Task<ST_ATTENUATOR_STATUS> WaitForOpticReadyTokenCallback26(CancellationToken token)
+            ST_ATTENUATOR_STATUS WaitForOpticReadyTokenCallback26(CancellationToken token)
             {
                 return _interfaceManager.GetAttenuatorStatus(device.Number, token);
             }
@@ -849,7 +993,7 @@ ExecuteOpticCommandTokenCallback25,
                                     IsNear(status.CurrentPosition, target, OpticReadyPositionTolerance);
             }
 
-            await WaitForOpticReady(
+            WaitForOpticReady(
                 "ATT",
                 $"{FormatInterfaceName(device)} H{headNo:00} target position",
 WaitForOpticReadyTokenCallback26,
@@ -877,17 +1021,17 @@ WaitForOpticReadyStatusCallback27,
             .ToArray();
     }
 
-    private async Task ExecuteOpticCommand(
+    private void ExecuteOpticCommand(
         string source,
         ST_INTERFACE_DATA device,
         string action,
-        Func<CancellationToken, Task<ST_DEVICE_COMMAND_RESULT>> command,
+        Func<CancellationToken, ST_DEVICE_COMMAND_RESULT> command,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         AddSequenceLog("INFO", source, $"{FormatInterfaceName(device)} {action} command requested.");
-        var result = await command(cancellationToken);
+        var result = command(cancellationToken);
 
         if (!result.IsSuccess)
         {
@@ -898,22 +1042,22 @@ WaitForOpticReadyStatusCallback27,
         AddSequenceLog("INFO", source, $"{FormatInterfaceName(device)} {action} command OK. {result.Message}");
     }
 
-    private async Task<TStatus> WaitForOpticReady<TStatus>(
+    private TStatus WaitForOpticReady<TStatus>(
         string source,
         string targetName,
-        Func<CancellationToken, Task<TStatus>> readStatus,
+        Func<CancellationToken, TStatus> readStatus,
         Func<TStatus, bool> isReady,
         Func<TStatus, string> describe,
         CancellationToken cancellationToken)
     {
-        var timeoutMs = await ReadOpticReadyTimeout(cancellationToken);
+        var timeoutMs = ReadOpticReadyTimeout(cancellationToken);
         var deadline = DateTimeOffset.Now.AddMilliseconds(timeoutMs);
         TStatus lastStatus;
 
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            lastStatus = await readStatus(cancellationToken);
+            lastStatus = readStatus(cancellationToken);
 
             if (isReady(lastStatus))
             {
@@ -927,13 +1071,16 @@ WaitForOpticReadyStatusCallback27,
                     $"{targetName} ready timeout. Last status: {describe(lastStatus)}");
             }
 
-            await Task.Delay(OpticReadyPollIntervalMs, cancellationToken);
+            if (cancellationToken.WaitHandle.WaitOne(OpticReadyPollIntervalMs))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 
-    private async Task<int> ReadOpticReadyTimeout(CancellationToken cancellationToken)
+    private int ReadOpticReadyTimeout(CancellationToken cancellationToken)
     {
-        var value = await _settingManager.GetValue(
+        var value = _settingManager.GetValue(
             EN_SETTING_TAB.Motor,
             "MoveTimeout",
             OpticReadyDefaultTimeoutMs.ToString(CultureInfo.InvariantCulture),
@@ -944,7 +1091,7 @@ WaitForOpticReadyStatusCallback27,
             : OpticReadyDefaultTimeoutMs;
     }
 
-    private async Task<ST_OPTIC_READY_BET_TARGET?> ReadBETTarget(
+    private ST_OPTIC_READY_BET_TARGET? ReadBETTarget(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -957,7 +1104,7 @@ WaitForOpticReadyStatusCallback27,
 
         if (tableIndex is not null)
         {
-            var table = await _interfaceManager.LoadBETData(cancellationToken);
+            var table = _interfaceManager.LoadBETData(cancellationToken);
             bool MatchItem30(ST_BET_TABLE_DATA item)
             {
                 return item.Index == tableIndex.Value;
@@ -1013,17 +1160,17 @@ WaitForOpticReadyStatusCallback27,
         return null;
     }
 
-    private async Task RunProcessStep(
+    private void RunProcessStep(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
-        await BuildAutomationScript(processPlan, cancellationToken);
-        await UploadAutomationScript(processPlan, cancellationToken);
-        await MoveStageToScanStart(processPlan, cancellationToken);
-        await RunScannerProcess(processPlan, cancellationToken);
+        BuildAutomationScript(processPlan, cancellationToken);
+        UploadAutomationScript(processPlan, cancellationToken);
+        MoveStageToScanStart(processPlan, cancellationToken);
+        RunScannerProcess(processPlan, cancellationToken);
     }
 
-    private async Task MoveStageToScanStart(
+    private void MoveStageToScanStart(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -1047,7 +1194,7 @@ WaitForOpticReadyStatusCallback27,
         var scanStartY = reviewCameraAlignKeyPosY + firstShotStageY - (stageScanDirectionY * delayLengthY);
         var stageYSpeed = ReadDoubleAny(parameters, 100.0, "STAGE_Y_SPEED");
 
-        await SendProcessControlCommand(
+        SendProcessControlCommand(
             "PROCESS_STAGE_START_MOVE",
             [
                 ("X", FormatDouble(startX)),
@@ -1056,7 +1203,7 @@ WaitForOpticReadyStatusCallback27,
             ],
             cancellationToken);
 
-        await SendProcessControlCommand(
+        SendProcessControlCommand(
             "PROCESS_STAGE_SCAN_START_MOVE",
             [
                 ("Y", FormatDouble(scanStartY)),
@@ -1118,7 +1265,7 @@ WaitForOpticReadyStatusCallback27,
             : processPoints.Min(MinPointCallback33);
     }
 
-    private async Task SendProcessControlCommand(
+    private void SendProcessControlCommand(
         string commandName,
         IReadOnlyList<(string Key, string Value)> arguments,
         CancellationToken cancellationToken)
@@ -1126,7 +1273,7 @@ WaitForOpticReadyStatusCallback27,
         var command = FormatCommand(commandName, arguments);
 
         AddProcessLog("INFO", "STAGE", $"Stage command requested. {command}");
-        var response = await _interfaceManager.ExecuteFunction(
+        var response = _interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.WonikCtrl,
             0,
             command,
@@ -1142,14 +1289,14 @@ WaitForOpticReadyStatusCallback27,
         AddProcessLog("INFO", "STAGE", $"Stage command accepted. {response}");
     }
 
-    private async Task RunInspectionStep(
+    private void RunInspectionStep(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
-        await RunReviewStep(processPlan, cancellationToken);
+        RunReviewStep(processPlan, cancellationToken);
     }
 
-    private async Task BuildAutomationScript(
+    private void BuildAutomationScript(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -1158,7 +1305,7 @@ WaitForOpticReadyStatusCallback27,
             ? BufferedRunScriptDirectoryName
             : StandardScriptDirectoryName;
 
-        _lastScript = await _automationScriptFile.Build(
+        _lastScript = _automationScriptFile.Build(
             GetProcessModel(),
             scriptDirectoryName,
             cancellationToken);
@@ -1177,7 +1324,7 @@ WaitForOpticReadyStatusCallback27,
             null);
     }
 
-    private async Task UploadAutomationScript(
+    private void UploadAutomationScript(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -1198,7 +1345,7 @@ WaitForOpticReadyStatusCallback27,
                 "INFO",
                 "A1_UPLOAD",
                 $"Upload requested. H{headScript.HeadNo:00} -> Automation1 #{headScript.AutomationNo}, {headScript.FileName}");
-            var response = await _automationManager.UploadScript(
+            var response = _automationManager.UploadScript(
                 headScript.FilePath,
                 headScript.FileName,
                 headScript.AutomationNo,
@@ -1210,7 +1357,7 @@ WaitForOpticReadyStatusCallback27,
         }
     }
 
-    private async Task RunScannerProcess(
+    private void RunScannerProcess(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -1223,7 +1370,7 @@ WaitForOpticReadyStatusCallback27,
         _scriptStartedAt = DateTimeOffset.Now;
         var runningPreview = SetHeadStatus(_snapshot.HeadPreviews, EN_PROCESS_STEP.Process);
         _statistics = BuildStatistics(runningPreview, 56.3, TimeSpan.FromSeconds(45));
-        await StartProduct(runningPreview, cancellationToken);
+        StartProduct(runningPreview, cancellationToken);
 
         if (_lastScript is null)
         {
@@ -1241,7 +1388,7 @@ WaitForOpticReadyStatusCallback27,
 
         if (bufferedRun)
         {
-            await RunBufferedHeadScripts(processPlan, headScripts, cancellationToken);
+            RunBufferedHeadScripts(processPlan, headScripts, cancellationToken);
         }
         else
         {
@@ -1251,7 +1398,7 @@ WaitForOpticReadyStatusCallback27,
                     "INFO",
                     "A1_RUN",
                     $"Automation1 #{headScript.AutomationNo} Task {headScript.TaskNo} run requested. H{headScript.HeadNo:00}, {headScript.FileName}");
-                var response = await _automationManager.RunScript(
+                var response = _automationManager.RunScript(
                     headScript.FileName,
                     headScript.TaskNo,
                     headScript.AutomationNo,
@@ -1271,7 +1418,7 @@ WaitForOpticReadyStatusCallback27,
             null);
     }
 
-    private async Task RunBufferedHeadScripts(
+    private void RunBufferedHeadScripts(
         ST_PROCESS_PLAN processPlan,
         IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts,
         CancellationToken cancellationToken)
@@ -1302,52 +1449,72 @@ WaitForOpticReadyStatusCallback27,
         }
 
         using var bufferedRunCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        Task<ST_BUFFERED_RUN_GROUP_RESULT> SelectGroup38(IGrouping<int, ST_AUTOMATION1_HEAD_SCRIPT> group)
-        {
-            return RunBufferedHeadScriptGroup(
-                            group.Key,
-                            group.ToArray(),
-                            queueSize,
-                            linesPerCommand,
-                            timeoutMs,
-                            bufferedRunCancellation.Token);
-        }
-
-        var tasks = groups
-            .Select(SelectGroup38)
-            .ToArray();
-        var pendingTasks = tasks.ToHashSet();
         var results = new List<ST_BUFFERED_RUN_GROUP_RESULT>();
+        var workers = new List<CBufferedRunGroupThread>();
         Exception? firstException = null;
 
-        while (pendingTasks.Count > 0)
+        foreach (IGrouping<int, ST_AUTOMATION1_HEAD_SCRIPT> group in groups)
         {
-            var completedTask = await Task.WhenAny(pendingTasks);
-            pendingTasks.Remove(completedTask);
+            var worker = GetBufferedRunWorker(group.Key);
+            worker.Request(
+                group.ToArray(),
+                queueSize,
+                linesPerCommand,
+                timeoutMs,
+                bufferedRunCancellation.Token);
+            workers.Add(worker);
+        }
 
-            if (completedTask.IsFaulted ||
-                completedTask.IsCanceled)
+        var completedWorkers = new HashSet<CBufferedRunGroupThread>();
+        while (completedWorkers.Count < workers.Count)
+        {
+            if (cancellationToken.IsCancellationRequested)
             {
-                firstException = GetTaskException(completedTask);
-                AddProcessLog("ERROR", "A1_RUN", $"Buffered run group failed. {firstException.Message}");
+                firstException = new OperationCanceledException(cancellationToken);
+                AddProcessLog("ERROR", "A1_RUN", "Buffered run group canceled.");
                 break;
             }
 
-            results.Add(await completedTask);
+            foreach (CBufferedRunGroupThread worker in workers)
+            {
+                if (completedWorkers.Contains(worker) || !worker.IsComplete)
+                {
+                    continue;
+                }
+
+                completedWorkers.Add(worker);
+                if (worker.Error is not null)
+                {
+                    firstException = worker.Error;
+                    AddProcessLog("ERROR", "A1_RUN", $"Buffered run group failed. {firstException.Message}");
+                    break;
+                }
+
+                if (worker.Result is not null)
+                {
+                    results.Add(worker.Result);
+                }
+            }
+
+            if (firstException is not null)
+            {
+                break;
+            }
+
+            if (completedWorkers.Count < workers.Count)
+            {
+                Thread.Sleep(10);
+            }
         }
 
         if (firstException is not null)
         {
-            await bufferedRunCancellation.CancelAsync();
-            await StopBufferedRunTasks(headScripts, firstException);
+            bufferedRunCancellation.Cancel();
+            StopBufferedRunTasks(headScripts, firstException);
 
-            try
+            foreach (CBufferedRunGroupThread worker in workers)
             {
-                await Task.WhenAll(tasks);
-            }
-            catch
-            {
-                // All group task exceptions are observed; the first failure remains the process failure.
+                worker.WaitForCompletion(3000);
             }
 
             ExceptionDispatchInfo.Capture(firstException).Throw();
@@ -1362,7 +1529,7 @@ WaitForOpticReadyStatusCallback27,
         }
     }
 
-    private async Task<ST_BUFFERED_RUN_GROUP_RESULT> RunBufferedHeadScriptGroup(
+    private ST_BUFFERED_RUN_GROUP_RESULT RunBufferedHeadScriptGroup(
         int automationNo,
         IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts,
         int queueSize,
@@ -1378,7 +1545,7 @@ WaitForOpticReadyStatusCallback27,
                                 script.TaskNo);
         }
 
-        var response = await _automationManager.RunBufferedScripts(
+        var response = _automationManager.RunBufferedScripts(
             headScripts
                 .Select(SelectScript39)
                 .ToArray(),
@@ -1398,7 +1565,38 @@ WaitForOpticReadyStatusCallback27,
             response);
     }
 
-    private async Task StopBufferedRunTasks(
+    private CBufferedRunGroupThread GetBufferedRunWorker(int automationNo)
+    {
+        lock (mobjBufferedWorkerLock)
+        {
+            if (mobjBufferedWorkers.TryGetValue(automationNo, out var worker))
+            {
+                return worker;
+            }
+
+            worker = new CBufferedRunGroupThread(this, automationNo);
+            worker.Start(5, "BufferedRunA1_" + automationNo.ToString(CultureInfo.InvariantCulture));
+            mobjBufferedWorkers.Add(automationNo, worker);
+            return worker;
+        }
+    }
+
+    private void ShutdownBufferedRunWorkers()
+    {
+        CBufferedRunGroupThread[] workers;
+        lock (mobjBufferedWorkerLock)
+        {
+            workers = mobjBufferedWorkers.Values.ToArray();
+            mobjBufferedWorkers.Clear();
+        }
+
+        foreach (CBufferedRunGroupThread worker in workers)
+        {
+            worker.Stop();
+        }
+    }
+
+    private void StopBufferedRunTasks(
         IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts,
         Exception cause)
     {
@@ -1434,13 +1632,13 @@ WaitForOpticReadyStatusCallback27,
             "A1_RUN",
             $"Stopping buffered run tasks after failure. Reason={cause.Message}, Targets={targets.Count}");
 
-        List<Task<ST_BUFFERED_RUN_STOP_RESULT>> stopTasks = new List<Task<ST_BUFFERED_RUN_STOP_RESULT>>();
+        List<ST_BUFFERED_RUN_STOP_RESULT> stopTasks = new List<ST_BUFFERED_RUN_STOP_RESULT>();
         foreach (CBufferedRunTarget target in targets)
         {
             stopTasks.Add(StopBufferedRunTask(target));
         }
 
-        ST_BUFFERED_RUN_STOP_RESULT[] stopResults = await Task.WhenAll(stopTasks);
+        ST_BUFFERED_RUN_STOP_RESULT[] stopResults = stopTasks.ToArray();
 
         foreach (var stopResult in stopResults)
         {
@@ -1461,11 +1659,11 @@ WaitForOpticReadyStatusCallback27,
         }
     }
 
-    private async Task<ST_BUFFERED_RUN_STOP_RESULT> StopBufferedRunTask(CBufferedRunTarget target)
+    private ST_BUFFERED_RUN_STOP_RESULT StopBufferedRunTask(CBufferedRunTarget target)
     {
         try
         {
-            string response = await _automationManager.StopTask(
+            string response = _automationManager.StopTask(
                 target.TaskNo,
                 target.AutomationNo,
                 CancellationToken.None);
@@ -1489,40 +1687,28 @@ WaitForOpticReadyStatusCallback27,
         }
     }
 
-    private static Exception GetTaskException(Task task)
-    {
-        if (task.IsCanceled)
-        {
-            return new OperationCanceledException("Automation1 buffered run was canceled.");
-        }
-
-        return task.Exception?.InnerException ??
-            (Exception?)task.Exception ??
-            new InvalidOperationException("Automation1 buffered run failed.");
-    }
-
-    private Task RunReviewStep(
+    private void RunReviewStep(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         AddProcessLog("INFO", "REVIEW", "Review step reserved. Stage PC Y move, Vision X move, and Vision measure will be connected later.");
-        return Task.CompletedTask;
+        return;
     }
 
-    private async Task RunPowerCheckStep(
+    private void RunPowerCheckStep(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
-        var powerMeterStatus = await _interfaceManager.GetPowerMeterStatus(cancellationToken);
+        var powerMeterStatus = _interfaceManager.GetPowerMeterStatus(cancellationToken);
         AddProcessLog(
             "INFO",
             "POWER",
             $"Power check step reserved. Current power={powerMeterStatus.MeasuredPower.ToString("F4", CultureInfo.InvariantCulture)} {powerMeterStatus.Unit}");
     }
 
-    private async Task CompleteProcess(CancellationToken cancellationToken)
+    private void CompleteProcess(CancellationToken cancellationToken)
     {
         var scriptStatus = GetCurrentScriptStatusForComplete();
         if (scriptStatus == EN_SCRIPT_STATUS.Completed)
@@ -1538,8 +1724,8 @@ WaitForOpticReadyStatusCallback27,
         var completedPreview = SetHeadStatus(_snapshot.HeadPreviews, EN_PROCESS_STEP.Completed);
         _statistics = BuildStatistics(completedPreview, 100.0, TimeSpan.FromSeconds(80));
         var result = new ST_PROCESS_RESULT(true, "Station PROCESS completed.", DateTimeOffset.Now);
-        await CompleteProduct(completedPreview, result, cancellationToken);
-        await ReportProcessResult(result, "COMPLETE", cancellationToken);
+        CompleteProduct(completedPreview, result, cancellationToken);
+        ReportProcessResult(result, "COMPLETE", cancellationToken);
 
         _snapshot = CreateSnapshot(
             _snapshot.ProcessPlan,
@@ -1555,16 +1741,30 @@ WaitForOpticReadyStatusCallback27,
             "Process station completed.");
     }
 
-    public async Task<ST_STATION_PROCESS_STATUS> Stop(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS Stop(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        lock (mobjSequenceLock)
+        {
+            mobjSequenceCancellation?.Cancel();
+            meSequence = EN_STATION_SEQUENCE.Stop;
+        }
+
+        base.Start(10, "StationProcess");
+        return _snapshot;
+    }
+
+    private ST_STATION_PROCESS_STATUS ProcessStop(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         AddProcessLog("WARN", "OPERATOR", "Station PROCESS stopped by operator.");
-        await ReturnLaserSafe(cancellationToken);
+        ReturnLaserSafe(cancellationToken);
         _statistics = BuildStatistics(_snapshot.HeadPreviews, _statistics.ProgressPercent, _statistics.ElapsedTime);
         var result = new ST_PROCESS_RESULT(false, "Station PROCESS stopped by operator.", DateTimeOffset.Now);
-        await StopProduct(result.Message, cancellationToken);
-        await ReportProcessResult(result, "STOP", cancellationToken);
+        StopProduct(result.Message, cancellationToken);
+        ReportProcessResult(result, "STOP", cancellationToken);
 
         _snapshot = CreateSnapshot(
             _snapshot.ProcessPlan,
@@ -1584,20 +1784,34 @@ WaitForOpticReadyStatusCallback27,
         return _snapshot;
     }
 
-    public async Task<ST_STATION_PROCESS_STATUS> Reset(CancellationToken cancellationToken = default)
+    public ST_STATION_PROCESS_STATUS Reset(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (_stationStatus.State == EN_STATION_STATE.Process)
+        lock (mobjSequenceLock)
         {
-            AddProcessLog("WARN", "RESET", "Reset ignored while station is running.");
-            RefreshSnapshot();
-            return _snapshot;
+            if (meSequence != EN_STATION_SEQUENCE.Ready ||
+                _stationStatus.State == EN_STATION_STATE.Process)
+            {
+                AddProcessLog("WARN", "RESET", "Reset ignored while station is running.");
+                RefreshSnapshot();
+                return _snapshot;
+            }
+
+            meSequence = EN_STATION_SEQUENCE.Reset;
         }
+
+        base.Start(10, "StationProcess");
+        return _snapshot;
+    }
+
+    private ST_STATION_PROCESS_STATUS ProcessReset(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
         if (_stationStatus.State == EN_STATION_STATE.Alarm)
         {
-            var interLock = await GetInterLockSummary(cancellationToken);
+            var interLock = GetInterLockSummary(cancellationToken);
 
             if (!interLock.CanAutoRun)
             {
@@ -1669,23 +1883,23 @@ WaitForOpticReadyStatusCallback27,
             _statistics);
     }
 
-    private async Task<ST_INTERLOCK_SUMMARY> GetInterLockSummary(CancellationToken cancellationToken)
+    private ST_INTERLOCK_SUMMARY GetInterLockSummary(CancellationToken cancellationToken)
     {
-        var snapshot = await GetDeviceStatus(cancellationToken);
+        var snapshot = GetDeviceStatus(cancellationToken);
         var interLock = _interLockManager.Evaluate(snapshot);
         _lastInterLockItems = interLock.Items;
         return interLock;
     }
 
-    private async Task<ST_DEVICE_STATUS> GetDeviceStatus(CancellationToken cancellationToken)
+    private ST_DEVICE_STATUS GetDeviceStatus(CancellationToken cancellationToken)
     {
-        var io = await _motionManager.GetIoStatus(cancellationToken);
-        var motors = await _motionManager.GetAxisStatus(cancellationToken);
-        var laserStatus = await _interfaceManager.GetLaserStatus(cancellationToken);
-        var chillerStatus = await _interfaceManager.GetChillerStatus(cancellationToken);
-        var attenuatorStatus = await _interfaceManager.GetAttenuatorStatus(cancellationToken);
-        var betStatus = await _interfaceManager.GetBETStatus(cancellationToken);
-        var powerMeterStatus = await _interfaceManager.GetPowerMeterStatus(cancellationToken);
+        var io = _motionManager.GetIoStatus(cancellationToken);
+        var motors = _motionManager.GetAxisStatus(cancellationToken);
+        var laserStatus = _interfaceManager.GetLaserStatus(cancellationToken);
+        var chillerStatus = _interfaceManager.GetChillerStatus(cancellationToken);
+        var attenuatorStatus = _interfaceManager.GetAttenuatorStatus(cancellationToken);
+        var betStatus = _interfaceManager.GetBETStatus(cancellationToken);
+        var powerMeterStatus = _interfaceManager.GetPowerMeterStatus(cancellationToken);
 
         return new ST_DEVICE_STATUS(
             io,
@@ -1697,7 +1911,7 @@ WaitForOpticReadyStatusCallback27,
             powerMeterStatus);
     }
 
-    private async Task CreateProduct(
+    private void CreateProduct(
         ST_PROCESS_MODEL processModel,
         IReadOnlyList<ST_HEAD_PATH_DATA> preview,
         CancellationToken cancellationToken)
@@ -1725,7 +1939,7 @@ WaitForOpticReadyStatusCallback27,
 HandleHeadPointCounts42,
 HandleHeadPointCounts43);
 
-        await _productManager.CreateProduct(
+        _productManager.CreateProduct(
             processPlan.ProcessId,
             productId,
             panelId,
@@ -1738,7 +1952,7 @@ HandleHeadPointCounts43);
         AddProcessLog("INFO", "PRODUCT", $"Product created ({_productManager.Current?.ProductId ?? processPlan.ProcessId})");
     }
 
-    private async Task StartProduct(
+    private void StartProduct(
         IReadOnlyList<ST_HEAD_PATH_DATA> preview,
         CancellationToken cancellationToken)
     {
@@ -1748,7 +1962,7 @@ HandleHeadPointCounts43);
             return;
         }
 
-        await _productManager.StartProduct(productId, cancellationToken);
+        _productManager.StartProduct(productId, cancellationToken);
         bool FilterHead44(ST_HEAD_PATH_DATA head)
         {
             return head.Status == EN_HEAD_PROCESS_STATUS.Running;
@@ -1756,13 +1970,13 @@ HandleHeadPointCounts43);
 
         foreach (var head in preview.Where(FilterHead44))
         {
-            await _productManager.SetHeadRunning(productId, head.HeadNo, cancellationToken);
+            _productManager.SetHeadRunning(productId, head.HeadNo, cancellationToken);
         }
 
         AddProcessLog("INFO", "PRODUCT", $"Product started ({productId})");
     }
 
-    private async Task CompleteProduct(
+    private void CompleteProduct(
         IReadOnlyList<ST_HEAD_PATH_DATA> preview,
         ST_PROCESS_RESULT result,
         CancellationToken cancellationToken)
@@ -1775,7 +1989,7 @@ HandleHeadPointCounts43);
 
         foreach (var head in preview)
         {
-            await _productManager.SetHeadResult(
+            _productManager.SetHeadResult(
                 productId,
                 head.HeadNo,
                 result.IsSuccess,
@@ -1784,7 +1998,7 @@ HandleHeadPointCounts43);
                 cancellationToken);
         }
 
-        await _productManager.CompleteProduct(
+        _productManager.CompleteProduct(
             productId,
             result.IsSuccess,
             result.Message,
@@ -1792,7 +2006,7 @@ HandleHeadPointCounts43);
         AddProcessLog("INFO", "PRODUCT", $"Product completed ({productId})");
     }
 
-    private async Task StopProduct(
+    private void StopProduct(
         string message,
         CancellationToken cancellationToken)
     {
@@ -1802,11 +2016,11 @@ HandleHeadPointCounts43);
             return;
         }
 
-        await _productManager.StopProduct(productId, message, cancellationToken);
+        _productManager.StopProduct(productId, message, cancellationToken);
         AddProcessLog("WARN", "PRODUCT", $"Product stopped ({productId})");
     }
 
-    private async Task SetProductError(
+    private void SetProductError(
         string message,
         CancellationToken cancellationToken)
     {
@@ -1816,11 +2030,11 @@ HandleHeadPointCounts43);
             return;
         }
 
-        await _productManager.SetError(productId, message, cancellationToken);
+        _productManager.SetError(productId, message, cancellationToken);
         AddProcessLog("ERROR", "PRODUCT", $"Product error ({productId})");
     }
 
-    private Task ReportProcessResult(
+    private void ReportProcessResult(
         ST_PROCESS_RESULT result,
         string action,
         CancellationToken cancellationToken)
@@ -1847,7 +2061,7 @@ HandleHeadPointCounts43);
             reportState,
             detail);
 
-        return Task.CompletedTask;
+        return;
     }
 
     private string? GetCurrentProcessProductId()
@@ -1881,7 +2095,7 @@ HandleHeadPointCounts43);
             .ToArray();
     }
 
-    private async Task<ST_PROCESS_PLAN> BuildRuntimeProcessPlan(
+    private ST_PROCESS_PLAN BuildRuntimeProcessPlan(
         ST_PROCESS_PLAN processPlan,
         CancellationToken cancellationToken)
     {
@@ -1889,8 +2103,8 @@ HandleHeadPointCounts43);
             processPlan.Parameters,
             StringComparer.OrdinalIgnoreCase);
         var processSettings = new List<ST_SYSTEM_PARAMETER>();
-        processSettings.AddRange(await _settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken));
-        processSettings.AddRange(await _settingManager.LoadSection(EN_SETTING_TAB.Motor, cancellationToken));
+        processSettings.AddRange(_settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken));
+        processSettings.AddRange(_settingManager.LoadSection(EN_SETTING_TAB.Motor, cancellationToken));
 
         foreach (var setting in processSettings)
         {
@@ -2750,12 +2964,12 @@ ToDictionaryValueCallback60,
         return defaultValue;
     }
 
-    private async Task<bool> ReadSettingBool(
+    private bool ReadSettingBool(
         string key,
         bool defaultValue,
         CancellationToken cancellationToken)
     {
-        var value = await _settingManager.GetValue(
+        var value = _settingManager.GetValue(
             EN_SETTING_TAB.Option,
             key,
             defaultValue ? "ON" : "OFF",
@@ -2862,16 +3076,16 @@ ToDictionaryValueCallback60,
             ?? throw new InvalidOperationException("Process Model is not built.");
     }
 
-    private async Task<ST_STATION_PROCESS_STATUS> SetAlarm(
+    private ST_STATION_PROCESS_STATUS SetAlarm(
         string message,
         CancellationToken cancellationToken)
     {
         AddProcessLog("ERROR", "STATION", message);
-        await ReturnLaserSafe(cancellationToken);
+        ReturnLaserSafe(cancellationToken);
         MarkRunningAutoSteps(AutoStepError);
-        await SetProductError(message, cancellationToken);
+        SetProductError(message, cancellationToken);
         var result = new ST_PROCESS_RESULT(false, message, DateTimeOffset.Now);
-        await ReportProcessResult(result, "ALARM", cancellationToken);
+        ReportProcessResult(result, "ALARM", cancellationToken);
 
         _snapshot = CreateSnapshot(
             _snapshot.ProcessPlan,
@@ -3054,6 +3268,148 @@ ToDictionaryValueCallback60,
         string HeadSummary,
         string Response);
 
+    private sealed class CBufferedRunGroupThread : CtrlThread
+    {
+        private readonly CStationProcess mobjOwner;
+        private readonly int mintAutomationNo;
+        private readonly object mobjRequestLock = new object();
+        private readonly ManualResetEvent mobjCompletedEvent = new ManualResetEvent(true);
+        private IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> mobjHeadScripts =
+            Array.Empty<ST_AUTOMATION1_HEAD_SCRIPT>();
+        private CancellationToken mobjCancellationToken;
+        private int mintQueueSize;
+        private int mintLinesPerCommand;
+        private int mintTimeoutMs;
+        private bool mblnRequestPending;
+        private bool mblnBusy;
+        private volatile bool mblnComplete = true;
+        private ST_BUFFERED_RUN_GROUP_RESULT? mobjResult;
+        private Exception? mobjError;
+
+        public CBufferedRunGroupThread(CStationProcess owner, int automationNo)
+        {
+            mobjOwner = owner;
+            mintAutomationNo = automationNo;
+        }
+
+        public bool IsComplete
+        {
+            get
+            {
+                return mblnComplete;
+            }
+        }
+
+        public ST_BUFFERED_RUN_GROUP_RESULT? Result
+        {
+            get
+            {
+                lock (mobjRequestLock)
+                {
+                    return mobjResult;
+                }
+            }
+        }
+
+        public Exception? Error
+        {
+            get
+            {
+                lock (mobjRequestLock)
+                {
+                    return mobjError;
+                }
+            }
+        }
+
+        public void Request(
+            IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts,
+            int queueSize,
+            int linesPerCommand,
+            int timeoutMs,
+            CancellationToken cancellationToken)
+        {
+            lock (mobjRequestLock)
+            {
+                if (mblnBusy || mblnRequestPending)
+                {
+                    throw new InvalidOperationException(
+                        "Buffered run worker is already busy. Automation1 #" +
+                        mintAutomationNo.ToString(CultureInfo.InvariantCulture));
+                }
+
+                mobjHeadScripts = headScripts.ToArray();
+                mintQueueSize = queueSize;
+                mintLinesPerCommand = linesPerCommand;
+                mintTimeoutMs = timeoutMs;
+                mobjCancellationToken = cancellationToken;
+                mobjResult = null;
+                mobjError = null;
+                mblnComplete = false;
+                mblnRequestPending = true;
+                mobjCompletedEvent.Reset();
+            }
+        }
+
+        public override void Run()
+        {
+            IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts;
+            CancellationToken cancellationToken;
+            int queueSize;
+            int linesPerCommand;
+            int timeoutMs;
+
+            lock (mobjRequestLock)
+            {
+                if (!mblnRequestPending)
+                {
+                    return;
+                }
+
+                mblnRequestPending = false;
+                mblnBusy = true;
+                headScripts = mobjHeadScripts;
+                queueSize = mintQueueSize;
+                linesPerCommand = mintLinesPerCommand;
+                timeoutMs = mintTimeoutMs;
+                cancellationToken = mobjCancellationToken;
+            }
+
+            ST_BUFFERED_RUN_GROUP_RESULT? result = null;
+            Exception? error = null;
+            try
+            {
+                result = mobjOwner.RunBufferedHeadScriptGroup(
+                    mintAutomationNo,
+                    headScripts,
+                    queueSize,
+                    linesPerCommand,
+                    timeoutMs,
+                    cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                error = exception;
+            }
+            finally
+            {
+                lock (mobjRequestLock)
+                {
+                    mobjResult = result;
+                    mobjError = error;
+                    mblnBusy = false;
+                    mblnComplete = true;
+                    mobjCompletedEvent.Set();
+                }
+            }
+        }
+
+        public bool WaitForCompletion(int timeoutMsec)
+        {
+            return mobjCompletedEvent.WaitOne(timeoutMsec);
+        }
+    }
+
     private sealed class CBufferedRunTarget
     {
         private readonly List<string> _headNames = new List<string>();
@@ -3091,5 +3447,3 @@ ToDictionaryValueCallback60,
 
     private sealed record ST_AUTO_STEP_INFO(string Key, string DisplayName);
 }
-
-

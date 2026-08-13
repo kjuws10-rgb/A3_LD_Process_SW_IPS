@@ -19,7 +19,7 @@ public sealed class CPicoMotorService
         }
     }
 
-    public async Task<ST_PICO_MOTOR_STATUS> Refresh(
+    public ST_PICO_MOTOR_STATUS Refresh(
         int number,
         bool simulation,
         CancellationToken cancellationToken = default)
@@ -28,38 +28,34 @@ public sealed class CPicoMotorService
         {
             return GetStatus(number) with { CommOk = true, UpdatedAt = DateTimeOffset.Now };
         }
-        ST_PICO_MOTOR_STATUS RunTask1()
+        cancellationToken.ThrowIfCancellationRequested();
+        var session = GetSession(number, requireConnected: true);
+        var before = GetStatus(number);
+        var motorNo = Math.Clamp(before.SelectedMotorNo, 1, 4);
+        var identification = session.GetIdentification();
+        var errorCode = session.GetErrorCode();
+        var status = before with
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var session = GetSession(number, requireConnected: true);
-            var before = GetStatus(number);
-            var motorNo = Math.Clamp(before.SelectedMotorNo, 1, 4);
-            var identification = session.GetIdentification();
-            var errorCode = session.GetErrorCode();
-            var status = before with
-            {
-                IsConnected = true,
-                Controller = string.IsNullOrWhiteSpace(identification) ? "8742" : identification,
-                Motor1Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(1)),
-                Motor2Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(2)),
-                Motor3Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(3)),
-                Motor4Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(4)),
-                HomePosition = session.GetHomePositionStep(motorNo),
-                CurrentVelocity = CPicoMotor.StepToMillimeter(session.GetVelocityStep(motorNo)),
-                CurrentAcceleration = CPicoMotor.StepToMillimeter(session.GetAccelerationStep(motorNo)),
-                MotionState = session.GetMotionDone(motorNo) ? "IDLE" : "MOVING",
-                ErrorCode = errorCode,
-                CommOk = true,
-                LastError = CPicoMotor.ToError(errorCode),
-                UpdatedAt = DateTimeOffset.Now
-            };
-            SetStatus(number, status);
-            return status;
-        }
-        return await Task.Run(RunTask1, cancellationToken);
+            IsConnected = true,
+            Controller = string.IsNullOrWhiteSpace(identification) ? "8742" : identification,
+            Motor1Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(1)),
+            Motor2Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(2)),
+            Motor3Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(3)),
+            Motor4Position = CPicoMotor.StepToMillimeter(session.GetPositionStep(4)),
+            HomePosition = session.GetHomePositionStep(motorNo),
+            CurrentVelocity = CPicoMotor.StepToMillimeter(session.GetVelocityStep(motorNo)),
+            CurrentAcceleration = CPicoMotor.StepToMillimeter(session.GetAccelerationStep(motorNo)),
+            MotionState = session.GetMotionDone(motorNo) ? "IDLE" : "MOVING",
+            ErrorCode = errorCode,
+            CommOk = true,
+            LastError = CPicoMotor.ToError(errorCode),
+            UpdatedAt = DateTimeOffset.Now
+        };
+        SetStatus(number, status);
+        return status;
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> Execute(
+    public ST_DEVICE_COMMAND_RESULT Execute(
         int number,
         bool simulation,
         EN_PICO_MOTOR_COMMAND command,
@@ -102,7 +98,7 @@ public sealed class CPicoMotorService
                     or EN_PICO_MOTOR_COMMAND.MoveRelativePositive
                     or EN_PICO_MOTOR_COMMAND.MoveAbsolute)
                 {
-                    await ExecuteSimulationPositionMove(number, command, motorNo, parameter, cancellationToken);
+                    ExecuteSimulationPositionMove(number, command, motorNo, parameter, cancellationToken);
                 }
                 else
                 {
@@ -110,12 +106,8 @@ public sealed class CPicoMotorService
                 }
                 return new ST_DEVICE_COMMAND_RESULT(true, $"SIM:PICO_MOTOR:{command}:MOTOR={motorNo}:VALUE={parameter:0.###}");
             }
-            void RunTask2()
-            {
-                ExecuteLive(number, command, motorNo, parameter);
-            }
-
-            await Task.Run(RunTask2, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            ExecuteLive(number, command, motorNo, parameter);
             return new ST_DEVICE_COMMAND_RESULT(true, $"PICO_MOTOR {command} OK. MOTOR={motorNo}");
         }
         catch (OperationCanceledException)
@@ -134,7 +126,7 @@ public sealed class CPicoMotorService
         }
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteAllMove(
+    public ST_DEVICE_COMMAND_RESULT ExecuteAllMove(
         int number,
         bool simulation,
         IReadOnlyCollection<int> motorNos,
@@ -206,23 +198,19 @@ public sealed class CPicoMotorService
 
                 if (simulation)
                 {
-                    await SimulateAllMotorMoveByDelta(number, motors, positionMm, linked.Token);
+                    SimulateAllMotorMoveByDelta(number, motors, positionMm, linked.Token);
                 }
                 else
                 {
                     var session = GetSession(number, requireConnected: true);
                     var moveStep = CPicoMotor.MillimeterToStep(positionMm);
-                    void RunTask5()
+                    foreach (var motorNo in motors)
                     {
-                        foreach (var motorNo in motors)
-                        {
-                            linked.Token.ThrowIfCancellationRequested();
-                            session.RelativeMove(motorNo, moveStep);
-                        }
+                        linked.Token.ThrowIfCancellationRequested();
+                        session.RelativeMove(motorNo, moveStep);
                     }
-                    await Task.Run(RunTask5, linked.Token);
-                    await WaitAllMotorsDone(session, motors, linked.Token);
-                    await Refresh(number, false, linked.Token);
+                    WaitAllMotorsDone(session, motors, linked.Token);
+                    Refresh(number, false, linked.Token);
                 }
 
                 SetStatus(number, GetStatus(number) with
@@ -327,7 +315,7 @@ public sealed class CPicoMotorService
         return true;
     }
 
-    private async Task SimulateAllMotorMoveByDelta(
+    private void SimulateAllMotorMoveByDelta(
         int number,
         IReadOnlyList<int> motorNos,
         double deltaPosition,
@@ -384,11 +372,11 @@ HandleTargets7);
                 return;
             }
 
-            await Task.Delay(SimulationIntervalMs, cancellationToken);
+            DelayWithCancellation(SimulationIntervalMs, cancellationToken);
         }
     }
 
-    private static async Task WaitAllMotorsDone(
+    private static void WaitAllMotorsDone(
         CPicoMotorCommandSession session,
         IReadOnlyList<int> motorNos,
         CancellationToken cancellationToken)
@@ -397,14 +385,7 @@ HandleTargets7);
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            bool RunTask8()
-            {
-                return motorNos.All(session.GetMotionDone);
-            }
-
-            var completed = await Task.Run(
-RunTask8,
-                cancellationToken);
+            bool completed = motorNos.All(session.GetMotionDone);
             if (completed)
             {
                 return;
@@ -415,7 +396,7 @@ RunTask8,
                 throw new TimeoutException("PICO_MOTOR all move completion timeout.");
             }
 
-            await Task.Delay(50, cancellationToken);
+            DelayWithCancellation(50, cancellationToken);
         }
     }
 
@@ -474,7 +455,7 @@ RunTask8,
             case EN_PICO_MOTOR_COMMAND.MoveRelativeNegative: live.RelativeMove(motorNo, -CPicoMotor.MillimeterToStep(parameter)); break;
             case EN_PICO_MOTOR_COMMAND.MoveRelativePositive: live.RelativeMove(motorNo, CPicoMotor.MillimeterToStep(parameter)); break;
             case EN_PICO_MOTOR_COMMAND.MoveAbsolute: live.AbsoluteMove(motorNo, CPicoMotor.MillimeterToStep(parameter)); break;
-            case EN_PICO_MOTOR_COMMAND.Refresh: Refresh(number, false).GetAwaiter().GetResult(); return;
+            case EN_PICO_MOTOR_COMMAND.Refresh: Refresh(number, false); return;
         }
         var status = GetStatus(number);
         string EvaluateCommandSwitch1()
@@ -569,7 +550,7 @@ RunTask8,
         });
     }
 
-    private async Task ExecuteSimulationPositionMove(
+    private void ExecuteSimulationPositionMove(
         int number,
         EN_PICO_MOTOR_COMMAND command,
         int motorNo,
@@ -648,7 +629,7 @@ RunTask8,
                     CommOk = true,
                     UpdatedAt = DateTimeOffset.Now
                 });
-                await Task.Delay(SimulationIntervalMs, linked.Token);
+                DelayWithCancellation(SimulationIntervalMs, linked.Token);
             }
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -683,6 +664,22 @@ RunTask8,
             }
             if (requireConnected && !session.IsConnected) throw new InvalidOperationException("PicoMotor is not connected.");
             return session;
+        }
+    }
+
+    private static void DelayWithCancellation(
+        int delayMsec,
+        CancellationToken cancellationToken)
+    {
+        if (delayMsec <= 0)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return;
+        }
+
+        if (cancellationToken.WaitHandle.WaitOne(delayMsec))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 

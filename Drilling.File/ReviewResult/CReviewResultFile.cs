@@ -31,7 +31,7 @@ public sealed class CReviewResultFile(string configRoot) : CReviewResultFileBase
         }
     }
 
-    public override Task<ST_REVIEW_RESULT_FILE_DATA> Load(
+    public override ST_REVIEW_RESULT_FILE_DATA Load(
         string path,
         CancellationToken cancellationToken = default)
     {
@@ -81,15 +81,15 @@ public sealed class CReviewResultFile(string configRoot) : CReviewResultFileBase
             return row.SavedAt;
         }
 
-        return Task.FromResult(new ST_REVIEW_RESULT_FILE_DATA(
+        return new ST_REVIEW_RESULT_FILE_DATA(
             fullPath,
             Path.GetFileName(fullPath),
             recipeIds[0],
             rows.Max(MaxRowCallback4),
-            rows));
+            rows);
     }
 
-    public override Task Save(
+    public override void Save(
         ST_REVIEW_RESULT_DATA result,
         CancellationToken cancellationToken = default)
     {
@@ -108,7 +108,7 @@ public sealed class CReviewResultFile(string configRoot) : CReviewResultFileBase
             Headers,
             rows.Select(SelectPoint5));
 
-        return Task.CompletedTask;
+        return;
     }
 
     private static ST_REVIEW_RESULT_FILE_ROW ToResultRow(

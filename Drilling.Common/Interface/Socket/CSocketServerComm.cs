@@ -1,9 +1,12 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
 namespace Drilling.Common.Interface;
+
+internal delegate string CCommMessageReceivedHandler(
+    ST_COMM_RECEIVED_MESSAGE message,
+    CancellationToken cancellationToken);
 
 [CCommType("SocketServer")]
 internal sealed class CSocketServerComm(
@@ -11,109 +14,79 @@ internal sealed class CSocketServerComm(
     ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option)
 {
     private const int MaxMessageLength = 8192;
+    private readonly object mobjClientLock = new object();
+    private readonly Dictionary<int, CSocketClientSession> mobjClients =
+        new Dictionary<int, CSocketClientSession>();
+    private TcpListener? mobjListener;
+    private int mintClientSequence;
 
-    private readonly ConcurrentDictionary<int, TcpClient> _clients = new();
-    private readonly ConcurrentDictionary<int, Task> _clientTasks = new();
-    private readonly SemaphoreSlim _serverLock = new(1, 1);
-    private TcpListener? _listener;
-    private CancellationTokenSource? _serverCts;
-    private Task? _acceptTask;
-    private int _clientSequence;
+    public event CCommMessageReceivedHandler? MessageReceived;
 
-    public event Func<ST_COMM_RECEIVED_MESSAGE, CancellationToken, Task<string>>? MessageReceived;
-
-    public override async Task Connect(CancellationToken cancellationToken = default)
+    protected override void ConnectCore(CancellationToken cancellationToken)
     {
-        await _serverLock.WaitAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (mobjListener != null)
+        {
+            LastError = "";
+            SetState(EN_COMM_STATE.Online);
+            return;
+        }
+
+        StopServer();
 
         try
         {
-            if (_listener is not null &&
-                _serverCts is not null &&
-                !_serverCts.IsCancellationRequested)
-            {
-                LastError = "";
-                SetState(EN_COMM_STATE.Online);
-                return;
-            }
-
-            await StopServer();
-
             if (Option.Port <= 0)
             {
                 SetError("Socket server port is invalid.");
                 return;
             }
 
-            var bindAddress = ResolveBindAddress(Option.LocalAddress);
-            var listener = new TcpListener(bindAddress, Option.Port);
-            listener.Start();
-
-            _listener = listener;
-            _serverCts = new CancellationTokenSource();
-            Task? RunTask1()
-            {
-                return AcceptLoop(listener, _serverCts.Token);
-            }
-
-            _acceptTask = Task.Run(
-RunTask1,
-                CancellationToken.None);
-
+            IPAddress bindAddress = ResolveBindAddress(Option.LocalAddress);
+            mobjListener = new TcpListener(bindAddress, Option.Port);
+            mobjListener.Start();
             LastSent = "";
             LastReceived = "";
             LastError = "";
             SetState(EN_COMM_STATE.Online);
         }
-        catch (Exception ex) when (ex is SocketException or ArgumentException or InvalidOperationException)
+        catch (Exception exception) when (
+            exception is SocketException or ArgumentException or InvalidOperationException)
         {
-            await StopServer();
-            SetError(ex);
-        }
-        finally
-        {
-            _serverLock.Release();
+            StopServer();
+            SetError(exception);
         }
     }
 
-    public override async Task Disconnect(CancellationToken cancellationToken = default)
+    protected override void DisconnectCore(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        await _serverLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            await StopServer();
-            SetState(EN_COMM_STATE.Offline);
-        }
-        finally
-        {
-            _serverLock.Release();
-        }
+        StopServer();
+        SetState(EN_COMM_STATE.Offline);
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        if (_listener is null)
+        cancellationToken.ThrowIfCancellationRequested();
+        if (mobjListener == null)
         {
-            await Connect(cancellationToken);
+            ConnectCore(cancellationToken);
         }
 
-        if (_listener is null)
+        if (mobjListener == null)
         {
             return "";
         }
 
-        var command = function.Trim();
-
+        string command = function.Trim();
         if (command.Equals("STATUS", StringComparison.OrdinalIgnoreCase) ||
             command.Equals("CLIENTS", StringComparison.OrdinalIgnoreCase))
         {
             LastSent = command;
-            LastReceived = $"OK:SOCKET_SERVER:CLIENTS:{_clients.Count}";
+            LastReceived = "OK:SOCKET_SERVER:CLIENTS:" + GetClientCount().ToString();
             LastError = "";
             SetState(EN_COMM_STATE.Online);
             return LastReceived;
@@ -131,260 +104,245 @@ RunTask1,
 
         LastSent = command;
         LastReceived = "";
-        SetError($"Socket server command is not supported: {command}");
+        SetError("Socket server command is not supported: " + command);
         return "";
     }
 
-    private async Task AcceptLoop(
-        TcpListener listener,
-        CancellationToken cancellationToken)
+    protected override void Poll()
     {
-        while (!cancellationToken.IsCancellationRequested)
+        if (mobjListener == null)
         {
-            TcpClient? client = null;
-
-            try
-            {
-                client = await listener.AcceptTcpClientAsync(cancellationToken);
-
-                if (!IsAllowedRemote(client))
-                {
-                    client.Close();
-                    continue;
-                }
-
-                var maxClientCount = Math.Max(1, Option.MaxClientCount);
-                if (_clients.Count >= maxClientCount)
-                {
-                    LastError = $"Socket server max client count reached: {maxClientCount}";
-                    LastChangedAt = DateTimeOffset.Now;
-                    client.Close();
-                    continue;
-                }
-
-                client.NoDelay = true;
-                var clientId = Interlocked.Increment(ref _clientSequence);
-                _clients[clientId] = client;
-                LastError = "";
-                SetState(EN_COMM_STATE.Online);
-                Task? RunTask2()
-                {
-                    return ReceiveLoop(clientId, client, cancellationToken);
-                }
-
-                var receiveTask = Task.Run(
-RunTask2,
-                    CancellationToken.None);
-                _clientTasks[clientId] = receiveTask;
-                void HandleValue3(Task task)
-                {
-                    CleanupClientTask(clientId, task);
-                }
-
-                _ = receiveTask.ContinueWith(
-HandleValue3,
-                    CancellationToken.None,
-                    TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default);
-            }
-            catch (Exception ex) when (cancellationToken.IsCancellationRequested ||
-                ex is ObjectDisposedException or SocketException or OperationCanceledException)
-            {
-                client?.Close();
-
-                if (!cancellationToken.IsCancellationRequested)
-                {
-                    LastError = ex.Message;
-                    LastChangedAt = DateTimeOffset.Now;
-                }
-            }
+            return;
         }
-    }
-
-    private async Task ReceiveLoop(
-        int clientId,
-        TcpClient client,
-        CancellationToken cancellationToken)
-    {
-        var remoteEndPoint = GetRemoteEndPoint(client);
 
         try
         {
-            using (client)
-            {
-                var stream = client.GetStream();
-                using var reader = new StreamReader(
-                    stream,
-                    Encoding.UTF8,
-                    detectEncodingFromByteOrderMarks: false,
-                    bufferSize: 4096,
-                    leaveOpen: true);
-                using var writer = new StreamWriter(
-                    stream,
-                    new UTF8Encoding(encoderShouldEmitUTF8Identifier: false),
-                    bufferSize: 4096,
-                    leaveOpen: true)
-                {
-                    AutoFlush = true,
-                    NewLine = "\n"
-                };
-
-                while (!cancellationToken.IsCancellationRequested && client.Connected)
-                {
-                    var line = await ReadProtocolLineWithTimeout(reader, cancellationToken);
-                    if (line is null)
-                    {
-                        break;
-                    }
-
-                    var message = NormalizeReceivedMessage(line);
-                    if (string.IsNullOrWhiteSpace(message))
-                    {
-                        continue;
-                    }
-
-                    var response = await RaiseMessageReceived(
-                        remoteEndPoint,
-                        message,
-                        cancellationToken);
-
-                    if (!string.IsNullOrWhiteSpace(response))
-                    {
-                        var protocolResponse = NormalizeProtocolLine(response);
-                        await writer.WriteLineAsync(protocolResponse.AsMemory(), cancellationToken);
-                        LastSent = protocolResponse;
-                        LastChangedAt = DateTimeOffset.Now;
-                    }
-                }
-            }
+            AcceptOneClient();
+            PollClients();
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception exception) when (
+            exception is SocketException or IOException or ObjectDisposedException)
         {
-        }
-        catch (Exception ex)
-        {
-            if (!cancellationToken.IsCancellationRequested)
-            {
-                LastError = ex.Message;
-                LastChangedAt = DateTimeOffset.Now;
-            }
-        }
-    }
-
-    private void CleanupClientTask(
-        int clientId,
-        Task task)
-    {
-        if (task.IsFaulted)
-        {
-            LastError = task.Exception?.GetBaseException().Message ?? "Socket server receive task failed.";
+            LastError = exception.Message;
             LastChangedAt = DateTimeOffset.Now;
         }
-
-        _clients.TryRemove(clientId, out _);
-        _clientTasks.TryRemove(clientId, out _);
     }
 
-    private async Task<string> RaiseMessageReceived(
-        string remoteEndPoint,
-        string message,
-        CancellationToken cancellationToken)
+    private void AcceptOneClient()
+    {
+        if (mobjListener == null || !mobjListener.Pending())
+        {
+            return;
+        }
+
+        TcpClient client = mobjListener.AcceptTcpClient();
+        if (!IsAllowedRemote(client))
+        {
+            client.Close();
+            return;
+        }
+
+        int maxClientCount = Math.Max(1, Option.MaxClientCount);
+        if (GetClientCount() >= maxClientCount)
+        {
+            LastError = "Socket server max client count reached: " + maxClientCount.ToString();
+            LastChangedAt = DateTimeOffset.Now;
+            client.Close();
+            return;
+        }
+
+        client.NoDelay = true;
+        int clientId = Interlocked.Increment(ref mintClientSequence);
+        CSocketClientSession session = new CSocketClientSession(clientId, client);
+        lock (mobjClientLock)
+        {
+            mobjClients.Add(clientId, session);
+        }
+
+        LastError = "";
+        SetState(EN_COMM_STATE.Online);
+    }
+
+    private void PollClients()
+    {
+        List<CSocketClientSession> clients;
+        lock (mobjClientLock)
+        {
+            clients = new List<CSocketClientSession>(mobjClients.Values);
+        }
+
+        foreach (CSocketClientSession client in clients)
+        {
+            try
+            {
+                if (IsReceiveTimeout(client))
+                {
+                    LastError = "Socket server receive timeout after " +
+                        Math.Max(1, Option.TimeoutMs).ToString() + " ms.";
+                    LastChangedAt = DateTimeOffset.Now;
+                    RemoveClient(client.ClientId);
+                    continue;
+                }
+
+                if (client.Client.Client.Poll(0, SelectMode.SelectRead) &&
+                    client.Client.Available == 0)
+                {
+                    RemoveClient(client.ClientId);
+                    continue;
+                }
+
+                if (client.Client.Available > 0)
+                {
+                    ReadClient(client);
+                }
+            }
+            catch (Exception exception) when (
+                exception is SocketException or IOException or ObjectDisposedException)
+            {
+                LastError = exception.Message;
+                LastChangedAt = DateTimeOffset.Now;
+                RemoveClient(client.ClientId);
+            }
+        }
+    }
+
+    private void ReadClient(CSocketClientSession client)
+    {
+        int readLength = Math.Min(4096, Math.Max(1, client.Client.Available));
+        byte[] buffer = new byte[readLength];
+        NetworkStream stream = client.Client.GetStream();
+        int readCount = stream.Read(buffer, 0, buffer.Length);
+        if (readCount <= 0)
+        {
+            RemoveClient(client.ClientId);
+            return;
+        }
+
+        client.LastReceivedAt = DateTimeOffset.Now;
+        client.ReceiveBuffer.Append(Encoding.UTF8.GetString(buffer, 0, readCount));
+        if (client.ReceiveBuffer.Length > MaxMessageLength)
+        {
+            throw new InvalidDataException(
+                "Socket server message exceeded " + MaxMessageLength.ToString() + " characters.");
+        }
+
+        ProcessCompleteLines(client, stream);
+    }
+
+    private void ProcessCompleteLines(CSocketClientSession client, NetworkStream stream)
+    {
+        while (true)
+        {
+            string buffer = client.ReceiveBuffer.ToString();
+            int lineEnd = buffer.IndexOf('\n');
+            if (lineEnd < 0)
+            {
+                return;
+            }
+
+            string line = buffer.Substring(0, lineEnd).TrimEnd('\r');
+            client.ReceiveBuffer.Remove(0, lineEnd + 1);
+            string message = NormalizeReceivedMessage(line);
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                continue;
+            }
+
+            string response = RaiseMessageReceived(client.RemoteEndPoint, message);
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                continue;
+            }
+
+            string protocolResponse = NormalizeProtocolLine(response);
+            byte[] responseBytes = Encoding.UTF8.GetBytes(protocolResponse + "\n");
+            stream.Write(responseBytes, 0, responseBytes.Length);
+            stream.Flush();
+            LastSent = protocolResponse;
+            LastChangedAt = DateTimeOffset.Now;
+        }
+    }
+
+    private string RaiseMessageReceived(string remoteEndPoint, string message)
     {
         LastReceived = message;
         LastError = "";
         SetState(EN_COMM_STATE.Online);
-
-        var handler = MessageReceived;
-
-        if (handler is null)
+        CCommMessageReceivedHandler? handler = MessageReceived;
+        if (handler == null)
         {
             return "ACK";
         }
 
         try
         {
-            var response = await handler(
-                new ST_COMM_RECEIVED_MESSAGE(
-                    remoteEndPoint,
-                    message,
-                    DateTimeOffset.Now),
-                cancellationToken);
-
+            string response = handler(
+                new ST_COMM_RECEIVED_MESSAGE(remoteEndPoint, message, DateTimeOffset.Now),
+                CancellationToken.None);
             return string.IsNullOrWhiteSpace(response) ? "ACK" : response;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        catch (Exception exception)
         {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            LastError = ex.Message;
+            LastError = exception.Message;
             LastChangedAt = DateTimeOffset.Now;
-            return $"NAK|{NormalizeProtocolLine(ex.Message)}";
+            return "NAK|" + NormalizeProtocolLine(exception.Message);
         }
     }
 
-    private async Task StopServer()
+    private bool IsReceiveTimeout(CSocketClientSession client)
     {
-        var cts = _serverCts;
-        var listener = _listener;
-        var acceptTask = _acceptTask;
+        int timeoutMsec = Math.Max(1, Option.TimeoutMs);
+        return DateTimeOffset.Now - client.LastReceivedAt > TimeSpan.FromMilliseconds(timeoutMsec);
+    }
 
-        _serverCts = null;
-        _listener = null;
-        _acceptTask = null;
-
-        cts?.Cancel();
+    private void StopServer()
+    {
+        TcpListener? listener = mobjListener;
+        mobjListener = null;
         listener?.Stop();
         CloseAllClients();
-
-        if (acceptTask is not null)
-        {
-            try
-            {
-                await acceptTask.ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is ObjectDisposedException or SocketException or OperationCanceledException)
-            {
-            }
-        }
-
-        var clientTasks = _clientTasks.Values.ToArray();
-        if (clientTasks.Length > 0)
-        {
-            try
-            {
-                await Task.WhenAll(clientTasks).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is ObjectDisposedException or SocketException or IOException or OperationCanceledException)
-            {
-                if (cts is not null && !cts.IsCancellationRequested)
-                {
-                    LastError = ex.Message;
-                    LastChangedAt = DateTimeOffset.Now;
-                }
-            }
-        }
-
-        _clientTasks.Clear();
-        cts?.Dispose();
     }
 
     private void CloseAllClients()
     {
-        foreach (var pair in _clients.ToArray())
+        List<CSocketClientSession> clients;
+        lock (mobjClientLock)
         {
-            if (_clients.TryRemove(pair.Key, out var client))
+            clients = new List<CSocketClientSession>(mobjClients.Values);
+            mobjClients.Clear();
+        }
+
+        foreach (CSocketClientSession client in clients)
+        {
+            client.Client.Close();
+        }
+    }
+
+    private void RemoveClient(int clientId)
+    {
+        CSocketClientSession? client = null;
+        lock (mobjClientLock)
+        {
+            if (mobjClients.TryGetValue(clientId, out client))
             {
-                client.Close();
+                mobjClients.Remove(clientId);
             }
+        }
+
+        client?.Client.Close();
+    }
+
+    private int GetClientCount()
+    {
+        lock (mobjClientLock)
+        {
+            return mobjClients.Count;
         }
     }
 
     private bool IsAllowedRemote(TcpClient client)
     {
-        var allowedRemote = Option.RemoteAddress.Trim();
-
+        string allowedRemote = Option.RemoteAddress.Trim();
         if (string.IsNullOrWhiteSpace(allowedRemote) ||
             allowedRemote.Equals("*", StringComparison.OrdinalIgnoreCase) ||
             allowedRemote.Equals("ANY", StringComparison.OrdinalIgnoreCase) ||
@@ -398,12 +356,14 @@ HandleValue3,
             return true;
         }
 
-        if (IPAddress.TryParse(allowedRemote, out var allowedAddress))
+        if (IPAddress.TryParse(allowedRemote, out IPAddress? allowedAddress))
         {
             return remoteEndPoint.Address.Equals(allowedAddress);
         }
 
-        return remoteEndPoint.Address.ToString().Equals(allowedRemote, StringComparison.OrdinalIgnoreCase);
+        return remoteEndPoint.Address.ToString().Equals(
+            allowedRemote,
+            StringComparison.OrdinalIgnoreCase);
     }
 
     private static IPAddress ResolveBindAddress(string localAddress)
@@ -415,65 +375,12 @@ HandleValue3,
             return IPAddress.Any;
         }
 
-        return IPAddress.TryParse(localAddress, out var address)
-            ? address
-            : throw new ArgumentException($"Socket server local address is invalid: {localAddress}");
-    }
-
-    private static async Task<string?> ReadProtocolLine(
-        StreamReader reader,
-        CancellationToken cancellationToken)
-    {
-        var buffer = new char[1];
-        var message = new StringBuilder();
-
-        while (true)
+        if (IPAddress.TryParse(localAddress, out IPAddress? address))
         {
-            var readCount = await reader.ReadAsync(buffer.AsMemory(0, 1), cancellationToken);
-
-            if (readCount == 0)
-            {
-                return message.Length == 0 ? null : message.ToString();
-            }
-
-            var ch = buffer[0];
-
-            if (ch == '\n')
-            {
-                return message.ToString().TrimEnd('\r');
-            }
-
-            if (message.Length >= MaxMessageLength)
-            {
-                throw new InvalidDataException(
-                    $"Socket server message exceeded {MaxMessageLength} characters.");
-            }
-
-            message.Append(ch);
+            return address;
         }
-    }
 
-    private async Task<string?> ReadProtocolLineWithTimeout(
-        StreamReader reader,
-        CancellationToken cancellationToken)
-    {
-        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeoutCts.CancelAfter(TimeSpan.FromMilliseconds(Math.Max(1, Option.TimeoutMs)));
-
-        try
-        {
-            return await ReadProtocolLine(reader, timeoutCts.Token);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            throw new TimeoutException(
-                $"Socket server receive timeout after {Math.Max(1, Option.TimeoutMs)} ms.");
-        }
-    }
-
-    private static string GetRemoteEndPoint(TcpClient client)
-    {
-        return client.Client.RemoteEndPoint?.ToString() ?? "UNKNOWN";
+        throw new ArgumentException("Socket server local address is invalid: " + localAddress);
     }
 
     private static string NormalizeReceivedMessage(string message)
@@ -483,10 +390,27 @@ HandleValue3,
 
     private static string NormalizeProtocolLine(string value)
     {
-        return value
-            .Replace('\r', ' ')
-            .Replace('\n', ' ')
-            .Trim();
+        return value.Replace('\r', ' ').Replace('\n', ' ').Trim();
     }
 
+    private sealed class CSocketClientSession
+    {
+        public CSocketClientSession(int clientId, TcpClient client)
+        {
+            ClientId = clientId;
+            Client = client;
+            RemoteEndPoint = client.Client.RemoteEndPoint?.ToString() ?? "UNKNOWN";
+            LastReceivedAt = DateTimeOffset.Now;
+        }
+
+        public int ClientId { get; }
+
+        public TcpClient Client { get; }
+
+        public string RemoteEndPoint { get; }
+
+        public StringBuilder ReceiveBuffer { get; } = new StringBuilder();
+
+        public DateTimeOffset LastReceivedAt { get; set; }
+    }
 }

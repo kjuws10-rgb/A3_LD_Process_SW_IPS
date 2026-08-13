@@ -65,18 +65,18 @@ public sealed record ST_PRODUCT_HISTORY(
 
 public abstract class CProductFileBase
 {
-    public abstract Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
-    public abstract Task SaveActive(
+    public abstract ST_PRODUCT_DATA? LoadActive(CancellationToken cancellationToken = default);
+    public abstract void SaveActive(
             ST_PRODUCT_DATA product,
             CancellationToken cancellationToken = default);
-    public abstract Task ClearActive(CancellationToken cancellationToken = default);
-    public abstract Task AppendHistory(
+    public abstract void ClearActive(CancellationToken cancellationToken = default);
+    public abstract void AppendHistory(
             ST_PRODUCT_HISTORY history,
             CancellationToken cancellationToken = default);
-    public abstract Task AppendHeadResults(
+    public abstract void AppendHeadResults(
             ST_PRODUCT_DATA product,
             CancellationToken cancellationToken = default);
-    public abstract Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+    public abstract IReadOnlyList<ST_PRODUCT_HISTORY> LoadHistory(
             int maxRows = 100,
             int days = 14,
             CancellationToken cancellationToken = default);
@@ -95,15 +95,15 @@ public sealed class CProductManager(
         }
     }
 
-    public async Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
+    public ST_PRODUCT_DATA? LoadActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        _current = await productFile.LoadActive(cancellationToken);
+        _current = productFile.LoadActive(cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> CreateProduct(
+    public ST_PRODUCT_DATA CreateProduct(
         string processId,
         string productId,
         string panelId,
@@ -155,11 +155,11 @@ public sealed class CProductManager(
             new Dictionary<string, string>(parameters, StringComparer.OrdinalIgnoreCase),
             heads);
 
-        await SaveAndLog("CREATE", "Product created.", cancellationToken);
+        SaveAndLog("CREATE", "Product created.", cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> StartProduct(
+    public ST_PRODUCT_DATA StartProduct(
         string productId,
         CancellationToken cancellationToken = default)
     {
@@ -174,11 +174,11 @@ public sealed class CProductManager(
             Result = EN_PRODUCT_RESULT.Pending
         };
 
-        await SaveAndLog("START", "Product started.", cancellationToken);
+        SaveAndLog("START", "Product started.", cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> SetHeadRunning(
+    public ST_PRODUCT_DATA SetHeadRunning(
         string productId,
         int headNo,
         CancellationToken cancellationToken = default)
@@ -205,11 +205,11 @@ public sealed class CProductManager(
                 .ToArray()
         };
 
-        await SaveAndLog("HEAD START", $"Head {headNo:00} started.", cancellationToken);
+        SaveAndLog("HEAD START", $"Head {headNo:00} started.", cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> SetHeadResult(
+    public ST_PRODUCT_DATA SetHeadResult(
         string productId,
         int headNo,
         bool isOk,
@@ -244,14 +244,14 @@ public sealed class CProductManager(
                 .ToArray()
         };
 
-        await SaveAndLog(
+        SaveAndLog(
             isOk ? "HEAD COMPLETE" : "HEAD ERROR",
             $"Head {headNo:00}: {(isOk ? "OK" : "NG")} {message}".Trim(),
             cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> CompleteProduct(
+    public ST_PRODUCT_DATA CompleteProduct(
         string productId,
         bool isOk,
         string message,
@@ -267,12 +267,12 @@ public sealed class CProductManager(
             CompletedAt = DateTimeOffset.Now
         };
 
-        await SaveAndLog("COMPLETE", message, cancellationToken);
-        await productFile.AppendHeadResults(_current, cancellationToken);
+        SaveAndLog("COMPLETE", message, cancellationToken);
+        productFile.AppendHeadResults(_current, cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> StopProduct(
+    public ST_PRODUCT_DATA StopProduct(
         string productId,
         string message,
         CancellationToken cancellationToken = default)
@@ -287,11 +287,11 @@ public sealed class CProductManager(
             CompletedAt = DateTimeOffset.Now
         };
 
-        await SaveAndLog("STOP", message, cancellationToken);
+        SaveAndLog("STOP", message, cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> SetError(
+    public ST_PRODUCT_DATA SetError(
         string productId,
         string message,
         CancellationToken cancellationToken = default)
@@ -306,11 +306,11 @@ public sealed class CProductManager(
             CompletedAt = DateTimeOffset.Now
         };
 
-        await SaveAndLog("ERROR", message, cancellationToken);
+        SaveAndLog("ERROR", message, cancellationToken);
         return _current;
     }
 
-    public async Task<ST_PRODUCT_DATA> ScrapProduct(
+    public ST_PRODUCT_DATA ScrapProduct(
         string productId,
         string reason,
         CancellationToken cancellationToken = default)
@@ -325,11 +325,11 @@ public sealed class CProductManager(
             CompletedAt = DateTimeOffset.Now
         };
 
-        await SaveAndLog("SCRAP", reason, cancellationToken);
+        SaveAndLog("SCRAP", reason, cancellationToken);
         return _current;
     }
 
-    public Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+    public IReadOnlyList<ST_PRODUCT_HISTORY> LoadHistory(
         int maxRows = 100,
         int days = 14,
         CancellationToken cancellationToken = default)
@@ -352,7 +352,7 @@ public sealed class CProductManager(
         return _current;
     }
 
-    private async Task SaveAndLog(
+    private void SaveAndLog(
         string action,
         string detail,
         CancellationToken cancellationToken)
@@ -362,7 +362,7 @@ public sealed class CProductManager(
             return;
         }
 
-        await productFile.SaveActive(_current, cancellationToken);
+        productFile.SaveActive(_current, cancellationToken);
 
         var history = new ST_PRODUCT_HISTORY(
             DateTimeOffset.Now,
@@ -374,7 +374,7 @@ public sealed class CProductManager(
             _current.Result.ToString().ToUpperInvariant(),
             detail);
 
-        await productFile.AppendHistory(history, cancellationToken);
+        productFile.AppendHistory(history, cancellationToken);
         logManager?.WriteProductEvent(
             _current.ProductId,
             action,

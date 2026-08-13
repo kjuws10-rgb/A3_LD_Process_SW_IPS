@@ -23,7 +23,13 @@ public sealed class CReviewResultFile(string configRoot) : IReviewResultFile
         "Data",
         "ReviewResult");
 
-    public string RootPath => _reviewResultRoot;
+    public string RootPath
+    {
+        get
+        {
+            return _reviewResultRoot;
+        }
+    }
 
     public Task<ST_REVIEW_RESULT_FILE_DATA> Load(
         string path,

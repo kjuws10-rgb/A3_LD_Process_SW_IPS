@@ -20,7 +20,13 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
             : scriptDirectory;
     }
 
-    public string ScriptFileName => DefaultScriptFileName;
+    public string ScriptFileName
+    {
+        get
+        {
+            return DefaultScriptFileName;
+        }
+    }
 
     public IAutomation1Script Create(string? fileName = null)
     {
@@ -819,9 +825,21 @@ public sealed class CAutomation1ScriptFile : IAutomationScriptFile
 
         public string FileName { get; }
 
-        public string FilePath => Path.Combine(_scriptDirectory, FileName);
+        public string FilePath
+        {
+            get
+            {
+                return Path.Combine(_scriptDirectory, FileName);
+            }
+        }
 
-        public IReadOnlyList<string> Lines => _lines;
+        public IReadOnlyList<string> Lines
+        {
+            get
+            {
+                return _lines;
+            }
+        }
 
         public void Clear()
         {

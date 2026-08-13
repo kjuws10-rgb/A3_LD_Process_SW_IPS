@@ -68,7 +68,7 @@ public sealed class CMotorFile(string configRoot) : CMotorFileBase
         ["MAX"]
     ];
 
-    public override Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_MOTOR_DATA> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
@@ -101,7 +101,7 @@ public sealed class CMotorFile(string configRoot) : CMotorFileBase
             .ToArray();
 
         Validate(rows);
-        return Task.FromResult<IReadOnlyList<ST_MOTOR_DATA>>(rows);
+        return rows;
     }
 
     private ST_MOTOR_DATA Parse(
@@ -325,8 +325,3 @@ public sealed class CMotorFile(string configRoot) : CMotorFileBase
         return value.Trim().ToUpperInvariant().Replace(" ", "_", StringComparison.OrdinalIgnoreCase);
     }
 }
-
-
-
-
-

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Drilling.Common.Alarm;
@@ -18,9 +19,9 @@ internal sealed class CSocketComm(
 {
     private TcpClient? _client;
 
-    public override async Task Connect(CancellationToken cancellationToken = default)
+    protected override void ConnectCore(CancellationToken cancellationToken)
     {
-        await DisconnectSocket();
+        DisconnectSocket();
 
         if (string.IsNullOrWhiteSpace(Option.RemoteAddress) || Option.Port <= 0)
         {
@@ -36,25 +37,7 @@ internal sealed class CSocketComm(
 
             try
             {
-                var client = new TcpClient();
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(Math.Max(100, Option.TimeoutMs));
-                void RunTask1()
-                {
-                    client.Connect(Option.RemoteAddress, Option.Port);
-                }
-
-                var connectTask = Task.Run(
-RunTask1,
-                    cancellationToken);
-
-                if (await Task.WhenAny(connectTask, Task.Delay(Math.Max(100, Option.TimeoutMs), timeout.Token)) != connectTask)
-                {
-                    client.Dispose();
-                    throw new TimeoutException("Socket connection timeout.");
-                }
-
-                await connectTask;
+                TcpClient client = ConnectSocket(cancellationToken);
 
                 _client = client;
                 LastError = "";
@@ -68,22 +51,22 @@ RunTask1,
         }
     }
 
-    public override async Task Disconnect(CancellationToken cancellationToken = default)
+    protected override void DisconnectCore(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        await DisconnectSocket();
+        DisconnectSocket();
         SetState(EN_COMM_STATE.Offline);
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         try
         {
             if (_client is null || !_client.Connected)
             {
-                await Connect(cancellationToken);
+                ConnectCore(cancellationToken);
             }
 
             if (_client is null || !_client.Connected)
@@ -93,13 +76,14 @@ RunTask1,
 
             var stream = _client.GetStream();
             var sendBytes = Encoding.UTF8.GetBytes(function);
-            await stream.WriteAsync(sendBytes, cancellationToken);
-            await stream.FlushAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            stream.Write(sendBytes, 0, sendBytes.Length);
+            stream.Flush();
 
             LastSent = function;
             LastReceived = "";
             LastError = "";
-            LastReceived = await ReadResponse(stream, cancellationToken);
+            LastReceived = ReadResponse(stream, cancellationToken);
 
             if (string.IsNullOrWhiteSpace(LastReceived))
             {
@@ -114,31 +98,28 @@ RunTask1,
         }
         catch (Exception ex) when (ex is SocketException or IOException or ObjectDisposedException or OperationCanceledException)
         {
-            await DisconnectSocket();
+            DisconnectSocket();
             SetError(ex);
             return "";
         }
     }
 
-    private Task DisconnectSocket()
+    private void DisconnectSocket()
     {
         _client?.Dispose();
         _client = null;
-        return Task.CompletedTask;
     }
 
-    private async Task<string> ReadResponse(
+    private string ReadResponse(
         NetworkStream stream,
         CancellationToken cancellationToken)
     {
         var buffer = new byte[4096];
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(Math.Max(100, Option.TimeoutMs));
-
         try
         {
-            var readCount = await stream.ReadAsync(buffer, timeout.Token);
+            cancellationToken.ThrowIfCancellationRequested();
+            int readCount = stream.Read(buffer, 0, buffer.Length);
 
             if (readCount == 0)
             {
@@ -147,12 +128,84 @@ RunTask1,
 
             return Encoding.UTF8.GetString(buffer, 0, readCount);
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        catch (IOException exception) when (
+            exception.InnerException is SocketException socketException &&
+            socketException.SocketErrorCode == SocketError.TimedOut)
         {
             LastError = "Socket response timeout.";
             return "";
         }
     }
+
+    private TcpClient ConnectSocket(CancellationToken cancellationToken)
+    {
+        IPAddress address = ResolveRemoteAddress();
+        TcpClient client = new TcpClient(address.AddressFamily);
+        Socket socket = client.Client;
+        int timeoutMsec = Math.Max(100, Option.TimeoutMs);
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMsec);
+        socket.Blocking = false;
+
+        try
+        {
+            try
+            {
+                socket.Connect(new IPEndPoint(address, Option.Port));
+            }
+            catch (SocketException exception) when (
+                exception.SocketErrorCode == SocketError.WouldBlock ||
+                exception.SocketErrorCode == SocketError.InProgress ||
+                exception.SocketErrorCode == SocketError.AlreadyInProgress)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "Socket connection is pending: " + exception.SocketErrorCode);
+            }
+
+            while (!socket.Connected)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (DateTime.UtcNow >= deadline)
+                {
+                    throw new TimeoutException("Socket connection timeout.");
+                }
+
+                if (socket.Poll(10_000, SelectMode.SelectError))
+                {
+                    object? socketError = socket.GetSocketOption(
+                        SocketOptionLevel.Socket,
+                        SocketOptionName.Error);
+                    int errorCode = socketError is int value ? value : 0;
+                    throw new SocketException(errorCode);
+                }
+
+                socket.Poll(10_000, SelectMode.SelectWrite);
+            }
+
+            socket.Blocking = true;
+            client.ReceiveTimeout = timeoutMsec;
+            client.SendTimeout = timeoutMsec;
+            return client;
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
+    }
+
+    private IPAddress ResolveRemoteAddress()
+    {
+        if (IPAddress.TryParse(Option.RemoteAddress, out IPAddress? address))
+        {
+            return address;
+        }
+
+        IPAddress[] addresses = Dns.GetHostAddresses(Option.RemoteAddress);
+        if (addresses.Length == 0)
+        {
+            throw new SocketException((int)SocketError.HostNotFound);
+        }
+
+        return addresses[0];
+    }
 }
-
-

@@ -213,8 +213,8 @@ internal static class Program
             parameters,
             Array.Empty<ST_RECIPE_HISTORY>());
 
-        recipeFile.Save(recipe).GetAwaiter().GetResult();
-        ST_RECIPE_DATA? loaded = recipeFile.Find(recipe.Id).GetAwaiter().GetResult();
+        recipeFile.Save(recipe);
+        ST_RECIPE_DATA? loaded = recipeFile.Find(recipe.Id);
         Assert(loaded is not null, "Recipe load returned null.");
 
         string recipePath = Path.Combine(configRoot, "RECIPE", "RCP_001.csv");
@@ -291,7 +291,7 @@ internal static class Program
         System.IO.File.WriteAllLines(Path.Combine(configRoot, "JHMI_SETTING.csv"), formLines, new UTF8Encoding(false));
 
         CSettingFile settingFile = new CSettingFile(configRoot);
-        IReadOnlyList<ST_SYSTEM_PARAMETER> loaded = settingFile.Load(EN_SETTING_TAB.Option).GetAwaiter().GetResult();
+        IReadOnlyList<ST_SYSTEM_PARAMETER> loaded = settingFile.Load(EN_SETTING_TAB.Option);
         List<ST_SYSTEM_PARAMETER> edited = new List<ST_SYSTEM_PARAMETER>();
         foreach (ST_SYSTEM_PARAMETER parameter in loaded)
         {
@@ -309,8 +309,8 @@ internal static class Program
             }
         }
 
-        settingFile.Save(EN_SETTING_TAB.Option, edited).GetAwaiter().GetResult();
-        IReadOnlyList<ST_SYSTEM_PARAMETER> reloaded = settingFile.Load(EN_SETTING_TAB.Option).GetAwaiter().GetResult();
+        settingFile.Save(EN_SETTING_TAB.Option, edited);
+        IReadOnlyList<ST_SYSTEM_PARAMETER> reloaded = settingFile.Load(EN_SETTING_TAB.Option);
         string valuePath = Path.Combine(configRoot, "Setting", "Setting.csv");
         string[] valueLines = System.IO.File.ReadAllLines(valuePath);
 
@@ -360,7 +360,7 @@ internal static class Program
         ST_PROCESS_MODEL model = new ST_PROCESS_MODEL(plan, null, heads, parameters, FixedTime);
         string scriptRoot = Path.Combine(testRoot, "Scripts");
         CAutomation1ScriptFile scriptFile = new CAutomation1ScriptFile(scriptRoot);
-        ST_AUTOMATION1_SCRIPT script = scriptFile.Build(model).GetAwaiter().GetResult();
+        ST_AUTOMATION1_SCRIPT script = scriptFile.Build(model);
 
         snapshot.Add("[Script]");
         snapshot.Add($"Summary={Escape(script.FileName)}|{script.TotalPoints}|{script.HeadCount}|{script.HeadScripts.Count}");
@@ -489,11 +489,11 @@ internal static class Program
 
         snapshot.Add("[Simulation]");
         snapshot.Add($"Initial={device.ConnectionState}|{device.IsSimulation}");
-        device.Connect().GetAwaiter().GetResult();
-        string firstResponse = device.ExecuteFunction("FIRST").GetAwaiter().GetResult();
-        string secondResponse = device.ExecuteFunction("SECOND:1,2,3").GetAwaiter().GetResult();
+        device.Connect();
+        string firstResponse = device.ExecuteFunction("FIRST");
+        string secondResponse = device.ExecuteFunction("SECOND:1,2,3");
         ST_INTERFACE_COMM_STATUS status = device.GetCommunicationStatus();
-        device.Disconnect().GetAwaiter().GetResult();
+        device.Disconnect();
 
         snapshot.Add($"Responses={Escape(firstResponse)}|{Escape(secondResponse)}");
         snapshot.Add(
@@ -590,7 +590,7 @@ internal static class Program
         manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.PicoMotor, EN_EQP_MODULE.PicoMotor, 6, "PICO_TEST"));
         manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.SocketClient, EN_EQP_MODULE.Melsec, 0, "MELSEC_TEST"));
 
-        manager.Initialize().GetAwaiter().GetResult();
+        manager.Initialize();
         int connectedCount = 0;
         foreach (CInterfaceDevice device in manager.Devices)
         {
@@ -602,47 +602,47 @@ internal static class Program
         ST_DEVICE_COMMAND_RESULT talon = manager.ExecuteTalonLaserCommand(
             1,
             EN_TALON_COMMAND.SetDiodeCurrent,
-            12.5).GetAwaiter().GetResult();
+            12.5);
         ST_DEVICE_COMMAND_RESULT chiller = manager.ExecuteChillerCommand(
             2,
             EN_CHILLER_COMMAND.SetTemperature,
-            21.5).GetAwaiter().GetResult();
+            21.5);
         ST_DEVICE_COMMAND_RESULT attenuator = manager.ExecuteAttenuatorCommand(
             3,
             EN_ATTENUATOR_COMMAND.MoveAbs,
-            33.125).GetAwaiter().GetResult();
+            33.125);
         ST_DEVICE_COMMAND_RESULT bet = manager.ExecuteBETCommand(
             4,
             EN_BET_COMMAND.MoveManual,
             2.25,
-            -1.5).GetAwaiter().GetResult();
+            -1.5);
         ST_DEVICE_COMMAND_RESULT power = manager.ExecutePowerMeterCommand(
             5,
             EN_POWER_METER_COMMAND.SetWaveLength,
-            355.0).GetAwaiter().GetResult();
+            355.0);
         ST_DEVICE_COMMAND_RESULT picoConnect = manager.ExecutePicoMotorCommand(
             6,
             EN_PICO_MOTOR_COMMAND.Connect,
             3,
-            0.0).GetAwaiter().GetResult();
+            0.0);
         ST_DEVICE_COMMAND_RESULT picoVelocity = manager.ExecutePicoMotorCommand(
             6,
             EN_PICO_MOTOR_COMMAND.SetVelocity,
             3,
-            1.25).GetAwaiter().GetResult();
+            1.25);
         ST_DEVICE_COMMAND_RESULT picoAcceleration = manager.ExecutePicoMotorCommand(
             6,
             EN_PICO_MOTOR_COMMAND.SetAcceleration,
             3,
-            2.5).GetAwaiter().GetResult();
+            2.5);
         ST_DEVICE_COMMAND_RESULT pico = manager.ExecutePicoMotorCommand(
             6,
             EN_PICO_MOTOR_COMMAND.MoveAbsolute,
             3,
-            0.125).GetAwaiter().GetResult();
-        manager.Melsec.WriteWord("WORD_TEST", 4660).GetAwaiter().GetResult();
-        int melsecValue = manager.Melsec.ReadWord("WORD_TEST").GetAwaiter().GetResult();
-        manager.Destroy().GetAwaiter().GetResult();
+            0.125);
+        manager.Melsec.WriteWord("WORD_TEST", 4660);
+        int melsecValue = manager.Melsec.ReadWord("WORD_TEST");
+        manager.Destroy();
 
         snapshot.Add("[Protocol]");
         snapshot.Add($"Connected={connectedCount}");

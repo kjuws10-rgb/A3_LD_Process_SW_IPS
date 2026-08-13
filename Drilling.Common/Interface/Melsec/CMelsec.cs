@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Globalization;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Drilling.Common.Log;
@@ -47,7 +48,7 @@ public sealed record ST_MELSEC_MAP_DATA(
 
 public abstract class CMelsecMapFileBase
 {
-    public abstract Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract IReadOnlyList<ST_MELSEC_MAP_DATA> LoadAll(CancellationToken cancellationToken = default);
 }
 
 public sealed class CMelsec
@@ -60,7 +61,7 @@ public sealed class CMelsec
 
     private readonly CInterfaceManager _interfaceManager;
     private readonly CLogManager? _logManager;
-    private readonly SemaphoreSlim _ioLock = new(1, 1);
+    private readonly object _ioLock = new object();
     private readonly Dictionary<string, ushort> _simulationWords = new(StringComparer.OrdinalIgnoreCase);
 
     private Dictionary<string, ST_MELSEC_MAP_DATA> _map = new(StringComparer.OrdinalIgnoreCase);
@@ -153,42 +154,42 @@ public sealed class CMelsec
             $"MELSEC map was not registered: {id}. Available={string.Join(", ", _map.Keys.OrderBy(GetKeySortKey7, StringComparer.OrdinalIgnoreCase))}");
     }
 
-    public async Task<bool> ReadBit(string id, CancellationToken cancellationToken = default)
+    public bool ReadBit(string id, CancellationToken cancellationToken = default)
     {
         var data = PrepareRead(id, EN_MELSEC_DATA_TYPE.Bit, cancellationToken);
         var address = ParseAddress(data.Address);
         var bitIndex = RequireWordBit(address, data);
-        var words = await ReadWords(data, address, 1, cancellationToken);
+        var words = ReadWords(data, address, 1, cancellationToken);
 
         return (words[0] & (1 << bitIndex)) != 0;
     }
 
-    public async Task WriteBit(string id, bool value, CancellationToken cancellationToken = default)
+    public void WriteBit(string id, bool value, CancellationToken cancellationToken = default)
     {
         var data = PrepareWrite(id, EN_MELSEC_DATA_TYPE.Bit, cancellationToken);
         var address = ParseAddress(data.Address);
         var bitIndex = RequireWordBit(address, data);
-        var words = await ReadWords(data, address, 1, cancellationToken);
+        var words = ReadWords(data, address, 1, cancellationToken);
         var mask = (ushort)(1 << bitIndex);
         words[0] = value
             ? (ushort)(words[0] | mask)
             : (ushort)(words[0] & ~mask);
 
-        await WriteWords(data, address, words, cancellationToken);
+        WriteWords(data, address, words, cancellationToken);
     }
 
-    public async Task<int> ReadWord(string id, CancellationToken cancellationToken = default)
+    public int ReadWord(string id, CancellationToken cancellationToken = default)
     {
         var data = PrepareRead(id, [EN_MELSEC_DATA_TYPE.Word, EN_MELSEC_DATA_TYPE.DWord], cancellationToken);
         var wordCount = data.DataType == EN_MELSEC_DATA_TYPE.DWord ? Math.Max(2, data.Length) : 1;
-        var words = await ReadWords(data, ParseAddress(data.Address), wordCount, cancellationToken);
+        var words = ReadWords(data, ParseAddress(data.Address), wordCount, cancellationToken);
 
         return data.DataType == EN_MELSEC_DATA_TYPE.DWord
             ? WordsToInt32(words)
             : words[0];
     }
 
-    public async Task WriteWord(string id, int value, CancellationToken cancellationToken = default)
+    public void WriteWord(string id, int value, CancellationToken cancellationToken = default)
     {
         var data = PrepareWrite(id, [EN_MELSEC_DATA_TYPE.Word, EN_MELSEC_DATA_TYPE.DWord], cancellationToken);
         var wordCount = data.DataType == EN_MELSEC_DATA_TYPE.DWord ? Math.Max(2, data.Length) : 1;
@@ -196,14 +197,14 @@ public sealed class CMelsec
             ? Int32ToWords(value, wordCount)
             : [(ushort)value];
 
-        await WriteWords(data, ParseAddress(data.Address), words, cancellationToken);
+        WriteWords(data, ParseAddress(data.Address), words, cancellationToken);
     }
 
-    public async Task<double> ReadDouble(string id, CancellationToken cancellationToken = default)
+    public double ReadDouble(string id, CancellationToken cancellationToken = default)
     {
         var data = PrepareRead(id, [EN_MELSEC_DATA_TYPE.Double, EN_MELSEC_DATA_TYPE.Float], cancellationToken);
         var wordCount = Math.Max(2, data.Length);
-        var words = await ReadWords(data, ParseAddress(data.Address), wordCount, cancellationToken);
+        var words = ReadWords(data, ParseAddress(data.Address), wordCount, cancellationToken);
 
         if (data.DataType == EN_MELSEC_DATA_TYPE.Float)
         {
@@ -213,7 +214,7 @@ public sealed class CMelsec
         return WordsToInt32(words) * ReadScale(data);
     }
 
-    public async Task WriteDouble(string id, double value, CancellationToken cancellationToken = default)
+    public void WriteDouble(string id, double value, CancellationToken cancellationToken = default)
     {
         var data = PrepareWrite(id, [EN_MELSEC_DATA_TYPE.Double, EN_MELSEC_DATA_TYPE.Float], cancellationToken);
         var wordCount = Math.Max(2, data.Length);
@@ -222,13 +223,13 @@ public sealed class CMelsec
             ? FloatToWords((float)rawValue, wordCount)
             : Int32ToWords((int)Math.Round(rawValue, MidpointRounding.AwayFromZero), wordCount);
 
-        await WriteWords(data, ParseAddress(data.Address), words, cancellationToken);
+        WriteWords(data, ParseAddress(data.Address), words, cancellationToken);
     }
 
-    public async Task<string> ReadString(string id, CancellationToken cancellationToken = default)
+    public string ReadString(string id, CancellationToken cancellationToken = default)
     {
         var data = PrepareRead(id, EN_MELSEC_DATA_TYPE.String, cancellationToken);
-        var words = await ReadWords(data, ParseAddress(data.Address), data.Length, cancellationToken);
+        var words = ReadWords(data, ParseAddress(data.Address), data.Length, cancellationToken);
         var bytes = new byte[words.Length * 2];
 
         for (var i = 0; i < words.Length; i++)
@@ -240,7 +241,7 @@ public sealed class CMelsec
         return Encoding.ASCII.GetString(bytes).TrimEnd('\0', ' ');
     }
 
-    public async Task WriteString(string id, string value, CancellationToken cancellationToken = default)
+    public void WriteString(string id, string value, CancellationToken cancellationToken = default)
     {
         var data = PrepareWrite(id, EN_MELSEC_DATA_TYPE.String, cancellationToken);
         var byteLength = data.Length * 2;
@@ -254,16 +255,15 @@ public sealed class CMelsec
             words[i] = (ushort)(bytes[i * 2] | (bytes[i * 2 + 1] << 8));
         }
 
-        await WriteWords(data, ParseAddress(data.Address), words, cancellationToken);
+        WriteWords(data, ParseAddress(data.Address), words, cancellationToken);
     }
 
     public void Dispose()
     {
         DisconnectSocket();
-        _ioLock.Dispose();
     }
 
-    private async Task<ushort[]> ReadWords(
+    private ushort[] ReadWords(
         ST_MELSEC_MAP_DATA data,
         ST_MELSEC_ADDRESS address,
         int wordCount,
@@ -287,7 +287,7 @@ public sealed class CMelsec
         var option = CInterfaceConnectOption.Parse(interfaceData);
         var mcOption = ReadMcProtocolOption(interfaceData);
         var request = BuildMcRequest(mcOption, McCommandBatchRead, McSubCommandWord, address, (ushort)wordCount, []);
-        var responseData = await SendMcRequest(data, interfaceData, option, request, command, cancellationToken);
+        var responseData = SendMcRequest(data, interfaceData, option, request, command, cancellationToken);
 
         if (responseData.Length < wordCount * 2)
         {
@@ -304,7 +304,7 @@ public sealed class CMelsec
         return words;
     }
 
-    private async Task WriteWords(
+    private void WriteWords(
         ST_MELSEC_MAP_DATA data,
         ST_MELSEC_ADDRESS address,
         IReadOnlyList<ushort> words,
@@ -328,10 +328,10 @@ public sealed class CMelsec
         var option = CInterfaceConnectOption.Parse(interfaceData);
         var mcOption = ReadMcProtocolOption(interfaceData);
         var request = BuildMcRequest(mcOption, McCommandBatchWrite, McSubCommandWord, address, (ushort)words.Count, words);
-        await SendMcRequest(data, interfaceData, option, request, command, cancellationToken);
+        SendMcRequest(data, interfaceData, option, request, command, cancellationToken);
     }
 
-    private async Task<byte[]> SendMcRequest(
+    private byte[] SendMcRequest(
         ST_MELSEC_MAP_DATA data,
         ST_INTERFACE_DATA interfaceData,
         ST_INTERFACE_CONNECT_OPTION option,
@@ -339,50 +339,42 @@ public sealed class CMelsec
         string command,
         CancellationToken cancellationToken)
     {
-        await _ioLock.WaitAsync(cancellationToken);
-
-        try
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_ioLock)
         {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            if (option.TimeoutMs > 0)
+            try
             {
-                timeoutCts.CancelAfter(option.TimeoutMs);
+                NetworkStream stream = EnsureConnected(interfaceData, option, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                stream.Write(request, 0, request.Length);
+                stream.Flush();
+
+                byte[] header = ReadExact(stream, 9, cancellationToken);
+                int bodyLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(7, 2));
+                byte[] body = ReadExact(stream, bodyLength, cancellationToken);
+
+                ValidateMcResponse(data, header, body);
+                byte[] responseData = body.Skip(2).ToArray();
+                WriteCommandLog(data, interfaceData, command, $"OK / {responseData.Length} bytes");
+                return responseData;
             }
-
-            var stream = await EnsureConnected(interfaceData, option, timeoutCts.Token);
-            await stream.WriteAsync(request, timeoutCts.Token);
-            await stream.FlushAsync(timeoutCts.Token);
-
-            var header = await ReadExact(stream, 9, timeoutCts.Token);
-            var bodyLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(7, 2));
-            var body = await ReadExact(stream, bodyLength, timeoutCts.Token);
-
-            ValidateMcResponse(data, header, body);
-            var responseData = body.Skip(2).ToArray();
-            WriteCommandLog(data, interfaceData, command, $"OK / {responseData.Length} bytes");
-
-            return responseData;
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            DisconnectSocket();
-            var message = $"MELSEC command timed out after {option.TimeoutMs} ms.";
-            WriteErrorLog(data, interfaceData, command, message);
-            throw new TimeoutException(message, ex);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            DisconnectSocket();
-            WriteErrorLog(data, interfaceData, command, ex.Message);
-            throw;
-        }
-        finally
-        {
-            _ioLock.Release();
+            catch (IOException exception) when (IsSocketTimeout(exception))
+            {
+                DisconnectSocket();
+                string message = $"MELSEC command timed out after {option.TimeoutMs} ms.";
+                WriteErrorLog(data, interfaceData, command, message);
+                throw new TimeoutException(message, exception);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                DisconnectSocket();
+                WriteErrorLog(data, interfaceData, command, exception.Message);
+                throw;
+            }
         }
     }
 
-    private async Task<NetworkStream> EnsureConnected(
+    private NetworkStream EnsureConnected(
         ST_INTERFACE_DATA interfaceData,
         ST_INTERFACE_CONNECT_OPTION option,
         CancellationToken cancellationToken)
@@ -402,31 +394,17 @@ public sealed class CMelsec
 
         DisconnectSocket();
 
-        var client = new TcpClient
-        {
-            NoDelay = true
-        };
-
         var connectTimeoutMs = option.TimeoutMs > 0
             ? Math.Min(option.TimeoutMs, DefaultConnectTimeoutMs)
             : DefaultConnectTimeoutMs;
-        using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        connectCts.CancelAfter(connectTimeoutMs);
-
-        try
-        {
-            await client.ConnectAsync(option.RemoteAddress, option.Port, connectCts.Token);
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            client.Dispose();
-            throw new TimeoutException($"MELSEC connection timed out after {connectTimeoutMs} ms: {endpoint}", ex);
-        }
-        catch
-        {
-            client.Dispose();
-            throw;
-        }
+        TcpClient client = ConnectSocket(
+            option.RemoteAddress,
+            option.Port,
+            connectTimeoutMs,
+            cancellationToken);
+        client.NoDelay = true;
+        client.ReceiveTimeout = Math.Max(1, option.TimeoutMs);
+        client.SendTimeout = Math.Max(1, option.TimeoutMs);
 
         _client = client;
         _connectedDeviceNo = interfaceData.Number;
@@ -524,7 +502,7 @@ public sealed class CMelsec
         return request;
     }
 
-    private static async Task<byte[]> ReadExact(
+    private static byte[] ReadExact(
         NetworkStream stream,
         int length,
         CancellationToken cancellationToken)
@@ -534,7 +512,8 @@ public sealed class CMelsec
 
         while (offset < length)
         {
-            var readCount = await stream.ReadAsync(buffer.AsMemory(offset, length - offset), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            int readCount = stream.Read(buffer, offset, length - offset);
             if (readCount <= 0)
             {
                 throw new IOException("MELSEC connection was closed by remote host.");
@@ -544,6 +523,80 @@ public sealed class CMelsec
         }
 
         return buffer;
+    }
+
+    private static TcpClient ConnectSocket(
+        string remoteAddress,
+        int port,
+        int timeoutMsec,
+        CancellationToken cancellationToken)
+    {
+        IPAddress address;
+        if (!IPAddress.TryParse(remoteAddress, out address!))
+        {
+            IPAddress[] addresses = Dns.GetHostAddresses(remoteAddress);
+            if (addresses.Length == 0)
+            {
+                throw new SocketException((int)SocketError.HostNotFound);
+            }
+
+            address = addresses[0];
+        }
+
+        TcpClient client = new TcpClient(address.AddressFamily);
+        Socket socket = client.Client;
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMsec);
+        socket.Blocking = false;
+
+        try
+        {
+            try
+            {
+                socket.Connect(new IPEndPoint(address, port));
+            }
+            catch (SocketException exception) when (
+                exception.SocketErrorCode == SocketError.WouldBlock ||
+                exception.SocketErrorCode == SocketError.InProgress ||
+                exception.SocketErrorCode == SocketError.AlreadyInProgress)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "MELSEC connection is pending: " + exception.SocketErrorCode);
+            }
+
+            while (!socket.Connected)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (DateTime.UtcNow >= deadline)
+                {
+                    throw new TimeoutException(
+                        $"MELSEC connection timed out after {timeoutMsec} ms: {remoteAddress}:{port}");
+                }
+
+                if (socket.Poll(10_000, SelectMode.SelectError))
+                {
+                    int errorCode = (int)(socket.GetSocketOption(
+                        SocketOptionLevel.Socket,
+                        SocketOptionName.Error) ?? 0);
+                    throw new SocketException(errorCode);
+                }
+
+                socket.Poll(10_000, SelectMode.SelectWrite);
+            }
+
+            socket.Blocking = true;
+            return client;
+        }
+        catch
+        {
+            client.Dispose();
+            throw;
+        }
+    }
+
+    private static bool IsSocketTimeout(IOException exception)
+    {
+        return exception.InnerException is SocketException socketException &&
+            socketException.SocketErrorCode == SocketError.TimedOut;
     }
 
     private static void ValidateMcResponse(

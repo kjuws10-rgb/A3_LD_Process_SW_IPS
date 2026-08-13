@@ -215,29 +215,20 @@ internal sealed class CBeamExpander(
         return EvaluateCommandSwitch3();
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        await SerialLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            return await ExecuteBeamExpander(function, cancellationToken);
-        }
-        finally
-        {
-            SerialLock.Release();
-        }
+        return ExecuteBeamExpander(function, cancellationToken);
     }
 
-    private async Task<string> ExecuteBeamExpander(
+    private string ExecuteBeamExpander(
         string function,
         CancellationToken cancellationToken)
     {
         if (SerialPort is null || !SerialPort.IsOpen)
         {
-            await Connect(cancellationToken);
+            ConnectCore(cancellationToken);
         }
 
         if (SerialPort is null || !SerialPort.IsOpen)
@@ -249,12 +240,8 @@ internal sealed class CBeamExpander(
 
         try
         {
-            string RunTask1()
-            {
-                return ExecuteBeamExpander(function);
-            }
-
-            LastReceived = await Task.Run(RunTask1, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            LastReceived = ExecuteBeamExpander(function);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";
@@ -593,5 +580,3 @@ public sealed record ST_BET_TABLE_DATA(
         }
     }
 }
-
-

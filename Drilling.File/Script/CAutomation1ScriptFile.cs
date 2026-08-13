@@ -35,14 +35,14 @@ public sealed class CAutomation1ScriptFile : CAutomationScriptFileBase
             NormalizeFileName(fileName));
     }
 
-    public async override Task<ST_AUTOMATION1_SCRIPT> Build(
+    public override ST_AUTOMATION1_SCRIPT Build(
         ST_PROCESS_MODEL processModel,
         CancellationToken cancellationToken = default)
     {
-        return await Build(processModel, StandardDirectoryName, cancellationToken);
+        return Build(processModel, StandardDirectoryName, cancellationToken);
     }
 
-    public async override Task<ST_AUTOMATION1_SCRIPT> Build(
+    public override ST_AUTOMATION1_SCRIPT Build(
         ST_PROCESS_MODEL processModel,
         string subDirectoryName,
         CancellationToken cancellationToken = default)
@@ -67,7 +67,8 @@ public sealed class CAutomation1ScriptFile : CAutomationScriptFileBase
             var headLines = BuildHeadLines(processModel, head, createdAt, isBufferedRun);
             var headFilePath = Path.Combine(targetDirectory, head.ScriptFileName);
 
-            await System.IO.File.WriteAllLinesAsync(headFilePath, headLines, Encoding.UTF8, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            System.IO.File.WriteAllLines(headFilePath, headLines, Encoding.UTF8);
             headScripts.Add(new ST_AUTOMATION1_HEAD_SCRIPT(
                 head.HeadNo,
                 head.AutomationNo,
@@ -82,7 +83,8 @@ public sealed class CAutomation1ScriptFile : CAutomationScriptFileBase
         var lines = BuildSummaryLines(processModel, createdAt, headScripts);
         var filePath = Path.Combine(targetDirectory, ScriptFileName);
 
-        await System.IO.File.WriteAllLinesAsync(filePath, lines, Encoding.UTF8, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        System.IO.File.WriteAllLines(filePath, lines, Encoding.UTF8);
         int SumScriptCallback2(ST_AUTOMATION1_HEAD_SCRIPT script)
         {
             return script.TotalPoints;
@@ -2038,7 +2040,7 @@ public sealed class CAutomation1ScriptFile : CAutomationScriptFileBase
             }
         }
 
-        public async override Task<ST_AUTOMATION1_SCRIPT> Save(
+        public override ST_AUTOMATION1_SCRIPT Save(
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -2050,7 +2052,8 @@ public sealed class CAutomation1ScriptFile : CAutomationScriptFileBase
             }
 
             Directory.CreateDirectory(_scriptDirectory);
-            await System.IO.File.WriteAllLinesAsync(FilePath, _lines, Encoding.UTF8, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            System.IO.File.WriteAllLines(FilePath, _lines, Encoding.UTF8);
 
             return new ST_AUTOMATION1_SCRIPT(
                 FileName,

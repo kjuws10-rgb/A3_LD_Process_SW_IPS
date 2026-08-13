@@ -19,4 +19,3 @@ internal sealed class CA3200Motion(CInterfaceManager? interfaceManager, int devi
         }
     }
 }
-

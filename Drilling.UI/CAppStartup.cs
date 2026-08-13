@@ -6,11 +6,15 @@ using Drilling.File.JHMI;
 using Drilling.File.Product;
 using Drilling.File.ReviewResult;
 using Drilling.File.Script;
+using Drilling.Common.Threading;
 
 namespace Drilling.UI;
 
 public static class CAppStartup
 {
+    private static readonly object mobjInitializationLock = new object();
+    private static CManagerInitializationThread? mobjInitializationThread;
+
     public static CRootView CreateMainViewModel()
     {
         var configRoot = GetConfigRoot();
@@ -39,26 +43,14 @@ public static class CAppStartup
             "MANAGER_STARTUP_SEQUENCE",
             0);
 
-        async Task? RunTask1()
+        var initializationThread = new CManagerInitializationThread(
+            manager,
+            lastLoggedStartupOrder);
+        lock (mobjInitializationLock)
         {
-            try
-            {
-                await manager.Initialize();
-                WriteManagerStartupStatus(
-                    manager,
-                    "MANAGER_INITIALIZE_SEQUENCE",
-                    lastLoggedStartupOrder);
-            }
-            catch (Exception exception)
-            {
-                CProgramOpenLog.Write("MANAGER_INITIALIZE_FAILED", exception);
-                WriteManagerStartupStatus(
-                    manager,
-                    "MANAGER_INITIALIZE_SEQUENCE",
-                    lastLoggedStartupOrder);
-            }
+            mobjInitializationThread = initializationThread;
         }
-        _ = Task.Run(RunTask1);
+        initializationThread.Start();
 
         return new CRootView(
             manager,
@@ -74,6 +66,25 @@ public static class CAppStartup
             manager.Review(),
             manager.ReviewRuleFile(),
             automationScriptFile);
+    }
+
+    public static void StopInitialization()
+    {
+        CManagerInitializationThread? initializationThread;
+        lock (mobjInitializationLock)
+        {
+            initializationThread = mobjInitializationThread;
+            mobjInitializationThread = null;
+        }
+
+        if (initializationThread is null)
+        {
+            return;
+        }
+
+        initializationThread.Cancel();
+        initializationThread.Stop();
+        initializationThread.DisposeCancellationSource();
     }
 
     private static int WriteManagerStartupStatus(
@@ -168,8 +179,6 @@ public static class CAppStartup
 
         var scriptPath = settingFile
             .Load(EN_SETTING_TAB.Option)
-            .GetAwaiter()
-            .GetResult()
             .FirstOrDefault(MatchParameter5)
             ?.Value;
 
@@ -182,9 +191,71 @@ public static class CAppStartup
             ? Path.GetFullPath(scriptPath)
             : Path.GetFullPath(Path.Combine(projectRoot, scriptPath));
     }
+
+    private sealed class CManagerInitializationThread : CtrlThread
+    {
+        private readonly CManager mobjManager;
+        private readonly int mintLastLoggedStartupOrder;
+        private readonly CancellationTokenSource mobjCancellationSource = new CancellationTokenSource();
+        private int mintExecuted;
+
+        public CManagerInitializationThread(
+            CManager manager,
+            int lastLoggedStartupOrder)
+        {
+            mobjManager = manager;
+            mintLastLoggedStartupOrder = lastLoggedStartupOrder;
+        }
+
+        public void Start()
+        {
+            base.Start(1, "ManagerInitialization");
+        }
+
+        public void Cancel()
+        {
+            mobjCancellationSource.Cancel();
+        }
+
+        public void DisposeCancellationSource()
+        {
+            mobjCancellationSource.Dispose();
+        }
+
+        public override void Run()
+        {
+            if (Interlocked.Exchange(ref mintExecuted, 1) != 0)
+            {
+                Pause();
+                return;
+            }
+
+            try
+            {
+                mobjManager.Initialize(mobjCancellationSource.Token);
+                WriteManagerStartupStatus(
+                    mobjManager,
+                    "MANAGER_INITIALIZE_SEQUENCE",
+                    mintLastLoggedStartupOrder);
+            }
+            catch (OperationCanceledException) when (mobjCancellationSource.IsCancellationRequested)
+            {
+                CProgramOpenLog.Write(
+                    "MANAGER_INITIALIZE_CANCELED",
+                    "Manager initialization was canceled during program shutdown.");
+            }
+            catch (Exception exception)
+            {
+                CProgramOpenLog.Write("MANAGER_INITIALIZE_FAILED", exception);
+                WriteManagerStartupStatus(
+                    mobjManager,
+                    "MANAGER_INITIALIZE_SEQUENCE",
+                    mintLastLoggedStartupOrder);
+            }
+            finally
+            {
+                Stop();
+            }
+        }
+    }
 }
-
-
-
-
-

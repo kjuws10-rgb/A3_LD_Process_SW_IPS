@@ -11,17 +11,15 @@ internal sealed class CAutomation1Comm(
 {
     private const int DefaultTaskIndex = 1;
     private const int CommandQueuePollIntervalMs = 100;
-    private readonly SemaphoreSlim _commLock = new(1, 1);
     private readonly object _activeBufferedRunLock = new();
     private Controller? _controller;
     private CancellationTokenSource? _activeBufferedRunCancellation;
 
-    public override async Task Connect(CancellationToken cancellationToken = default)
+    protected override void ConnectCore(CancellationToken cancellationToken)
     {
-        await _commLock.WaitAsync(cancellationToken);
-
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ConnectLocked();
         }
         catch (Exception ex)
@@ -29,37 +27,22 @@ internal sealed class CAutomation1Comm(
             CloseController();
             SetError(ex);
         }
-        finally
-        {
-            _commLock.Release();
-        }
     }
 
-    public override async Task Disconnect(CancellationToken cancellationToken = default)
+    protected override void DisconnectCore(CancellationToken cancellationToken)
     {
         CancelActiveBufferedRun();
-        await _commLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            CloseController();
-            SetState(EN_COMM_STATE.Offline);
-        }
-        finally
-        {
-            _commLock.Release();
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        CloseController();
+        SetState(EN_COMM_STATE.Offline);
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        CancelActiveBufferedRunIfStopCommand(function);
-
         CancellationTokenSource? bufferedRunCancellation = null;
         var executeCancellationToken = cancellationToken;
-        await _commLock.WaitAsync(cancellationToken);
 
         try
         {
@@ -77,13 +60,9 @@ internal sealed class CAutomation1Comm(
                 executeCancellationToken = bufferedRunCancellation.Token;
                 RegisterActiveBufferedRun(bufferedRunCancellation);
             }
-            string RunTask1()
-            {
-                return ExecuteAutomation1Function(controller, function, executeCancellationToken);
-            }
-
-            var response = await Task.Run(
-RunTask1,
+            string response = ExecuteAutomation1Function(
+                controller,
+                function,
                 executeCancellationToken);
 
             LastSent = function;
@@ -110,9 +89,17 @@ RunTask1,
                 UnregisterActiveBufferedRun(bufferedRunCancellation);
                 bufferedRunCancellation.Dispose();
             }
-
-            _commLock.Release();
         }
+    }
+
+    protected override void BeforeQueueDisconnect()
+    {
+        CancelActiveBufferedRun();
+    }
+
+    protected override void BeforeQueueExecute(string function)
+    {
+        CancelActiveBufferedRunIfStopCommand(function);
     }
 
     private void RegisterActiveBufferedRun(CancellationTokenSource cancellation)

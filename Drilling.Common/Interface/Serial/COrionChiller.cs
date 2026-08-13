@@ -191,29 +191,20 @@ internal sealed class COrionChiller(
         return EvaluateCommandSwitch3();
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        await SerialLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            return await ExecuteOrion(function, cancellationToken);
-        }
-        finally
-        {
-            SerialLock.Release();
-        }
+        return ExecuteOrion(function, cancellationToken);
     }
 
-    private async Task<string> ExecuteOrion(
+    private string ExecuteOrion(
         string function,
         CancellationToken cancellationToken)
     {
         if (SerialPort is null || !SerialPort.IsOpen)
         {
-            await Connect(cancellationToken);
+            ConnectCore(cancellationToken);
         }
 
         if (SerialPort is null || !SerialPort.IsOpen)
@@ -225,12 +216,8 @@ internal sealed class COrionChiller(
 
         try
         {
-            string RunTask1()
-            {
-                return ExecuteOrion(function);
-            }
-
-            LastReceived = await Task.Run(RunTask1, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            LastReceived = ExecuteOrion(function);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";
@@ -592,6 +579,8 @@ internal sealed class COrionChiller(
                     }
                     catch (TimeoutException)
                     {
+                        System.Diagnostics.Debug.WriteLine(
+                            "Chiller frame ended without an optional checksum byte.");
                     }
 
                     return frame.ToArray();
@@ -728,5 +717,3 @@ public sealed record ST_ORION_CHILLER_STATUS(
         EN_CHILLER_ERROR.Ok,
         null);
 }
-
-

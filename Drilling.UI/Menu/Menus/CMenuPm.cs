@@ -25,7 +25,7 @@ public sealed class CMenuPm(
 
     public IReadOnlyList<ST_DISPLAY_ITEM> BlockedItems { get; private set; } = [];
 
-    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -67,7 +67,7 @@ public sealed class CMenuPm(
             ],
             pm: this);
 
-        return Task.FromResult(screen);
+        return (screen);
     }
 
     private void Apply(
@@ -80,6 +80,3 @@ public sealed class CMenuPm(
         BlockedItems = blockedItems;
     }
 }
-
-
-

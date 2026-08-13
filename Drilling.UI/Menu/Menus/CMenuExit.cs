@@ -17,7 +17,7 @@ public sealed class CMenuExit : CMenuBase
         }
     }
 
-    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -34,9 +34,6 @@ public sealed class CMenuExit : CMenuBase
                 ])
             ]);
 
-        return Task.FromResult(screen);
+        return (screen);
     }
 }
-
-
-

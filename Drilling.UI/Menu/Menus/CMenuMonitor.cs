@@ -10,6 +10,7 @@ using Drilling.Common.Product;
 using Drilling.Common.Recipe;
 using Drilling.Common.Review;
 using Drilling.Common.Station;
+using Drilling.Common.Threading;
 using Drilling.UI.Popup;
 using System.Windows.Media;
 
@@ -28,7 +29,7 @@ public sealed class CMenuMonitor : CMenuBase
     private readonly Action<string> _selectedTabSetter;
     private readonly Action<string> _setStatusMessage;
     private readonly Action _refreshShellStatus;
-    private readonly Func<Task> _refreshCurrentScreen;
+    private readonly Action _refreshCurrentScreen;
     private readonly CMonitorStatusPollingService _statusPollingService;
     private readonly Dictionary<string, string> _operationFieldValues = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, string> _melsecWriteValues = new(StringComparer.OrdinalIgnoreCase);
@@ -46,10 +47,10 @@ public sealed class CMenuMonitor : CMenuBase
     private string _coordinateSelectedHoleKey = "";
     private bool _coordinateIsCellDetailVisible;
     private readonly HashSet<int> _picoAllMoveMotorNos = [1];
-    private readonly SemaphoreSlim _picoJogCommandLock = new(1, 1);
+    private readonly object _picoJogCommandLock = new object();
     private CancellationTokenSource? _picoJogCancellationSource;
-    private Task? _picoAllMoveTask;
-    private Task? _picoMotionTask;
+    private readonly CPicoOperationThread _picoOperationThread;
+    private readonly CPowerMeterSequenceThread _powerMeterSequenceThread;
     private CancellationTokenSource? _powerMeterMeasureCts;
     private string _selectedMelsecGroup = "ALL";
     private bool _liveRefreshRunning;
@@ -81,7 +82,7 @@ public sealed class CMenuMonitor : CMenuBase
         Action<string> selectedTabSetter,
         Action<string> setStatusMessage,
         Action refreshShellStatus,
-        Func<Task> refreshCurrentScreen)
+        Action refreshCurrentScreen)
     {
         _interfaceManager = interfaceManager;
         _motionManager = motionManager;
@@ -96,94 +97,98 @@ public sealed class CMenuMonitor : CMenuBase
         _refreshShellStatus = refreshShellStatus;
         _refreshCurrentScreen = refreshCurrentScreen;
         _statusPollingService = new CMonitorStatusPollingService(_interfaceManager, _motionManager);
+        _picoOperationThread = new CPicoOperationThread(this);
+        _picoOperationThread.Start();
+        _powerMeterSequenceThread = new CPowerMeterSequenceThread(this);
+        _powerMeterSequenceThread.Start();
 
-        async void HandleSelectTabCommand1(object? parameter)
+        void HandleSelectTabCommand1(object? parameter)
         {
-            await SelectTab(parameter);
+            SelectTab(parameter);
         }
 
         SelectTabCommand = new CButtonCommand(HandleSelectTabCommand1);
 
-        async void HandleSelectHeadDeviceCommand2(object? parameter)
+        void HandleSelectHeadDeviceCommand2(object? parameter)
         {
-            await SelectHeadDevice(parameter);
+            SelectHeadDevice(parameter);
         }
 
         SelectHeadDeviceCommand = new CButtonCommand(HandleSelectHeadDeviceCommand2);
 
-        async void HandleExecuteOperationCommand3(object? parameter)
+        void HandleExecuteOperationCommand3(object? parameter)
         {
-            await ExecuteOperation(parameter);
+            ExecuteOperation(parameter);
         }
 
         ExecuteOperationCommand = new CButtonCommand(HandleExecuteOperationCommand3);
 
-        async void HandleSetOutputOnCommand4(object? parameter)
+        void HandleSetOutputOnCommand4(object? parameter)
         {
-            await SetOutput(parameter, true);
+            SetOutput(parameter, true);
         }
 
         SetOutputOnCommand = new CButtonCommand(HandleSetOutputOnCommand4);
 
-        async void HandleSetOutputOffCommand5(object? parameter)
+        void HandleSetOutputOffCommand5(object? parameter)
         {
-            await SetOutput(parameter, false);
+            SetOutput(parameter, false);
         }
 
         SetOutputOffCommand = new CButtonCommand(HandleSetOutputOffCommand5);
 
-        async void HandleSelectMelsecGroupCommand6(object? parameter)
+        void HandleSelectMelsecGroupCommand6(object? parameter)
         {
-            await SelectMelsecGroup(parameter);
+            SelectMelsecGroup(parameter);
         }
 
         SelectMelsecGroupCommand = new CButtonCommand(HandleSelectMelsecGroupCommand6);
 
-        async void HandleWriteMelsecCommand7(object? parameter)
+        void HandleWriteMelsecCommand7(object? parameter)
         {
-            await WriteMelsec(parameter);
+            WriteMelsec(parameter);
         }
 
         WriteMelsecCommand = new CButtonCommand(HandleWriteMelsecCommand7);
 
-        async void HandlePicoJogStartCommand8(object? parameter)
+        void HandlePicoJogStartCommand8(object? parameter)
         {
-            await StartPicoJog(parameter);
+            StartPicoJog(parameter);
         }
 
         PicoJogStartCommand = new CButtonCommand(HandlePicoJogStartCommand8);
 
-        async void HandlePicoJogStopCommand9(object? _)
+        void HandlePicoJogStopCommand9(object? _)
         {
-            await StopPicoJog();
+            StopPicoJog();
         }
 
         PicoJogStopCommand = new CButtonCommand(HandlePicoJogStopCommand9);
 
-        async void HandleSelectCoordinateBasisCommand10(object? parameter)
+        void HandleSelectCoordinateBasisCommand10(object? parameter)
         {
-            await SelectCoordinateBasis(parameter);
+            SelectCoordinateBasis(parameter);
         }
 
         SelectCoordinateBasisCommand = new CButtonCommand(HandleSelectCoordinateBasisCommand10);
 
-        async void HandleSelectCoordinateCellCommand11(object? parameter)
+        void HandleSelectCoordinateCellCommand11(object? parameter)
         {
-            await SelectCoordinateCell(parameter);
+            SelectCoordinateCell(parameter);
         }
 
         SelectCoordinateCellCommand = new CButtonCommand(HandleSelectCoordinateCellCommand11);
 
-        async void HandleSelectCoordinateHoleCommand12(object? parameter)
+        void HandleSelectCoordinateHoleCommand12(object? parameter)
         {
-            await SelectCoordinateHole(parameter);
+            SelectCoordinateHole(parameter);
         }
 
         SelectCoordinateHoleCommand = new CButtonCommand(HandleSelectCoordinateHoleCommand12);
 
-        async void HandleBackToCoordinateGlassPreviewCommand13(object? _)
+        void HandleBackToCoordinateGlassPreviewCommand13(object? _)
         {
-            await BackToCoordinateGlassPreview();
+            BackToCoordinateGlassPreview();
         }
 
         BackToCoordinateGlassPreviewCommand = new CButtonCommand(HandleBackToCoordinateGlassPreviewCommand13);
@@ -195,6 +200,29 @@ public sealed class CMenuMonitor : CMenuBase
         {
             return EN_MENU.Monitor;
         }
+    }
+
+    public override void Shutdown()
+    {
+        _statusPollingService.Stop();
+
+        lock (_picoJogCommandLock)
+        {
+            _picoJogCancellationSource?.Cancel();
+            _picoJogCancellationSource?.Dispose();
+            _picoJogCancellationSource = null;
+        }
+
+        if (_picoMotorIsConnected)
+        {
+            _interfaceManager.ExecutePicoMotorCommand(
+                EN_PICO_MOTOR_COMMAND.AllMotorStop,
+                _selectedPicoMotorNo);
+        }
+
+        _powerMeterMeasureCts?.Cancel();
+        _powerMeterSequenceThread.Stop();
+        _picoOperationThread.Stop();
     }
 
     public IReadOnlyList<ST_SCREEN_SECTION> DeviceTabs { get; private set; } = [];
@@ -447,7 +475,7 @@ public sealed class CMenuMonitor : CMenuBase
                 return;
             }
 
-            _ = SelectPowerMeterProcess(value.ProcessName);
+            SelectPowerMeterProcess(value.ProcessName);
         }
     }
 
@@ -472,7 +500,7 @@ public sealed class CMenuMonitor : CMenuBase
                 return;
             }
 
-            _ = SelectPowerMeterStep(stepNo);
+            SelectPowerMeterStep(stepNo);
         }
     }
 
@@ -687,7 +715,7 @@ public sealed class CMenuMonitor : CMenuBase
         }
     }
 
-    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
         var selectedTab = NormalizeMonitorTab(_selectedTabAccessor());
         _selectedLaserNumber = Math.Clamp(_selectedLaserNumber, 0, LaserHeadCount - 1);
@@ -695,7 +723,7 @@ public sealed class CMenuMonitor : CMenuBase
         _selectedBetNumber = Math.Clamp(_selectedBetNumber, 0, LaserHeadCount - 1);
         if (selectedTab == "COORDINATE VIEWER")
         {
-            return await BuildCoordinateViewerScreen(cancellationToken);
+            return BuildCoordinateViewerScreen(cancellationToken);
         }
 
         UpdatePollingContext(selectedTab);
@@ -707,16 +735,16 @@ public sealed class CMenuMonitor : CMenuBase
         var selectedHistoryNickName = GetSelectedHeadInterfaceData(selectedTab)?.NickName ?? "";
         var interfaceHistory = selectedModule is null
             ? []
-            : await _interfaceManager.ReadInterfaceHistory(
+            : _interfaceManager.ReadInterfaceHistory(
                 selectedModule.Value,
                 selectedHistoryNickName,
                 maxRows: 12,
                 cancellationToken: cancellationToken);
         var betTable = selectedTab == "BET"
-            ? await _interfaceManager.LoadBETData(cancellationToken)
+            ? _interfaceManager.LoadBETData(cancellationToken)
             : [];
         var powerMeterTable = selectedTab == "POWER METER"
-            ? await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName, cancellationToken)
+            ? _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName, cancellationToken)
             : ST_POWER_METER_TABLE_DATA.Empty;
         var picoMotorStatus = selectedTab == "PICO MOTOR"
             ? monitorSnapshot.PicoMotorStatus
@@ -731,7 +759,7 @@ public sealed class CMenuMonitor : CMenuBase
             _selectedPowerMeterProcessName = powerMeterTable.SelectedFileName;
         }
         var (product, productHistory, productError) = selectedTab == "PRODUCT"
-            ? await LoadProductDisplay(cancellationToken)
+            ? LoadProductDisplay(cancellationToken)
             : (null, [], "");
         ST_MONITOR_TAB SelectTab19(string tab)
         {
@@ -849,7 +877,7 @@ public sealed class CMenuMonitor : CMenuBase
             monitor: this);
     }
 
-    private async Task<CScreenViewModel> BuildCoordinateViewerScreen(CancellationToken cancellationToken)
+    private CScreenViewModel BuildCoordinateViewerScreen(CancellationToken cancellationToken)
     {
         var selectedTab = "COORDINATE VIEWER";
         ST_MONITOR_TAB SelectTab24(string tab)
@@ -860,7 +888,7 @@ public sealed class CMenuMonitor : CMenuBase
         var tabs = MonitorTabs
             .Select(SelectTab24)
             .ToArray();
-        var coordinateViewerData = await BuildCoordinateViewerData(cancellationToken);
+        var coordinateViewerData = BuildCoordinateViewerData(cancellationToken);
 
         HeadSelectRows = [];
         LaserControlRows = [];
@@ -923,11 +951,11 @@ public sealed class CMenuMonitor : CMenuBase
             monitor: this);
     }
 
-    public Task RefreshLiveData(CancellationToken cancellationToken = default)
+    public void RefreshLiveData(CancellationToken cancellationToken = default)
     {
         if (_liveRefreshRunning)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         _liveRefreshRunning = true;
@@ -938,12 +966,12 @@ public sealed class CMenuMonitor : CMenuBase
 
             if (!selectedTab.Equals(SelectedTab, StringComparison.OrdinalIgnoreCase))
             {
-                return Task.CompletedTask;
+                return;
             }
 
             if (selectedTab == "COORDINATE VIEWER")
             {
-                return Task.CompletedTask;
+                return;
             }
 
             if (OperationFields.Count > 0)
@@ -967,7 +995,7 @@ public sealed class CMenuMonitor : CMenuBase
                 PositionRows = CreatePicoMotorPositionRows(picoStatus);
                 UpdatePicoMotorOperationFields(picoStatus);
                 NotifyMonitorLiveProperties(nameof(StatusRows), nameof(ParameterRows), nameof(PositionRows), nameof(OperationFields), nameof(PicoConnectionButtons), nameof(PicoMotorSelectButtons));
-                return Task.CompletedTask;
+                return;
             }
 
             if (selectedTab == "LASER")
@@ -991,7 +1019,7 @@ public sealed class CMenuMonitor : CMenuBase
                     nameof(LaserControlRows),
                     nameof(SelectedHeadDeviceName),
                     nameof(SummaryItems));
-                return Task.CompletedTask;
+                return;
             }
 
             StatusRows = CreateStatusRows(selectedTab, snapshot, communication, GetSelectedHeadConnectionText(selectedTab));
@@ -1084,7 +1112,7 @@ public sealed class CMenuMonitor : CMenuBase
             _liveRefreshRunning = false;
         }
 
-        return Task.CompletedTask;
+        return;
     }
 
     private void UpdatePollingContext(string selectedTab)
@@ -1097,36 +1125,36 @@ public sealed class CMenuMonitor : CMenuBase
             selectedTab == "MELSEC" ? "ALL" : _selectedMelsecGroup);
     }
 
-    private async Task<ST_DEVICE_STATUS> GetDeviceStatus(CancellationToken cancellationToken)
+    private ST_DEVICE_STATUS GetDeviceStatus(CancellationToken cancellationToken)
     {
-        return await GetDeviceStatus("ALL", cancellationToken);
+        return GetDeviceStatus("ALL", cancellationToken);
     }
 
-    private async Task<ST_DEVICE_STATUS> GetDeviceStatus(
+    private ST_DEVICE_STATUS GetDeviceStatus(
         string selectedTab,
         CancellationToken cancellationToken)
     {
         var tab = NormalizeMonitorTab(selectedTab);
         var io = tab is "ALL" or "IO"
-            ? await _motionManager.GetIoStatus(cancellationToken)
+            ? _motionManager.GetIoStatus(cancellationToken)
             : [];
         var motors = tab is "ALL" or "MOTOR"
-            ? await _motionManager.GetAxisStatus(cancellationToken)
+            ? _motionManager.GetAxisStatus(cancellationToken)
             : [];
         var laserStatus = tab is "ALL"
-            ? await _interfaceManager.GetLaserStatus(_selectedLaserNumber, cancellationToken)
+            ? _interfaceManager.GetLaserStatus(_selectedLaserNumber, cancellationToken)
             : CreateEmptyLaserStatus();
         var chillerStatus = tab is "ALL" or "CHILLER"
-            ? await _interfaceManager.GetChillerStatus(cancellationToken)
+            ? _interfaceManager.GetChillerStatus(cancellationToken)
             : CreateEmptyChillerStatus();
         var attenuatorStatus = tab is "ALL" or "ATTENUATOR"
-            ? await _interfaceManager.GetAttenuatorStatus(_selectedAttenuatorNumber, cancellationToken)
+            ? _interfaceManager.GetAttenuatorStatus(_selectedAttenuatorNumber, cancellationToken)
             : CreateEmptyAttenuatorStatus();
         var betStatus = tab is "ALL" or "BET"
-            ? await _interfaceManager.GetBETStatus(_selectedBetNumber, cancellationToken)
+            ? _interfaceManager.GetBETStatus(_selectedBetNumber, cancellationToken)
             : CreateEmptyBETStatus();
         var powerMeterStatus = tab is "ALL" or "POWER METER"
-            ? await _interfaceManager.GetPowerMeterStatus(cancellationToken)
+            ? _interfaceManager.GetPowerMeterStatus(cancellationToken)
             : ST_POWER_METER_STATUS.Empty;
 
         return new ST_DEVICE_STATUS(
@@ -1159,7 +1187,7 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_BET_STATUS(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, false, false, false, false, false);
     }
 
-    private async Task SelectTab(object? parameter)
+    private void SelectTab(object? parameter)
     {
         if (parameter is not string tab || string.IsNullOrWhiteSpace(tab))
         {
@@ -1170,10 +1198,10 @@ public sealed class CMenuMonitor : CMenuBase
         _selectedTabSetter(selectedTab);
         _setStatusMessage($"Monitor tab {selectedTab} selected.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectHeadDevice(object? parameter)
+    private void SelectHeadDevice(object? parameter)
     {
         int EvaluateParameterSwitch2()
         {
@@ -1210,10 +1238,10 @@ public sealed class CMenuMonitor : CMenuBase
 
         _setStatusMessage($"Monitor {SelectedTab} H{number + 1:00} selected.");
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectCoordinateBasis(object? parameter)
+    private void SelectCoordinateBasis(object? parameter)
     {
         string EvaluateParameterSwitch3()
         {
@@ -1239,10 +1267,10 @@ public sealed class CMenuMonitor : CMenuBase
 
         _coordinateBasis = normalized;
         _setStatusMessage($"Coordinate viewer basis {GetCoordinateBasisName(normalized)} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectCoordinateCell(object? parameter)
+    private void SelectCoordinateCell(object? parameter)
     {
         int EvaluateParameterSwitch4()
         {
@@ -1264,10 +1292,10 @@ public sealed class CMenuMonitor : CMenuBase
         _coordinateSelectedHoleKey = "";
         _coordinateIsCellDetailVisible = true;
         _setStatusMessage($"Coordinate viewer Cell{_coordinateSelectedCellNo:000} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectCoordinateHole(object? parameter)
+    private void SelectCoordinateHole(object? parameter)
     {
         string EvaluateParameterSwitch5()
         {
@@ -1292,17 +1320,17 @@ public sealed class CMenuMonitor : CMenuBase
 
         _coordinateSelectedHoleKey = holeKey.Trim();
         _setStatusMessage($"Coordinate viewer {_coordinateSelectedHoleKey} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task BackToCoordinateGlassPreview()
+    private void BackToCoordinateGlassPreview()
     {
         _coordinateIsCellDetailVisible = false;
         _setStatusMessage("Coordinate viewer glass preview selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task ExecuteOperation(object? parameter)
+    private void ExecuteOperation(object? parameter)
     {
         var label = GetMonitorOperationLabel(parameter);
 
@@ -1317,25 +1345,25 @@ public sealed class CMenuMonitor : CMenuBase
         switch (SelectedTab)
         {
             case "MOTOR":
-                result = await ExecuteMotorOperation(label);
+                result = ExecuteMotorOperation(label);
                 break;
             case "LASER":
-                result = await ExecuteLaserOperation(label);
+                result = ExecuteLaserOperation(label);
                 break;
             case "CHILLER":
-                result = await ExecuteChillerOperation(label);
+                result = ExecuteChillerOperation(label);
                 break;
             case "ATTENUATOR":
-                result = await ExecuteAttenuatorOperation(label);
+                result = ExecuteAttenuatorOperation(label);
                 break;
             case "BET":
-                result = await ExecuteBETOperation(label);
+                result = ExecuteBETOperation(label);
                 break;
             case "POWER METER":
-                result = await ExecutePowerMeterOperation(label);
+                result = ExecutePowerMeterOperation(label);
                 break;
             case "PICO MOTOR":
-                result = await ExecutePicoMotorOperation(label);
+                result = ExecutePicoMotorOperation(label);
                 break;
             default:
                 result = new ST_DEVICE_COMMAND_RESULT(
@@ -1349,11 +1377,11 @@ public sealed class CMenuMonitor : CMenuBase
         if (SelectedTab is "MOTOR" or "LASER" or "CHILLER" or "ATTENUATOR" or "BET" or "POWER METER" or "PICO MOTOR")
         {
             _refreshShellStatus();
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
         }
     }
 
-    private async Task SetOutput(
+    private void SetOutput(
         object? parameter,
         bool isOn)
     {
@@ -1362,13 +1390,13 @@ public sealed class CMenuMonitor : CMenuBase
             return;
         }
 
-        var result = await _motionManager.SetOutputCommand(address, isOn);
+        var result = _motionManager.SetOutputCommand(address, isOn);
         _setStatusMessage(result.Message);
         _refreshShellStatus();
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectMelsecGroup(object? parameter)
+    private void SelectMelsecGroup(object? parameter)
     {
         if (parameter is ST_MONITOR_MELSEC_GROUP group)
         {
@@ -1384,22 +1412,22 @@ public sealed class CMenuMonitor : CMenuBase
         }
 
         _setStatusMessage($"MELSEC group {_selectedMelsecGroup} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task WriteMelsec(object? parameter)
+    private void WriteMelsec(object? parameter)
     {
         if (parameter is not ST_MONITOR_MELSEC_ROW row)
         {
             return;
         }
 
-        var result = await ExecuteMelsecWrite(row);
+        var result = ExecuteMelsecWrite(row);
         _setStatusMessage(result.Message);
         _refreshShellStatus();
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecuteMelsecWrite(ST_MONITOR_MELSEC_ROW row)
+    private ST_DEVICE_COMMAND_RESULT ExecuteMelsecWrite(ST_MONITOR_MELSEC_ROW row)
     {
         try
         {
@@ -1414,18 +1442,18 @@ public sealed class CMenuMonitor : CMenuBase
             switch (row.DataType)
             {
                 case "BIT":
-                    await _interfaceManager.Melsec.WriteBit(row.Id, ParseMelsecBit(value));
+                    _interfaceManager.Melsec.WriteBit(row.Id, ParseMelsecBit(value));
                     break;
                 case "WORD":
                 case "DWORD":
-                    await _interfaceManager.Melsec.WriteWord(row.Id, int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture));
+                    _interfaceManager.Melsec.WriteWord(row.Id, int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture));
                     break;
                 case "DOUBLE":
                 case "FLOAT":
-                    await _interfaceManager.Melsec.WriteDouble(row.Id, double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture));
+                    _interfaceManager.Melsec.WriteDouble(row.Id, double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture));
                     break;
                 case "STRING":
-                    await _interfaceManager.Melsec.WriteString(row.Id, value);
+                    _interfaceManager.Melsec.WriteString(row.Id, value);
                     break;
                 default:
                     throw new InvalidOperationException($"Unsupported MELSEC write type: {row.DataType}");
@@ -1439,7 +1467,7 @@ public sealed class CMenuMonitor : CMenuBase
         }
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecuteMotorOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecuteMotorOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
@@ -1482,7 +1510,7 @@ public sealed class CMenuMonitor : CMenuBase
 
         if (command.Command is EN_MOTION_COMMAND.Home or EN_MOTION_COMMAND.MoveAbs or EN_MOTION_COMMAND.MoveRel)
         {
-            var interLock = _interLockManager.Evaluate(await GetDeviceStatus(CancellationToken.None));
+            var interLock = _interLockManager.Evaluate(GetDeviceStatus(CancellationToken.None));
 
             if (!interLock.CanManualMove)
             {
@@ -1502,7 +1530,7 @@ public sealed class CMenuMonitor : CMenuBase
             }
         }
 
-        var result = await _motionManager.ExecuteMotionCommand(
+        var result = _motionManager.ExecuteMotionCommand(
             _selectedAxisId,
             command.Command,
             command.Parameter);
@@ -1514,13 +1542,13 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_DEVICE_COMMAND_RESULT(result.IsSuccess, message);
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecuteLaserOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecuteLaserOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
         if (key == "REFRESH")
         {
-            var status = await _interfaceManager.RefreshTalonLaserStatus(_selectedLaserNumber);
+            var status = _interfaceManager.RefreshTalonLaserStatus(_selectedLaserNumber);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"{SelectedLaserName} Talon laser refreshed. Power {status.OutputPower.ToString("F3", CultureInfo.InvariantCulture)} W.");
@@ -1564,11 +1592,11 @@ public sealed class CMenuMonitor : CMenuBase
             return new ST_DEVICE_COMMAND_RESULT(false, $"Unknown Talon monitor command: {label}");
         }
 
-        var result = await _interfaceManager.ExecuteTalonLaserCommand(_selectedLaserNumber, command.Command, command.Parameter);
+        var result = _interfaceManager.ExecuteTalonLaserCommand(_selectedLaserNumber, command.Command, command.Parameter);
 
         if (result.IsSuccess)
         {
-            await _interfaceManager.RefreshTalonLaserStatus(_selectedLaserNumber);
+            _interfaceManager.RefreshTalonLaserStatus(_selectedLaserNumber);
         }
 
         var message = result.IsSuccess
@@ -1578,13 +1606,13 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_DEVICE_COMMAND_RESULT(result.IsSuccess, message);
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecuteChillerOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
         if (key == "REFRESH")
         {
-            var status = await _interfaceManager.RefreshChillerStatus();
+            var status = _interfaceManager.RefreshChillerStatus();
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"Chiller refreshed. Temp {status.LiquidTempC.ToString("F1", CultureInfo.InvariantCulture)} C.");
@@ -1616,11 +1644,11 @@ public sealed class CMenuMonitor : CMenuBase
             return new ST_DEVICE_COMMAND_RESULT(false, $"Unknown Chiller monitor command: {label}");
         }
 
-        var result = await _interfaceManager.ExecuteChillerCommand(command.Command, command.Parameter);
+        var result = _interfaceManager.ExecuteChillerCommand(command.Command, command.Parameter);
 
         if (result.IsSuccess)
         {
-            await _interfaceManager.RefreshChillerStatus();
+            _interfaceManager.RefreshChillerStatus();
         }
 
         var message = result.IsSuccess
@@ -1630,13 +1658,13 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_DEVICE_COMMAND_RESULT(result.IsSuccess, message);
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecuteAttenuatorOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
         if (key == "REFRESH")
         {
-            var status = await _interfaceManager.RefreshAttenuatorStatus(_selectedAttenuatorNumber);
+            var status = _interfaceManager.RefreshAttenuatorStatus(_selectedAttenuatorNumber);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"H{_selectedAttenuatorNumber + 1:00} CONEX_AGP refreshed. Position {status.CurrentPosition.ToString("F3", CultureInfo.InvariantCulture)} DEG.");
@@ -1668,11 +1696,11 @@ public sealed class CMenuMonitor : CMenuBase
             return new ST_DEVICE_COMMAND_RESULT(false, $"Unknown CONEX_AGP monitor command: {label}");
         }
 
-        var result = await _interfaceManager.ExecuteAttenuatorCommand(_selectedAttenuatorNumber, command.Command, command.Parameter);
+        var result = _interfaceManager.ExecuteAttenuatorCommand(_selectedAttenuatorNumber, command.Command, command.Parameter);
 
         if (result.IsSuccess)
         {
-            await _interfaceManager.RefreshAttenuatorStatus(_selectedAttenuatorNumber);
+            _interfaceManager.RefreshAttenuatorStatus(_selectedAttenuatorNumber);
         }
 
         var message = result.IsSuccess
@@ -1682,13 +1710,13 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_DEVICE_COMMAND_RESULT(result.IsSuccess, message);
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecuteBETOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
         if (key == "REFRESH")
         {
-            var status = await _interfaceManager.RefreshBETStatus(_selectedBetNumber);
+            var status = _interfaceManager.RefreshBETStatus(_selectedBetNumber);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"H{_selectedBetNumber + 1:00} BET refreshed. MAG {status.CurrentMagnification.ToString("F3", CultureInfo.InvariantCulture)}, DIV {status.CurrentDivergence.ToString("F3", CultureInfo.InvariantCulture)}.");
@@ -1696,7 +1724,7 @@ public sealed class CMenuMonitor : CMenuBase
 
         if (key == "SAVETABLE")
         {
-            await _interfaceManager.SaveBETData(CreateBETTableData(BetTableRows));
+            _interfaceManager.SaveBETData(CreateBETTableData(BetTableRows));
             return new ST_DEVICE_COMMAND_RESULT(true, "BET TABLE saved to JHMI_BET.csv.");
         }
 
@@ -1714,14 +1742,14 @@ public sealed class CMenuMonitor : CMenuBase
             }
 
             var tableIndex = Math.Max(0, tableNo);
-            var tableResult = await _interfaceManager.ExecuteBETCommand(
+            var tableResult = _interfaceManager.ExecuteBETCommand(
                 _selectedBetNumber,
                 EN_BET_COMMAND.MoveTable,
                 tableIndex);
 
             if (tableResult.IsSuccess)
             {
-                await _interfaceManager.RefreshBETStatus(_selectedBetNumber);
+                _interfaceManager.RefreshBETStatus(_selectedBetNumber);
             }
 
             var tableMessage = tableResult.IsSuccess
@@ -1760,11 +1788,11 @@ public sealed class CMenuMonitor : CMenuBase
             return new ST_DEVICE_COMMAND_RESULT(false, $"Unknown BET monitor command: {label}");
         }
 
-        var result = await _interfaceManager.ExecuteBETCommand(_selectedBetNumber, command.Command, command.Parameter1, command.Parameter2);
+        var result = _interfaceManager.ExecuteBETCommand(_selectedBetNumber, command.Command, command.Parameter1, command.Parameter2);
 
         if (result.IsSuccess)
         {
-            await _interfaceManager.RefreshBETStatus(_selectedBetNumber);
+            _interfaceManager.RefreshBETStatus(_selectedBetNumber);
         }
 
         var message = result.IsSuccess
@@ -1774,13 +1802,13 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_DEVICE_COMMAND_RESULT(result.IsSuccess, message);
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecutePowerMeterOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
         if (key == "REFRESH")
         {
-            var status = await _interfaceManager.RefreshPowerMeterStatus();
+            var status = _interfaceManager.RefreshPowerMeterStatus();
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"PowerMeter refreshed. Power {status.MeasuredPower.ToString("F4", CultureInfo.InvariantCulture)} {status.Unit}.");
@@ -1788,53 +1816,53 @@ public sealed class CMenuMonitor : CMenuBase
 
         if (key == "CREATEPROCESS")
         {
-            return await CreatePowerMeterProcess();
+            return CreatePowerMeterProcess();
         }
 
         if (key == "DELETEPROCESS")
         {
-            return await DeletePowerMeterProcess();
+            return DeletePowerMeterProcess();
         }
 
         if (key == "RENAMEPROCESS")
         {
-            return await RenamePowerMeterProcess();
+            return RenamePowerMeterProcess();
         }
 
         if (key == "SAVEPROCESS")
         {
-            return await CommitCurrentPowerMeterStepEdit(refreshScreen: true);
+            return CommitCurrentPowerMeterStepEdit(refreshScreen: true);
         }
 
         if (key == "ADDSTEP")
         {
-            return await AddPowerMeterStep(copySelectedStep: false);
+            return AddPowerMeterStep(copySelectedStep: false);
         }
 
         if (key == "COPYSTEP")
         {
-            return await AddPowerMeterStep(copySelectedStep: true);
+            return AddPowerMeterStep(copySelectedStep: true);
         }
 
         if (key == "DELETESTEP")
         {
-            return await DeleteSelectedPowerMeterStep();
+            return DeleteSelectedPowerMeterStep();
         }
 
         if (key == "DELETEALL")
         {
-            return await DeleteAllPowerMeterSteps();
+            return DeleteAllPowerMeterSteps();
         }
 
         if (key == "START")
         {
-            return await RunPowerMeterMeasureSequence();
+            return RunPowerMeterMeasureSequence();
         }
 
         if (key == "STOP")
         {
             _powerMeterMeasureCts?.Cancel();
-            var stopResult = await _interfaceManager.ExecutePowerMeterCommand(EN_POWER_METER_COMMAND.StopStreaming);
+            var stopResult = _interfaceManager.ExecutePowerMeterCommand(EN_POWER_METER_COMMAND.StopStreaming);
             return stopResult.IsSuccess
                 ? new ST_DEVICE_COMMAND_RESULT(true, "PowerMeter measure sequence stopped.")
                 : new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter stop failed. {stopResult.Message}");
@@ -1866,11 +1894,11 @@ public sealed class CMenuMonitor : CMenuBase
             return new ST_DEVICE_COMMAND_RESULT(false, $"Unknown PowerMeter monitor command: {label}");
         }
 
-        var result = await _interfaceManager.ExecutePowerMeterCommand(command.Command, command.Parameter);
+        var result = _interfaceManager.ExecutePowerMeterCommand(command.Command, command.Parameter);
 
         if (result.IsSuccess)
         {
-            await _interfaceManager.RefreshPowerMeterStatus();
+            _interfaceManager.RefreshPowerMeterStatus();
         }
 
         var message = result.IsSuccess
@@ -1880,7 +1908,7 @@ public sealed class CMenuMonitor : CMenuBase
         return new ST_DEVICE_COMMAND_RESULT(result.IsSuccess, message);
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorOperation(string label)
+    private ST_DEVICE_COMMAND_RESULT ExecutePicoMotorOperation(string label)
     {
         var key = NormalizeMonitorOperation(label);
 
@@ -1900,7 +1928,7 @@ public sealed class CMenuMonitor : CMenuBase
         {
             _selectedPicoMotorNo = key[^1] - '0';
             OnPropertyChanged(nameof(PicoMotorSelectButtons));
-            return await _interfaceManager.ExecutePicoMotorCommand(
+            return _interfaceManager.ExecutePicoMotorCommand(
                 EN_PICO_MOTOR_COMMAND.SelectMotor,
                 _selectedPicoMotorNo);
         }
@@ -1912,7 +1940,7 @@ public sealed class CMenuMonitor : CMenuBase
                 return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR is disconnected. Connect first.");
             }
 
-            if (_picoAllMoveTask is { IsCompleted: false })
+            if (_picoOperationThread.IsAllMoveRunning)
             {
                 return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR ALL_MOVE is already running.");
             }
@@ -1935,7 +1963,10 @@ public sealed class CMenuMonitor : CMenuBase
                 return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR ALL_MOVE Set Count must be greater than 0.");
             }
 
-            _picoAllMoveTask = RunPicoMotorAllMove(selectedMotors, position, setCount);
+            if (!_picoOperationThread.TryQueueAllMove(selectedMotors, position, setCount))
+            {
+                return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR ALL_MOVE is already running.");
+            }
             return new ST_DEVICE_COMMAND_RESULT(true, "PICO_MOTOR ALL_MOVE started.");
         }
         (EN_PICO_MOTOR_COMMAND, double) EvaluateKeySwitch12()
@@ -1990,18 +2021,24 @@ public sealed class CMenuMonitor : CMenuBase
             or EN_PICO_MOTOR_COMMAND.MoveRelativePositive
             or EN_PICO_MOTOR_COMMAND.MoveAbsolute;
 
-        if (isPositionMove && _picoMotionTask is { IsCompleted: false })
+        if (isPositionMove && _picoOperationThread.IsPositionRunning)
         {
             return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR motion is already running.");
         }
 
         if (isPositionMove)
         {
-            _picoMotionTask = RunPicoMotorPositionMove(command.Item1, _selectedPicoMotorNo, command.Item2);
+            if (!_picoOperationThread.TryQueuePosition(
+                command.Item1,
+                _selectedPicoMotorNo,
+                command.Item2))
+            {
+                return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR motion is already running.");
+            }
             return new ST_DEVICE_COMMAND_RESULT(true, $"PICO_MOTOR {label} started.");
         }
 
-        var result = await _interfaceManager.ExecutePicoMotorCommand(
+        var result = _interfaceManager.ExecutePicoMotorCommand(
             command.Item1,
             _selectedPicoMotorNo,
             command.Item2);
@@ -2021,7 +2058,7 @@ public sealed class CMenuMonitor : CMenuBase
         return result;
     }
 
-    private async Task StartPicoJog(object? parameter)
+    private void StartPicoJog(object? parameter)
     {
         if (SelectedTab != "PICO MOTOR" || !_picoMotorIsConnected)
         {
@@ -2034,53 +2071,45 @@ public sealed class CMenuMonitor : CMenuBase
             ? EN_PICO_MOTOR_COMMAND.JogPositive
             : EN_PICO_MOTOR_COMMAND.JogNegative;
 
-        await _picoJogCommandLock.WaitAsync();
-        try
+        lock (_picoJogCommandLock)
         {
             _picoJogCancellationSource?.Cancel();
             _picoJogCancellationSource?.Dispose();
             _picoJogCancellationSource = new CancellationTokenSource();
 
-            var result = await _interfaceManager.ExecutePicoMotorCommand(command, _selectedPicoMotorNo);
+            var result = _interfaceManager.ExecutePicoMotorCommand(command, _selectedPicoMotorNo);
             _setStatusMessage(result.IsSuccess
                 ? $"PICO_MOTOR {label} started."
                 : $"PICO_MOTOR {label} failed. {result.Message}");
 
             if (result.IsSuccess && IsPicoMotorSimulation())
             {
-                _ = RunPicoJogSimulation(command, _picoJogCancellationSource.Token);
+                _picoOperationThread.QueueJogSimulation(
+                    command,
+                    _picoJogCancellationSource.Token);
             }
-        }
-        finally
-        {
-            _picoJogCommandLock.Release();
         }
     }
 
-    private async Task StopPicoJog()
+    private void StopPicoJog()
     {
         if (SelectedTab != "PICO MOTOR")
         {
             return;
         }
 
-        await _picoJogCommandLock.WaitAsync();
-        try
+        lock (_picoJogCommandLock)
         {
             _picoJogCancellationSource?.Cancel();
             _picoJogCancellationSource?.Dispose();
             _picoJogCancellationSource = null;
 
-            var result = await _interfaceManager.ExecutePicoMotorCommand(
+            var result = _interfaceManager.ExecutePicoMotorCommand(
                 EN_PICO_MOTOR_COMMAND.StopMotion,
                 _selectedPicoMotorNo);
             _setStatusMessage(result.IsSuccess
                 ? "PICO_MOTOR JOG stopped."
                 : $"PICO_MOTOR JOG stop failed. {result.Message}");
-        }
-        finally
-        {
-            _picoJogCommandLock.Release();
         }
     }
 
@@ -2097,7 +2126,7 @@ public sealed class CMenuMonitor : CMenuBase
         return data is not null && _interfaceManager.IsSimul(data.Device, data.Number);
     }
 
-    private async Task RunPicoJogSimulation(
+    private void RunPicoJogSimulation(
         EN_PICO_MOTOR_COMMAND command,
         CancellationToken cancellationToken)
     {
@@ -2105,35 +2134,32 @@ public sealed class CMenuMonitor : CMenuBase
         {
             while (!cancellationToken.IsCancellationRequested && SelectedTab == "PICO MOTOR")
             {
-                await Task.Delay(300, cancellationToken);
-                await _interfaceManager.ExecutePicoMotorCommand(
+                if (cancellationToken.WaitHandle.WaitOne(300))
+                {
+                    break;
+                }
+                _interfaceManager.ExecutePicoMotorCommand(
                     command,
                     _selectedPicoMotorNo,
                     0.001,
                     cancellationToken);
-                await RefreshPicoMotorValuesIfVisible(cancellationToken);
+                RefreshPicoMotorValuesIfVisible(cancellationToken);
             }
         }
         catch (OperationCanceledException)
         {
+            System.Diagnostics.Debug.WriteLine("PicoMotor simulation jog canceled.");
         }
     }
 
-    private async Task RunPicoMotorAllMove(
+    private void RunPicoMotorAllMove(
         IReadOnlyList<int> selectedMotors,
         double position,
         int setCount)
     {
         try
         {
-            var operation = _interfaceManager.ExecutePicoMotorAllMove(selectedMotors, position, setCount);
-            while (!operation.IsCompleted)
-            {
-                await Task.Delay(500);
-                await RefreshPicoMotorValuesIfVisible(CancellationToken.None);
-            }
-
-            var result = await operation;
+            var result = _interfaceManager.ExecutePicoMotorAllMove(selectedMotors, position, setCount);
             _setStatusMessage(result.Message);
         }
         catch (Exception ex)
@@ -2142,25 +2168,18 @@ public sealed class CMenuMonitor : CMenuBase
         }
         finally
         {
-            await RefreshPicoMotorValuesIfVisible(CancellationToken.None);
+            RefreshPicoMotorValuesIfVisible(CancellationToken.None);
         }
     }
 
-    private async Task RunPicoMotorPositionMove(
+    private void RunPicoMotorPositionMove(
         EN_PICO_MOTOR_COMMAND command,
         int motorNo,
         double parameter)
     {
         try
         {
-            var operation = _interfaceManager.ExecutePicoMotorCommand(command, motorNo, parameter);
-            while (!operation.IsCompleted)
-            {
-                await Task.Delay(100);
-                await RefreshPicoMotorValuesIfVisible(CancellationToken.None);
-            }
-
-            var result = await operation;
+            var result = _interfaceManager.ExecutePicoMotorCommand(command, motorNo, parameter);
             _setStatusMessage(result.Message);
         }
         catch (Exception ex)
@@ -2169,18 +2188,18 @@ public sealed class CMenuMonitor : CMenuBase
         }
         finally
         {
-            await RefreshPicoMotorValuesIfVisible(CancellationToken.None);
+            RefreshPicoMotorValuesIfVisible(CancellationToken.None);
         }
     }
 
-    private async Task RefreshPicoMotorValuesIfVisible(CancellationToken cancellationToken)
+    private void RefreshPicoMotorValuesIfVisible(CancellationToken cancellationToken)
     {
         if (SelectedTab != "PICO MOTOR")
         {
             return;
         }
 
-        var status = await _interfaceManager.GetPicoMotorStatus(cancellationToken);
+        var status = _interfaceManager.GetPicoMotorStatus(cancellationToken);
         _selectedPicoMotorNo = Math.Clamp(status.SelectedMotorNo, 1, 4);
         _picoMotorIsConnected = status.IsConnected;
         StatusRows = CreatePicoMotorStatusRows(status);
@@ -2202,12 +2221,12 @@ public sealed class CMenuMonitor : CMenuBase
         SetOperationFieldValue("Cur Count", status.AllMoveCurrentCount.ToString(CultureInfo.InvariantCulture));
     }
 
-    private async Task<ST_MONITOR_COORDINATE_VIEWER_DATA> BuildCoordinateViewerData(CancellationToken cancellationToken)
+    private ST_MONITOR_COORDINATE_VIEWER_DATA BuildCoordinateViewerData(CancellationToken cancellationToken)
     {
-        var recipe = await LoadSelectedCoordinateRecipe(cancellationToken);
+        var recipe = LoadSelectedCoordinateRecipe(cancellationToken);
         var settings = new List<ST_SYSTEM_PARAMETER>();
-        settings.AddRange(await _settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken));
-        settings.AddRange(await _settingManager.LoadSection(EN_SETTING_TAB.Motor, cancellationToken));
+        settings.AddRange(_settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken));
+        settings.AddRange(_settingManager.LoadSection(EN_SETTING_TAB.Motor, cancellationToken));
         var basis = NormalizeCoordinateBasis(_coordinateBasis);
         _coordinateBasis = string.IsNullOrWhiteSpace(basis) ? "DESIGN" : basis;
 
@@ -2323,9 +2342,9 @@ public sealed class CMenuMonitor : CMenuBase
             GetCoordinateBasisDescription(_coordinateBasis));
     }
 
-    private async Task<ST_RECIPE_DATA?> LoadSelectedCoordinateRecipe(CancellationToken cancellationToken)
+    private ST_RECIPE_DATA? LoadSelectedCoordinateRecipe(CancellationToken cancellationToken)
     {
-        var recipes = await _recipeManager.LoadRecipes(cancellationToken);
+        var recipes = _recipeManager.LoadRecipes(cancellationToken);
         var selectedRecipeId = (_selectedRecipeIdProvider() ?? "").Trim();
         bool MatchRecipe36(ST_RECIPE_DATA recipe)
         {
@@ -3121,9 +3140,9 @@ public sealed class CMenuMonitor : CMenuBase
         }
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> CreatePowerMeterProcess()
+    private ST_DEVICE_COMMAND_RESULT CreatePowerMeterProcess()
     {
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
         string SelectProcess52(ST_POWER_METER_PROCESS_DATA process)
         {
             return process.FileName;
@@ -3148,10 +3167,10 @@ HandleProcessName53);
 
         try
         {
-            await _interfaceManager.CreatePowerMeterData(processName);
+            _interfaceManager.CreatePowerMeterData(processName);
             _selectedPowerMeterProcessName = NormalizePowerMeterFileName(processName);
             _selectedPowerMeterStepNo = 1;
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
             return new ST_DEVICE_COMMAND_RESULT(true, $"PowerMeter process created: {_selectedPowerMeterProcessName}");
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
@@ -3160,9 +3179,9 @@ HandleProcessName53);
         }
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> DeletePowerMeterProcess()
+    private ST_DEVICE_COMMAND_RESULT DeletePowerMeterProcess()
     {
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
         var processName = string.IsNullOrWhiteSpace(_selectedPowerMeterProcessName)
             ? table.SelectedFileName
             : _selectedPowerMeterProcessName;
@@ -3179,10 +3198,10 @@ HandleProcessName53);
 
         try
         {
-            await _interfaceManager.DeletePowerMeterData(processName);
+            _interfaceManager.DeletePowerMeterData(processName);
             _selectedPowerMeterProcessName = "";
             _selectedPowerMeterStepNo = 1;
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
             return new ST_DEVICE_COMMAND_RESULT(true, $"PowerMeter process deleted: {processName}");
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
@@ -3191,9 +3210,9 @@ HandleProcessName53);
         }
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> RenamePowerMeterProcess()
+    private ST_DEVICE_COMMAND_RESULT RenamePowerMeterProcess()
     {
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
         var oldName = string.IsNullOrWhiteSpace(_selectedPowerMeterProcessName)
             ? table.SelectedFileName
             : _selectedPowerMeterProcessName;
@@ -3226,9 +3245,9 @@ HandleNewName55);
 
         try
         {
-            await _interfaceManager.RenamePowerMeterData(oldName, newName);
+            _interfaceManager.RenamePowerMeterData(oldName, newName);
             _selectedPowerMeterProcessName = NormalizePowerMeterFileName(newName);
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
             return new ST_DEVICE_COMMAND_RESULT(true, $"PowerMeter process renamed: {oldName} -> {_selectedPowerMeterProcessName}");
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException)
@@ -3237,22 +3256,22 @@ HandleNewName55);
         }
     }
 
-    private async Task SelectPowerMeterProcess(string processName)
+    private void SelectPowerMeterProcess(string processName)
     {
         _selectedPowerMeterProcessName = processName;
         _selectedPowerMeterStepNo = 1;
         _setStatusMessage($"PowerMeter process {processName} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task SelectPowerMeterStep(int stepNo)
+    private void SelectPowerMeterStep(int stepNo)
     {
         _selectedPowerMeterStepNo = stepNo;
         _setStatusMessage($"PowerMeter step {stepNo:000} selected.");
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> CommitCurrentPowerMeterStepEdit(
+    private ST_DEVICE_COMMAND_RESULT CommitCurrentPowerMeterStepEdit(
         bool refreshScreen = false)
     {
         if (PwmSettingRows.Count == 0)
@@ -3260,7 +3279,7 @@ HandleNewName55);
             return new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter step save skipped. No editable step is loaded.");
         }
 
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
         bool MatchStep56(ST_POWER_METER_STEP_DATA step)
         {
             return step.StepNo == _selectedPowerMeterStepNo;
@@ -3289,18 +3308,18 @@ HandleNewName55);
             .OrderBy(GetStepSortKey58)
             .ToArray();
 
-        await _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
+        _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
         if (refreshScreen)
         {
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
         }
 
         return new ST_DEVICE_COMMAND_RESULT(true, $"PowerMeter step {editedStep.StepNo:000} updated.");
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> AddPowerMeterStep(bool copySelectedStep)
+    private ST_DEVICE_COMMAND_RESULT AddPowerMeterStep(bool copySelectedStep)
     {
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
         int HandleNextStepNo59(ST_POWER_METER_STEP_DATA step)
         {
             return step.StepNo;
@@ -3345,16 +3364,16 @@ HandleNewName55);
             .OrderBy(GetStepSortKey61)
             .ToArray();
 
-        await _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
+        _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
         _selectedPowerMeterStepNo = newStep.StepNo;
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
 
         return new ST_DEVICE_COMMAND_RESULT(true, $"PowerMeter step {newStep.StepNo:000} added.");
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> DeleteSelectedPowerMeterStep()
+    private ST_DEVICE_COMMAND_RESULT DeleteSelectedPowerMeterStep()
     {
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
         bool CheckStep62(ST_POWER_METER_STEP_DATA step)
         {
             return step.StepNo != _selectedPowerMeterStepNo;
@@ -3372,30 +3391,40 @@ HandleNewName55);
         var steps = RenumberPowerMeterSteps(table.Steps
             .Where(FilterStep63)
             .ToArray());
-        await _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
+        _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
         _selectedPowerMeterStepNo = Math.Clamp(_selectedPowerMeterStepNo, 1, Math.Max(1, steps.Count));
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
 
         return new ST_DEVICE_COMMAND_RESULT(true, "PowerMeter selected step deleted.");
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> DeleteAllPowerMeterSteps()
+    private ST_DEVICE_COMMAND_RESULT DeleteAllPowerMeterSteps()
     {
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
 
         if (!ConfirmPowerMeterDelete(table.SelectedFileName, "all measure steps"))
         {
             return new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter step delete all canceled.");
         }
 
-        await _interfaceManager.SavePowerMeterData(table.SelectedFileName, []);
+        _interfaceManager.SavePowerMeterData(table.SelectedFileName, []);
         _selectedPowerMeterStepNo = 1;
-        await _refreshCurrentScreen();
+        _refreshCurrentScreen();
 
         return new ST_DEVICE_COMMAND_RESULT(true, "PowerMeter all steps deleted.");
     }
 
-    private async Task<ST_DEVICE_COMMAND_RESULT> RunPowerMeterMeasureSequence()
+    private ST_DEVICE_COMMAND_RESULT RunPowerMeterMeasureSequence()
+    {
+        if (!_powerMeterSequenceThread.TryStartSequence())
+        {
+            return new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter measure sequence is already running.");
+        }
+
+        return new ST_DEVICE_COMMAND_RESULT(true, "PowerMeter measure sequence started.");
+    }
+
+    private ST_DEVICE_COMMAND_RESULT ExecutePowerMeterMeasureSequence()
     {
         if (_powerMeterMeasureCts is not null)
         {
@@ -3404,14 +3433,14 @@ HandleNewName55);
 
         if (PwmSettingRows.Count > 0)
         {
-            var saveResult = await CommitCurrentPowerMeterStepEdit(refreshScreen: false);
+            var saveResult = CommitCurrentPowerMeterStepEdit(refreshScreen: false);
             if (!saveResult.IsSuccess)
             {
                 return saveResult;
             }
         }
 
-        var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        var table = _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
 
         if (table.Steps.Count == 0)
         {
@@ -3426,7 +3455,7 @@ HandleNewName55);
         try
         {
             var waveLength = ReadPwmSetting("WAVELENGTH", 355.0);
-            var waveLengthResult = await _interfaceManager.ExecutePowerMeterCommand(
+            var waveLengthResult = _interfaceManager.ExecutePowerMeterCommand(
                 EN_POWER_METER_COMMAND.SetWaveLength,
                 waveLength,
                 cancellationToken);
@@ -3465,45 +3494,45 @@ HandleNewName55);
                 if (!step.PowerOut)
                 {
                     steps[stepIndex] = step with { State = "SKIP" };
-                    await SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
+                    SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
                     continue;
                 }
 
                 steps[stepIndex] = step with { State = "RUN" };
-                await SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
-                await DelayPowerMeterStep(step.StartDelayMs, cancellationToken);
+                SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
+                DelayPowerMeterStep(step.StartDelayMs, cancellationToken);
 
                 var samples = new List<double>();
                 var cycleCount = step.MeasureCycle;
                 if (cycleCount <= 0)
                 {
                     steps[stepIndex] = step with { State = "ERROR" };
-                    await SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
+                    SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
                     return new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter measure cycle must be greater than 0 at step {step.StepNo:000}.");
                 }
 
                 for (var cycle = 0; cycle < cycleCount; cycle++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    await DelayPowerMeterStep(step.MeasureTimeMs, cancellationToken);
+                    DelayPowerMeterStep(step.MeasureTimeMs, cancellationToken);
 
-                    var result = await _interfaceManager.ExecutePowerMeterCommand(
+                    var result = _interfaceManager.ExecutePowerMeterCommand(
                         EN_POWER_METER_COMMAND.ReadPower,
                         cancellationToken: cancellationToken);
 
                     if (!result.IsSuccess)
                     {
                         steps[stepIndex] = step with { State = "ERROR" };
-                        await SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
+                        SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
                         return new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter read failed at step {step.StepNo:000}. {result.Message}");
                     }
 
-                    var status = await _interfaceManager.GetPowerMeterStatus(cancellationToken);
+                    var status = _interfaceManager.GetPowerMeterStatus(cancellationToken);
                     samples.Add(status.MeasuredPower);
 
                     if (cycle + 1 < cycleCount)
                     {
-                        await DelayPowerMeterStep(step.MeasureIntervalMs, cancellationToken);
+                        DelayPowerMeterStep(step.MeasureIntervalMs, cancellationToken);
                     }
                 }
 
@@ -3514,8 +3543,8 @@ HandleNewName55);
                     MeasurePower = lastPower,
                     State = "OK"
                 };
-                await SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
-                await DelayPowerMeterStep(step.CoolingTimeMs, cancellationToken);
+                SavePowerMeterRunState(table.SelectedFileName, steps, cancellationToken);
+                DelayPowerMeterStep(step.CoolingTimeMs, cancellationToken);
             }
 
             return new ST_DEVICE_COMMAND_RESULT(
@@ -3524,7 +3553,7 @@ HandleNewName55);
         }
         catch (OperationCanceledException)
         {
-            await _refreshCurrentScreen();
+            _refreshCurrentScreen();
             return new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter measure sequence stopped.");
         }
         finally
@@ -3577,22 +3606,25 @@ HandleNewName55);
             : defaultValue;
     }
 
-    private async Task SavePowerMeterRunState(
+    private void SavePowerMeterRunState(
         string processFile,
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
         CancellationToken cancellationToken)
     {
-        await _interfaceManager.SavePowerMeterData(processFile, steps, cancellationToken);
-        await _refreshCurrentScreen();
+        _interfaceManager.SavePowerMeterData(processFile, steps, cancellationToken);
+        _refreshCurrentScreen();
     }
 
-    private static async Task DelayPowerMeterStep(
+    private static void DelayPowerMeterStep(
         int milliseconds,
         CancellationToken cancellationToken)
     {
         if (milliseconds > 0)
         {
-            await Task.Delay(milliseconds, cancellationToken);
+            if (cancellationToken.WaitHandle.WaitOne(milliseconds))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 
@@ -5616,13 +5648,13 @@ HandleFields84,
         }
     }
 
-    private async Task<(ST_PRODUCT_DATA? Product, IReadOnlyList<ST_PRODUCT_HISTORY> History, string Error)> LoadProductDisplay(
+    private (ST_PRODUCT_DATA? Product, IReadOnlyList<ST_PRODUCT_HISTORY> History, string Error) LoadProductDisplay(
         CancellationToken cancellationToken)
     {
         try
         {
-            var product = _productManager.Current ?? await _productManager.LoadActive(cancellationToken);
-            var history = await _productManager.LoadHistory(80, 14, cancellationToken);
+            var product = _productManager.Current ?? _productManager.LoadActive(cancellationToken);
+            var history = _productManager.LoadHistory(80, 14, cancellationToken);
             return (product, history, "");
         }
         catch (Exception ex)
@@ -6075,6 +6107,243 @@ HandleFields84,
     {
         return state.Contains("MOV", StringComparison.OrdinalIgnoreCase) ||
             state.Contains("HOM", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class CPowerMeterSequenceThread : CtrlThread
+    {
+        private readonly CMenuMonitor mobjOwner;
+        private readonly object mobjStateLock = new object();
+        private bool mblnSequenceRequested;
+
+        public CPowerMeterSequenceThread(CMenuMonitor owner)
+        {
+            mobjOwner = owner;
+        }
+
+        public void Start()
+        {
+            base.Start(10, "PowerMeterSequence");
+        }
+
+        public bool TryStartSequence()
+        {
+            lock (mobjStateLock)
+            {
+                if (mblnSequenceRequested)
+                {
+                    return false;
+                }
+
+                mblnSequenceRequested = true;
+                return true;
+            }
+        }
+
+        public override void Run()
+        {
+            lock (mobjStateLock)
+            {
+                if (!mblnSequenceRequested)
+                {
+                    return;
+                }
+            }
+
+            try
+            {
+                ST_DEVICE_COMMAND_RESULT result = mobjOwner.ExecutePowerMeterMeasureSequence();
+                mobjOwner._setStatusMessage(result.Message);
+            }
+            catch (Exception exception)
+            {
+                mobjOwner._setStatusMessage(
+                    "PowerMeter measure sequence failed. " + exception.Message);
+            }
+            finally
+            {
+                lock (mobjStateLock)
+                {
+                    mblnSequenceRequested = false;
+                }
+            }
+        }
+    }
+
+    private enum EN_PICO_OPERATION_TYPE
+    {
+        AllMove,
+        Position,
+        JogSimulation
+    }
+
+    private sealed class CPicoOperationRequest
+    {
+        public EN_PICO_OPERATION_TYPE OperationType { get; init; }
+        public IReadOnlyList<int> MotorNumbers { get; init; } = [];
+        public EN_PICO_MOTOR_COMMAND Command { get; init; }
+        public int MotorNumber { get; init; }
+        public double Position { get; init; }
+        public int Count { get; init; }
+        public CancellationToken CancellationToken { get; init; }
+    }
+
+    private sealed class CPicoOperationThread : CtrlThread
+    {
+        private readonly CMenuMonitor mobjOwner;
+        private readonly object mobjQueueLock = new object();
+        private readonly Queue<CPicoOperationRequest> mobjQueue = new Queue<CPicoOperationRequest>();
+        private bool mblnAllMoveRunning;
+        private bool mblnPositionRunning;
+
+        public CPicoOperationThread(CMenuMonitor owner)
+        {
+            mobjOwner = owner;
+        }
+
+        public bool IsAllMoveRunning
+        {
+            get
+            {
+                lock (mobjQueueLock)
+                {
+                    return mblnAllMoveRunning;
+                }
+            }
+        }
+
+        public bool IsPositionRunning
+        {
+            get
+            {
+                lock (mobjQueueLock)
+                {
+                    return mblnPositionRunning;
+                }
+            }
+        }
+
+        public void Start()
+        {
+            base.Start(10, "PicoMotorOperation");
+        }
+
+        public bool TryQueueAllMove(
+            IReadOnlyList<int> motorNumbers,
+            double position,
+            int count)
+        {
+            lock (mobjQueueLock)
+            {
+                if (mblnAllMoveRunning)
+                {
+                    return false;
+                }
+
+                mblnAllMoveRunning = true;
+                mobjQueue.Enqueue(new CPicoOperationRequest
+                {
+                    OperationType = EN_PICO_OPERATION_TYPE.AllMove,
+                    MotorNumbers = motorNumbers.ToArray(),
+                    Position = position,
+                    Count = count
+                });
+                return true;
+            }
+        }
+
+        public bool TryQueuePosition(
+            EN_PICO_MOTOR_COMMAND command,
+            int motorNumber,
+            double position)
+        {
+            lock (mobjQueueLock)
+            {
+                if (mblnPositionRunning)
+                {
+                    return false;
+                }
+
+                mblnPositionRunning = true;
+                mobjQueue.Enqueue(new CPicoOperationRequest
+                {
+                    OperationType = EN_PICO_OPERATION_TYPE.Position,
+                    Command = command,
+                    MotorNumber = motorNumber,
+                    Position = position
+                });
+                return true;
+            }
+        }
+
+        public void QueueJogSimulation(
+            EN_PICO_MOTOR_COMMAND command,
+            CancellationToken cancellationToken)
+        {
+            lock (mobjQueueLock)
+            {
+                mobjQueue.Enqueue(new CPicoOperationRequest
+                {
+                    OperationType = EN_PICO_OPERATION_TYPE.JogSimulation,
+                    Command = command,
+                    CancellationToken = cancellationToken
+                });
+            }
+        }
+
+        public override void Run()
+        {
+            CPicoOperationRequest? request = null;
+            lock (mobjQueueLock)
+            {
+                if (mobjQueue.Count > 0)
+                {
+                    request = mobjQueue.Dequeue();
+                }
+            }
+
+            if (request is null)
+            {
+                return;
+            }
+
+            try
+            {
+                switch (request.OperationType)
+                {
+                    case EN_PICO_OPERATION_TYPE.AllMove:
+                        mobjOwner.RunPicoMotorAllMove(
+                            request.MotorNumbers,
+                            request.Position,
+                            request.Count);
+                        break;
+                    case EN_PICO_OPERATION_TYPE.Position:
+                        mobjOwner.RunPicoMotorPositionMove(
+                            request.Command,
+                            request.MotorNumber,
+                            request.Position);
+                        break;
+                    case EN_PICO_OPERATION_TYPE.JogSimulation:
+                        mobjOwner.RunPicoJogSimulation(
+                            request.Command,
+                            request.CancellationToken);
+                        break;
+                }
+            }
+            finally
+            {
+                lock (mobjQueueLock)
+                {
+                    if (request.OperationType == EN_PICO_OPERATION_TYPE.AllMove)
+                    {
+                        mblnAllMoveRunning = false;
+                    }
+                    else if (request.OperationType == EN_PICO_OPERATION_TYPE.Position)
+                    {
+                        mblnPositionRunning = false;
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -7391,8 +7660,3 @@ internal static class CMonitorIcon
         return geometry;
     }
 }
-
-
-
-
-

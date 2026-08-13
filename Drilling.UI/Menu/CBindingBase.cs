@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Windows;
 
 namespace Drilling.UI.Menu;
 
@@ -209,6 +210,14 @@ public abstract class CBindingBase
 
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
     {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            Action<string?> dispatchPropertyChanged = OnPropertyChanged;
+            dispatcher.Invoke(dispatchPropertyChanged, propertyName);
+            return;
+        }
+
         switch (propertyName)
         {
             case "AllManagedItems":

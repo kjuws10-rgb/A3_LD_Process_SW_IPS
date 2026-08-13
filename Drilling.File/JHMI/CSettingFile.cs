@@ -39,7 +39,7 @@ public sealed class CSettingFile(string configRoot) : CSettingFileBase
     private readonly string _settingDirectory = Path.Combine(configRoot, "Setting");
     private readonly CLogManager _logManager = new(configRoot);
 
-    public override Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
+    public override IReadOnlyList<ST_SYSTEM_PARAMETER> Load(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
     {
@@ -82,10 +82,10 @@ public sealed class CSettingFile(string configRoot) : CSettingFileBase
             .Select(SelectItem3)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<ST_SYSTEM_PARAMETER>>(parameters);
+        return parameters;
     }
 
-    public override Task Save(
+    public override void Save(
         EN_SETTING_TAB section,
         IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
         CancellationToken cancellationToken = default)
@@ -194,15 +194,15 @@ HandleEditedValues8,
 
         _logManager.WriteSettingSave(section);
 
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
+    public override IReadOnlyList<ST_SETTING_HISTORY> LoadHistory(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_logManager.ReadSettingRecent(section));
+        return _logManager.ReadSettingRecent(section);
     }
 
     private IReadOnlyList<ST_SETTING_FORM_ITEM> LoadFormItems()
@@ -597,10 +597,3 @@ ToDictionaryGroupCallback19,
         int DisplayOrder,
         IReadOnlyDictionary<string, string>? Extra = null);
 }
-
-
-
-
-
-
-

@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -26,7 +26,7 @@ public sealed class CMenuMain(
     Func<IReadOnlySet<int>> selectedPreviewHeadNosProvider,
     CButtonCommand togglePreviewHeadCommand,
     Action<string> statusReporter,
-    Func<Task> refreshCurrentScreen) : CMenuBase
+    Action refreshCurrentScreen) : CMenuBase
 {
     private const string AutoStepPowerCheck = "POWER_CHECK";
     private const string AutoStepAlign = "ALIGN";
@@ -93,6 +93,11 @@ public sealed class CMenuMain(
         {
             return EN_MENU.Main;
         }
+    }
+
+    public override void Shutdown()
+    {
+        _scannerStatusPollingService.Stop();
     }
 
     public IReadOnlyList<ST_HEAD_PREVIEW> HeadPreviews { get; private set; } = [];
@@ -504,9 +509,9 @@ public sealed class CMenuMain(
     {
         get
         {
-            async void HandleToggleSequenceStepUseCommand1(object? parameter)
+            void HandleToggleSequenceStepUseCommand1(object? parameter)
             {
-                await ToggleSequenceStepUse(parameter);
+                ToggleSequenceStepUse(parameter);
             }
 
             return _toggleSequenceStepUseCommand ??= new CButtonCommand(HandleToggleSequenceStepUseCommand1);
@@ -517,31 +522,31 @@ public sealed class CMenuMain(
     {
         get
         {
-            async void HandleSelectParameterTabCommand2(object? parameter)
+            void HandleSelectParameterTabCommand2(object? parameter)
             {
-                await SelectParameterTab(parameter);
+                SelectParameterTab(parameter);
             }
 
             return _selectParameterTabCommand ??= new CButtonCommand(HandleSelectParameterTabCommand2);
         }
     }
 
-    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
-        var snapshot = await stationManager.GetStatus(cancellationToken);
+        var snapshot = stationManager.GetStatus(cancellationToken);
         var selectedHeadNos = selectedPreviewHeadNosProvider().ToHashSet();
-        var previewParameters = await LoadPreviewParameters(snapshot, cancellationToken);
-        var previewHeadLayout = await LoadPreviewHeadLayout(cancellationToken);
-        var autoStepOptions = await LoadAutoStepOptions(cancellationToken);
+        var previewParameters = LoadPreviewParameters(snapshot, cancellationToken);
+        var previewHeadLayout = LoadPreviewHeadLayout(cancellationToken);
+        var autoStepOptions = LoadAutoStepOptions(cancellationToken);
         _autoStepOptions = autoStepOptions;
         var canToggleAutoStep = IsAutoStepOptionEditable(snapshot.ProcessStep);
         var inspectionStatus = BuildInspectionStatus(snapshot);
         var scriptTaskStatusItems = BuildScriptTaskStatusPlaceholders(snapshot, previewParameters);
         var opticParameterGroups = _selectedParameterTabKey.Equals(ParameterTabOptic, StringComparison.OrdinalIgnoreCase)
-            ? await BuildOpticParameterGroups(previewParameters, cancellationToken)
+            ? BuildOpticParameterGroups(previewParameters, cancellationToken)
             : [];
         var opticHeadParameters = _selectedParameterTabKey.Equals(ParameterTabOptic, StringComparison.OrdinalIgnoreCase)
-            ? await BuildOpticHeadParameters(previewParameters, cancellationToken)
+            ? BuildOpticHeadParameters(previewParameters, cancellationToken)
             : [];
         if (IsScannerStatusSelected)
         {
@@ -682,9 +687,9 @@ public sealed class CMenuMain(
             this);
     }
 
-    public async Task RefreshLiveStatus(CancellationToken cancellationToken = default)
+    public void RefreshLiveStatus(CancellationToken cancellationToken = default)
     {
-        var snapshot = await stationManager.GetStatus(cancellationToken);
+        var snapshot = stationManager.GetStatus(cancellationToken);
         IReadOnlyDictionary<string, string> previewParameters =
             snapshot.ProcessModel?.Parameters ??
             snapshot.ProcessPlan?.Parameters ??
@@ -739,7 +744,7 @@ public sealed class CMenuMain(
             ScannerStatusItems = _scannerStatusPollingService.GetSnapshot();
         }
 
-        ScriptTaskStatusItems = await BuildScriptTaskStatusItems(
+        ScriptTaskStatusItems = BuildScriptTaskStatusItems(
             snapshot,
             previewParameters,
             cancellationToken);
@@ -926,9 +931,9 @@ public sealed class CMenuMain(
         return EvaluateNormalizedSwitch2();
     }
 
-    private async Task<IReadOnlyDictionary<string, bool>> LoadAutoStepOptions(CancellationToken cancellationToken)
+    private IReadOnlyDictionary<string, bool> LoadAutoStepOptions(CancellationToken cancellationToken)
     {
-        var parameters = await settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
+        var parameters = settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
         string HandleValues14(ST_SYSTEM_PARAMETER parameter)
         {
             return string.IsNullOrWhiteSpace(parameter.Key) ? parameter.Name : parameter.Key;
@@ -961,7 +966,7 @@ ToDictionaryKeyCallback17,
                 StringComparer.OrdinalIgnoreCase);
     }
 
-    private async Task ToggleSequenceStepUse(object? parameter)
+    private void ToggleSequenceStepUse(object? parameter)
     {
         var settingKey = parameter?.ToString();
         if (string.IsNullOrWhiteSpace(settingKey))
@@ -969,13 +974,13 @@ ToDictionaryKeyCallback17,
             return;
         }
 
-        var options = await LoadAutoStepOptions(CancellationToken.None);
+        var options = LoadAutoStepOptions(CancellationToken.None);
         var currentValue = options.TryGetValue(settingKey, out var enabled) && enabled;
         var nextValue = currentValue ? "OFF" : "ON";
 
         try
         {
-            await settingManager.SetValue(EN_SETTING_TAB.Option, settingKey, nextValue);
+            settingManager.SetValue(EN_SETTING_TAB.Option, settingKey, nextValue);
         }
         catch (Exception exception) when (exception is InvalidDataException or IOException)
         {
@@ -984,10 +989,10 @@ ToDictionaryKeyCallback17,
         }
 
         statusReporter($"{FormatAutoStepOptionName(settingKey)} {nextValue}");
-        await refreshCurrentScreen();
+        refreshCurrentScreen();
     }
 
-    private async Task SelectParameterTab(object? parameter)
+    private void SelectParameterTab(object? parameter)
     {
         var tabKey = parameter?.ToString()?.Trim().ToUpperInvariant();
         if (tabKey is not ParameterTabHead and not ParameterTabOptic and not ParameterTabScanner)
@@ -1006,7 +1011,7 @@ ToDictionaryKeyCallback17,
             _scannerStatusPollingService.Start();
         }
 
-        await refreshCurrentScreen();
+        refreshCurrentScreen();
     }
 
     private IReadOnlyList<ST_MAIN_PARAMETER_TAB_ITEM> BuildParameterTabs()
@@ -1019,7 +1024,7 @@ ToDictionaryKeyCallback17,
         ];
     }
 
-    private async Task<IReadOnlyList<ST_SCRIPT_TASK_STATUS_ITEM>> BuildScriptTaskStatusItems(
+    private IReadOnlyList<ST_SCRIPT_TASK_STATUS_ITEM> BuildScriptTaskStatusItems(
         ST_STATION_PROCESS_STATUS snapshot,
         IReadOnlyDictionary<string, string> previewParameters,
         CancellationToken cancellationToken)
@@ -1034,7 +1039,7 @@ ToDictionaryKeyCallback17,
             var key = (definition.AutomationNo, definition.TaskNo);
             if (!statusCache.TryGetValue(key, out var status))
             {
-                status = await ReadScriptTaskStatus(
+                status = ReadScriptTaskStatus(
                     definition.AutomationNo,
                     definition.TaskNo,
                     definition.ScriptFileName,
@@ -1125,7 +1130,7 @@ ToDictionaryKeyCallback17,
             .ToArray();
     }
 
-    private async Task<ST_SCRIPT_TASK_STATUS_VALUE> ReadScriptTaskStatus(
+    private ST_SCRIPT_TASK_STATUS_VALUE ReadScriptTaskStatus(
         int automationNo,
         int taskNo,
         string defaultFileName,
@@ -1143,7 +1148,7 @@ ToDictionaryKeyCallback17,
                 return new ST_SCRIPT_TASK_STATUS_VALUE("OFFLINE", defaultFileName, "Automation1 is not connected");
             }
 
-            var response = await automationManager.ReadTaskStatus(
+            var response = automationManager.ReadTaskStatus(
                 taskNo,
                 automationNo,
                 cancellationToken);
@@ -1244,18 +1249,18 @@ ToDictionaryKeyCallback17,
                 $"H{headNo:00}_AUTOMATION_TASK_NO"));
     }
 
-    private async Task<IReadOnlyList<ST_OPTIC_PARAMETER_GROUP>> BuildOpticParameterGroups(
+    private IReadOnlyList<ST_OPTIC_PARAMETER_GROUP> BuildOpticParameterGroups(
         IReadOnlyDictionary<string, string> previewParameters,
         CancellationToken cancellationToken)
     {
         var groups = new List<ST_OPTIC_PARAMETER_GROUP>();
 
-        groups.Add(await BuildChillerGroup(cancellationToken));
+        groups.Add(BuildChillerGroup(cancellationToken));
 
         return groups;
     }
 
-    private async Task<IReadOnlyList<ST_OPTIC_HEAD_PARAMETER>> BuildOpticHeadParameters(
+    private IReadOnlyList<ST_OPTIC_HEAD_PARAMETER> BuildOpticHeadParameters(
         IReadOnlyDictionary<string, string> previewParameters,
         CancellationToken cancellationToken)
     {
@@ -1266,16 +1271,16 @@ ToDictionaryKeyCallback17,
 
         for (var headNo = 1; headNo <= 8; headNo++)
         {
-            var laser = await BuildLaserHeadParameter(
+            var laser = BuildLaserHeadParameter(
                 headNo,
                 laserDevices,
                 cancellationToken);
-            var attenuator = await BuildAttenuatorHeadParameter(
+            var attenuator = BuildAttenuatorHeadParameter(
                 headNo,
                 attenuatorDevices,
                 previewParameters,
                 cancellationToken);
-            var bet = await BuildBetHeadParameter(
+            var bet = BuildBetHeadParameter(
                 headNo,
                 betDevices,
                 previewParameters,
@@ -1346,7 +1351,7 @@ ToDictionaryGroupCallback24,
 ToDictionaryGroupCallback25);
     }
 
-    private async Task<ST_OPTIC_LASER_HEAD_PARAMETER> BuildLaserHeadParameter(
+    private ST_OPTIC_LASER_HEAD_PARAMETER BuildLaserHeadParameter(
         int headNo,
         IReadOnlyDictionary<int, int> devices,
         CancellationToken cancellationToken)
@@ -1362,7 +1367,7 @@ ToDictionaryGroupCallback25);
 
         try
         {
-            var status = await interfaceManager.GetLaserStatus(deviceNo, cancellationToken);
+            var status = interfaceManager.GetLaserStatus(deviceNo, cancellationToken);
             var power = status.PowerOn ? "ON" : "OFF";
             return new ST_OPTIC_LASER_HEAD_PARAMETER(
                 power,
@@ -1380,7 +1385,7 @@ ToDictionaryGroupCallback25);
         }
     }
 
-    private async Task<ST_OPTIC_AXIS_HEAD_PARAMETER> BuildAttenuatorHeadParameter(
+    private ST_OPTIC_AXIS_HEAD_PARAMETER BuildAttenuatorHeadParameter(
         int headNo,
         IReadOnlyDictionary<int, int> devices,
         IReadOnlyDictionary<string, string> previewParameters,
@@ -1401,7 +1406,7 @@ ToDictionaryGroupCallback25);
 
         try
         {
-            var status = await interfaceManager.GetAttenuatorStatus(deviceNo, cancellationToken);
+            var status = interfaceManager.GetAttenuatorStatus(deviceNo, cancellationToken);
             var state = FormatOpticValueState(
                 FormatAttenuatorState(status),
                 status.CurrentPosition,
@@ -1420,7 +1425,7 @@ ToDictionaryGroupCallback25);
         }
     }
 
-    private async Task<ST_OPTIC_BET_HEAD_PARAMETER> BuildBetHeadParameter(
+    private ST_OPTIC_BET_HEAD_PARAMETER BuildBetHeadParameter(
         int headNo,
         IReadOnlyDictionary<int, int> devices,
         IReadOnlyDictionary<string, string> previewParameters,
@@ -1459,7 +1464,7 @@ ToDictionaryGroupCallback25);
 
         try
         {
-            var status = await interfaceManager.GetBETStatus(deviceNo, cancellationToken);
+            var status = interfaceManager.GetBETStatus(deviceNo, cancellationToken);
             targetMag = ReadDoubleAny(
                 previewParameters,
                 status.TargetMagnification,
@@ -1504,12 +1509,12 @@ ToDictionaryGroupCallback25);
         }
     }
 
-    private async Task<ST_OPTIC_PARAMETER_GROUP> BuildChillerGroup(
+    private ST_OPTIC_PARAMETER_GROUP BuildChillerGroup(
         CancellationToken cancellationToken)
     {
         try
         {
-            var status = await interfaceManager.GetChillerStatus(cancellationToken);
+            var status = interfaceManager.GetChillerStatus(cancellationToken);
             return BuildOpticGroup(
                 "CHILLER",
                 [
@@ -2473,7 +2478,7 @@ HandleDistortionKeys51);
             areas);
     }
 
-    private async Task<IReadOnlyDictionary<string, string>> LoadPreviewParameters(
+    private IReadOnlyDictionary<string, string> LoadPreviewParameters(
         ST_STATION_PROCESS_STATUS snapshot,
         CancellationToken cancellationToken)
     {
@@ -2482,7 +2487,7 @@ HandleDistortionKeys51);
                 ?? snapshot.ProcessPlan?.Parameters
                 ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             StringComparer.OrdinalIgnoreCase);
-        var recipes = await recipeManager.LoadRecipes(cancellationToken);
+        var recipes = recipeManager.LoadRecipes(cancellationToken);
         if (recipes.Count == 0)
         {
             return parameters;
@@ -2519,9 +2524,9 @@ HandleDistortionKeys51);
         return parameters;
     }
 
-    private async Task<ST_PREVIEW_HEAD_LAYOUT> LoadPreviewHeadLayout(CancellationToken cancellationToken)
+    private ST_PREVIEW_HEAD_LAYOUT LoadPreviewHeadLayout(CancellationToken cancellationToken)
     {
-        var settings = await settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
+        var settings = settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
         ST_PREVIEW_HEAD_FIELD SelectHeadNo66(int headNo)
         {
             var position = ReadHeadPositionX(settings, headNo);

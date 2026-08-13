@@ -27,7 +27,11 @@ public abstract class CMenuBase : CBindingBase
 {
     public abstract EN_MENU Menu { get; }
 
-    public abstract Task<CScreenViewModel> Build(CancellationToken cancellationToken = default);
+    public abstract CScreenViewModel Build(CancellationToken cancellationToken = default);
+
+    public virtual void Shutdown()
+    {
+    }
 }
 
 public sealed record ST_DISPLAY_ITEM(

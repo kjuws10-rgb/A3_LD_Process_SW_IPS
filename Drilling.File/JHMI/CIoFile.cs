@@ -31,7 +31,7 @@ public sealed class CIoFile(string configRoot) : CIoFileBase
         ["DEV NO", "DEVICE NO"]
     ];
 
-    public override Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_IO_DATA> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
@@ -64,7 +64,7 @@ public sealed class CIoFile(string configRoot) : CIoFileBase
             .ToArray();
 
         Validate(rows);
-        return Task.FromResult<IReadOnlyList<ST_IO_DATA>>(rows);
+        return rows;
     }
 
     private ST_IO_DATA Parse(

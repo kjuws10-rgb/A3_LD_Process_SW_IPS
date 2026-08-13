@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using Drilling.Common.Interface;
 using Drilling.Common.Managers;
 using Drilling.Common.Recipe;
@@ -210,21 +210,21 @@ public abstract class CReviewResultFileBase
 {
     public abstract string RootPath { get; }
 
-    public abstract Task<ST_REVIEW_RESULT_FILE_DATA> Load(
+    public abstract ST_REVIEW_RESULT_FILE_DATA Load(
             string path,
             CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract void Save(
             ST_REVIEW_RESULT_DATA result,
             CancellationToken cancellationToken = default);
 }
 
 public abstract class CReviewRuleFileBase
 {
-    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-    public abstract Task<ST_REVIEW_RULE_DATA> Load(
+    public abstract IReadOnlyList<string> List(CancellationToken cancellationToken = default);
+    public abstract ST_REVIEW_RULE_DATA Load(
             string ruleFileName,
             CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract void Save(
             ST_REVIEW_RULE_DATA rule,
             CancellationToken cancellationToken = default);
 }
@@ -288,12 +288,12 @@ CreatePlanCorePointCallback4);
         return CreatePlan(recipe, selectedKeys);
     }
 
-    public async Task<ST_REVIEW_SEQUENCE_STATUS> Start(
+    public ST_REVIEW_SEQUENCE_STATUS Start(
         ST_REVIEW_PLAN plan,
         Action<ST_REVIEW_PLAN>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        if (!await _sequenceLock.WaitAsync(0, cancellationToken))
+        if (!_sequenceLock.Wait(0, cancellationToken))
         {
             return CreateStatus(
                 CurrentPlan ?? plan,
@@ -328,7 +328,7 @@ CreatePlanCorePointCallback4);
                 workingPlan = UpdatePoint(workingPlan, currentPoint);
                 SetCurrentPlan(workingPlan, progress);
 
-                await MoveStageY(currentPoint, cancellationToken);
+                MoveStageY(currentPoint, cancellationToken);
 
                 if (_stopRequested)
                 {
@@ -338,7 +338,7 @@ CreatePlanCorePointCallback4);
                     return CreateStatus(workingPlan, SequenceState, "Review sequence stopped.");
                 }
 
-                await MoveVisionX(currentPoint, cancellationToken);
+                MoveVisionX(currentPoint, cancellationToken);
 
                 if (_stopRequested)
                 {
@@ -348,7 +348,7 @@ CreatePlanCorePointCallback4);
                     return CreateStatus(workingPlan, SequenceState, "Review sequence stopped.");
                 }
 
-                var measurement = await MeasureVision(currentPoint, cancellationToken);
+                var measurement = MeasureVision(currentPoint, cancellationToken);
 
                 if (_stopRequested)
                 {
@@ -365,7 +365,7 @@ CreatePlanCorePointCallback4);
 
             SequenceState = EN_REVIEW_SEQUENCE_STATE.Completed;
             SetCurrentPlan(workingPlan, progress);
-            await SaveResult(workingPlan, workingPlan.ReviewPoints, cancellationToken);
+            SaveResult(workingPlan, workingPlan.ReviewPoints, cancellationToken);
             return CreateStatus(workingPlan, SequenceState, "Review sequence completed.");
         }
         catch (OperationCanceledException)
@@ -438,7 +438,7 @@ CreatePlanCorePointCallback4);
         }
     }
 
-    public async Task<ST_REVIEW_SEQUENCE_STATUS> RetryRemaining(
+    public ST_REVIEW_SEQUENCE_STATUS RetryRemaining(
         Action<ST_REVIEW_PLAN>? progress = null,
         CancellationToken cancellationToken = default)
     {
@@ -470,15 +470,15 @@ CreatePlanCorePointCallback4);
             return CreateStatus(plan, SequenceState, "Ready review point is empty.");
         }
 
-        return await RunRetryPoints(orderedPoints, "Review ready point retry completed.", progress, cancellationToken);
+        return RunRetryPoints(orderedPoints, "Review ready point retry completed.", progress, cancellationToken);
     }
 
-    public Task SaveResult(
+    public void SaveResult(
         ST_REVIEW_PLAN plan,
         IReadOnlyList<ST_REVIEW_PLAN_POINT> results,
         CancellationToken cancellationToken = default)
     {
-        return reviewResultFile.Save(
+        reviewResultFile.Save(
             new ST_REVIEW_RESULT_DATA(plan, results, DateTimeOffset.Now),
             cancellationToken);
     }
@@ -523,8 +523,7 @@ CreatePlanCorePointCallback4);
     {
         var optionSettings = settingManager
             .LoadSection(EN_SETTING_TAB.Option)
-            .GetAwaiter()
-            .GetResult();
+            ;
         var visionAxisMode = CReviewCoordinateTransformer.ParseVisionAxisMode(
             ReadSettingText(optionSettings, "", "VisionXFlip"),
             ReadSettingText(optionSettings, "", "VisionYFlip"),
@@ -968,7 +967,7 @@ CreatePlanCorePointCallback4);
             .ToArray();
     }
 
-    private async Task MoveStageY(
+    private void MoveStageY(
         ST_REVIEW_PLAN_POINT point,
         CancellationToken cancellationToken)
     {
@@ -981,14 +980,14 @@ CreatePlanCorePointCallback4);
             ("HOLE", point.HoleNo.ToString(CultureInfo.InvariantCulture)),
             ("Y", FormatDouble(point.ReviewTargetY)));
 
-        await interfaceManager.ExecuteFunction(
+        interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.WonikCtrl,
             0,
             command,
             cancellationToken);
     }
 
-    private async Task MoveVisionX(
+    private void MoveVisionX(
         ST_REVIEW_PLAN_POINT point,
         CancellationToken cancellationToken)
     {
@@ -1001,14 +1000,14 @@ CreatePlanCorePointCallback4);
             ("HOLE", point.HoleNo.ToString(CultureInfo.InvariantCulture)),
             ("X", FormatDouble(point.ReviewTargetX)));
 
-        await interfaceManager.ExecuteFunction(
+        interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.WonikCtrl,
             0,
             command,
             cancellationToken);
     }
 
-    private async Task<ST_REVIEW_MEASURE_RESULT> MeasureVision(
+    private ST_REVIEW_MEASURE_RESULT MeasureVision(
         ST_REVIEW_PLAN_POINT point,
         CancellationToken cancellationToken)
     {
@@ -1021,17 +1020,17 @@ CreatePlanCorePointCallback4);
             ("HOLE", point.HoleNo.ToString(CultureInfo.InvariantCulture)),
             ("X", FormatDouble(point.ReviewTargetX)),
             ("Y", FormatDouble(point.ReviewTargetY)));
-        var response = await interfaceManager.ExecuteFunction(
+        var response = interfaceManager.ExecuteFunction(
             EN_EQP_MODULE.Vision,
             0,
             command,
             cancellationToken);
-        await DelayForSimulation(cancellationToken);
+        DelayForSimulation(cancellationToken);
 
         return ParseVisionResponse(response, point);
     }
 
-    private async Task DelayForSimulation(CancellationToken cancellationToken)
+    private void DelayForSimulation(CancellationToken cancellationToken)
     {
         if (!IsReviewSimulation())
         {
@@ -1045,7 +1044,10 @@ CreatePlanCorePointCallback4);
                 return;
             }
 
-            await Task.Delay(100, cancellationToken);
+            if (cancellationToken.WaitHandle.WaitOne(100))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+            }
         }
     }
 
@@ -1272,13 +1274,13 @@ CreatePlanCorePointCallback4);
             message);
     }
 
-    private async Task<ST_REVIEW_SEQUENCE_STATUS> RunRetryPoints(
+    private ST_REVIEW_SEQUENCE_STATUS RunRetryPoints(
         IReadOnlyList<ST_REVIEW_PLAN_POINT> retryPoints,
         string completedMessage,
         Action<ST_REVIEW_PLAN>? progress,
         CancellationToken cancellationToken)
     {
-        if (!await _sequenceLock.WaitAsync(0, cancellationToken))
+        if (!_sequenceLock.Wait(0, cancellationToken))
         {
             return CreateStatus(
                 CurrentPlan!,
@@ -1309,9 +1311,9 @@ CreatePlanCorePointCallback4);
                 workingPlan = UpdatePoint(workingPlan, currentPoint);
                 SetCurrentPlan(workingPlan, progress);
 
-                await MoveStageY(currentPoint, cancellationToken);
-                await MoveVisionX(currentPoint, cancellationToken);
-                var measurement = await MeasureVision(currentPoint, cancellationToken);
+                MoveStageY(currentPoint, cancellationToken);
+                MoveVisionX(currentPoint, cancellationToken);
+                var measurement = MeasureVision(currentPoint, cancellationToken);
 
                 if (_stopRequested)
                 {
@@ -1327,7 +1329,7 @@ CreatePlanCorePointCallback4);
             }
 
             SequenceState = EN_REVIEW_SEQUENCE_STATE.Completed;
-            await SaveResult(workingPlan, workingPlan.ReviewPoints, cancellationToken);
+            SaveResult(workingPlan, workingPlan.ReviewPoints, cancellationToken);
             return CreateStatus(workingPlan, SequenceState, completedMessage);
         }
         catch (OperationCanceledException)
@@ -1599,4 +1601,3 @@ CreatePlanCorePointCallback4);
         return "";
     }
 }
-

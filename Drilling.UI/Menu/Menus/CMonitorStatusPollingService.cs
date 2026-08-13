@@ -2,12 +2,13 @@ using System.Globalization;
 using Drilling.Common.Interface;
 using Drilling.Common.Managers;
 using Drilling.Common.Motion;
+using Drilling.Common.Threading;
 
 namespace Drilling.UI.Menu.Menus;
 
 internal sealed class CMonitorStatusPollingService(
     CInterfaceManager interfaceManager,
-    CMotionManager motionManager)
+    CMotionManager motionManager) : CtrlThread
 {
     private const int HeadCount = 8;
     private static readonly TimeSpan LoopInterval = TimeSpan.FromMilliseconds(250);
@@ -21,12 +22,9 @@ internal sealed class CMonitorStatusPollingService(
 
     private readonly object _contextLock = new();
     private readonly object _snapshotLock = new();
-    private readonly SemaphoreSlim _pollLock = new(1, 1);
     private readonly Dictionary<string, DateTimeOffset> _lastMelsecPolls = new(StringComparer.OrdinalIgnoreCase);
     private ST_MONITOR_POLLING_CONTEXT _context = ST_MONITOR_POLLING_CONTEXT.Default;
     private ST_MONITOR_STATUS_SNAPSHOT _snapshot = ST_MONITOR_STATUS_SNAPSHOT.Empty;
-    private CancellationTokenSource? _stopSource;
-    private Task? _pollTask;
     private DateTimeOffset _lastMelsecFailure = DateTimeOffset.MinValue;
     private string _lastMelsecFailureMessage = "";
     private DateTimeOffset _lastCommunicationPoll = DateTimeOffset.MinValue;
@@ -41,21 +39,7 @@ internal sealed class CMonitorStatusPollingService(
 
     public void Start()
     {
-        if (_pollTask is { IsCompleted: false })
-        {
-            return;
-        }
-
-        _stopSource?.Dispose();
-        _stopSource = new CancellationTokenSource();
-        Task? RunTask1()
-        {
-            return PollLoop(_stopSource.Token);
-        }
-
-        _pollTask = Task.Run(
-RunTask1,
-            CancellationToken.None);
+        base.Start((int)LoopInterval.TotalMilliseconds, "MonitorStatusPolling");
     }
 
     public void UpdateContext(
@@ -86,123 +70,102 @@ RunTask1,
         }
     }
 
-    private async Task PollLoop(CancellationToken cancellationToken)
+    public override void Run()
     {
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await PollDue(cancellationToken).ConfigureAwait(false);
-                await Task.Delay(LoopInterval, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
+        PollDue(CancellationToken.None);
     }
 
-    private async Task PollDue(CancellationToken cancellationToken)
+    private void PollDue(CancellationToken cancellationToken)
     {
-        if (!await _pollLock.WaitAsync(TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
-        {
-            return;
-        }
-
-        try
-        {
-            var context = GetContext();
-            var now = DateTimeOffset.Now;
+        var context = GetContext();
+        var now = DateTimeOffset.Now;
 
             if (IsDue(ref _lastCommunicationPoll, now, CommunicationInterval))
             {
-                await TryPoll(PollCommunication, cancellationToken).ConfigureAwait(false);
+                TryPoll(PollCommunication, cancellationToken);
             }
 
             switch (context.SelectedTab)
             {
                 case "IO" when IsDue(ref _lastIoPoll, now, ActiveInterval):
-                    await TryPoll(PollIo, cancellationToken).ConfigureAwait(false);
+                    TryPoll(PollIo, cancellationToken);
                     break;
                 case "MOTOR" when IsDue(ref _lastMotorPoll, now, ActiveInterval):
-                    await TryPoll(PollMotor, cancellationToken).ConfigureAwait(false);
+                    TryPoll(PollMotor, cancellationToken);
                     break;
                 case "LASER" when IsDue(ref _lastLaserPoll, now, ActiveInterval):
-                    Task TryPollTokenCallback2(CancellationToken token)
+                    void TryPollTokenCallback2(CancellationToken token)
                     {
-                        return PollLaser(context.LaserNumber, token);
+                        PollLaser(context.LaserNumber, token);
                     }
 
-                    await TryPoll(TryPollTokenCallback2, cancellationToken).ConfigureAwait(false);
+                    TryPoll(TryPollTokenCallback2, cancellationToken);
                     break;
                 case "CHILLER" when IsDue(ref _lastChillerPoll, now, ActiveInterval):
-                    await TryPoll(PollChiller, cancellationToken).ConfigureAwait(false);
+                    TryPoll(PollChiller, cancellationToken);
                     break;
                 case "ATTENUATOR" when IsDue(ref _lastAttenuatorPoll, now, ActiveInterval):
-                    Task TryPollTokenCallback3(CancellationToken token)
+                    void TryPollTokenCallback3(CancellationToken token)
                     {
-                        return PollAttenuator(context.AttenuatorNumber, token);
+                        PollAttenuator(context.AttenuatorNumber, token);
                     }
 
-                    await TryPoll(TryPollTokenCallback3, cancellationToken).ConfigureAwait(false);
+                    TryPoll(TryPollTokenCallback3, cancellationToken);
                     break;
                 case "BET" when IsDue(ref _lastBetPoll, now, ActiveInterval):
-                    Task TryPollTokenCallback4(CancellationToken token)
+                    void TryPollTokenCallback4(CancellationToken token)
                     {
-                        return PollBet(context.BetNumber, token);
+                        PollBet(context.BetNumber, token);
                     }
 
-                    await TryPoll(TryPollTokenCallback4, cancellationToken).ConfigureAwait(false);
+                    TryPoll(TryPollTokenCallback4, cancellationToken);
                     break;
                 case "POWER METER" when IsDue(ref _lastPowerMeterPoll, now, GetPowerMeterInterval()):
-                    await TryPoll(PollPowerMeter, cancellationToken).ConfigureAwait(false);
+                    TryPoll(PollPowerMeter, cancellationToken);
                     break;
                 case "PICO MOTOR" when IsDue(ref _lastPicoMotorPoll, now, ActiveInterval):
-                    await TryPoll(PollPicoMotor, cancellationToken).ConfigureAwait(false);
+                    TryPoll(PollPicoMotor, cancellationToken);
                     break;
                 case "MELSEC":
-                    Task TryPollTokenCallback5(CancellationToken token)
+                    void TryPollTokenCallback5(CancellationToken token)
                     {
-                        return PollMelsec(context.MelsecGroup, token);
+                        PollMelsec(context.MelsecGroup, token);
                     }
 
-                    await TryPoll(TryPollTokenCallback5, cancellationToken).ConfigureAwait(false);
+                    TryPoll(TryPollTokenCallback5, cancellationToken);
                     break;
             }
 
             if (context.SelectedTab != "CHILLER" &&
                 IsDue(ref _lastChillerPoll, now, SlowSafetyInterval))
             {
-                await TryPoll(PollChiller, cancellationToken).ConfigureAwait(false);
+                TryPoll(PollChiller, cancellationToken);
             }
 
             if (context.SelectedTab != "POWER METER" &&
                 IsDue(ref _lastPowerMeterPoll, now, SlowSafetyInterval))
             {
-                await TryPoll(PollPowerMeter, cancellationToken).ConfigureAwait(false);
+                TryPoll(PollPowerMeter, cancellationToken);
             }
-        }
-        finally
-        {
-            _pollLock.Release();
-        }
     }
 
-    private async Task TryPoll(
-        Func<CancellationToken, Task> poll,
+    private void TryPoll(
+        Action<CancellationToken> poll,
         CancellationToken cancellationToken)
     {
         try
         {
-            await poll(cancellationToken).ConfigureAwait(false);
+            poll(cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
+            System.Diagnostics.Debug.WriteLine("Monitor polling failed: " + exception);
         }
     }
 
-    private async Task PollCommunication(CancellationToken cancellationToken)
+    private void PollCommunication(CancellationToken cancellationToken)
     {
-        var communication = await interfaceManager.GetCommunicationStatus(cancellationToken).ConfigureAwait(false);
+        var communication = interfaceManager.GetCommunicationStatus(cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback6(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with { Communication = communication };
@@ -211,9 +174,9 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback6);
     }
 
-    private async Task PollIo(CancellationToken cancellationToken)
+    private void PollIo(CancellationToken cancellationToken)
     {
-        var io = await motionManager.GetIoStatus(cancellationToken).ConfigureAwait(false);
+        var io = motionManager.GetIoStatus(cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback7(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with
@@ -225,9 +188,9 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback7);
     }
 
-    private async Task PollMotor(CancellationToken cancellationToken)
+    private void PollMotor(CancellationToken cancellationToken)
     {
-        var motors = await motionManager.GetAxisStatus(cancellationToken).ConfigureAwait(false);
+        var motors = motionManager.GetAxisStatus(cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback8(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with
@@ -239,12 +202,12 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback8);
     }
 
-    private async Task PollLaser(
+    private void PollLaser(
         int laserNumber,
         CancellationToken cancellationToken)
     {
-        var talonStatus = await interfaceManager.RefreshTalonLaserStatus(laserNumber, cancellationToken)
-            .ConfigureAwait(false);
+        var talonStatus = interfaceManager.RefreshTalonLaserStatus(laserNumber, cancellationToken)
+            ;
         var laserStatus = new ST_LASER_STATUS(
             talonStatus.LaserOn,
             talonStatus.ShutterOpen,
@@ -262,9 +225,9 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback9);
     }
 
-    private async Task PollChiller(CancellationToken cancellationToken)
+    private void PollChiller(CancellationToken cancellationToken)
     {
-        var chiller = await interfaceManager.GetChillerStatus(cancellationToken).ConfigureAwait(false);
+        var chiller = interfaceManager.GetChillerStatus(cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback10(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with
@@ -276,12 +239,12 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback10);
     }
 
-    private async Task PollAttenuator(
+    private void PollAttenuator(
         int attenuatorNumber,
         CancellationToken cancellationToken)
     {
-        var attenuator = await interfaceManager.GetAttenuatorStatus(attenuatorNumber, cancellationToken)
-            .ConfigureAwait(false);
+        var attenuator = interfaceManager.GetAttenuatorStatus(attenuatorNumber, cancellationToken)
+            ;
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback11(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with
@@ -293,11 +256,11 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback11);
     }
 
-    private async Task PollBet(
+    private void PollBet(
         int betNumber,
         CancellationToken cancellationToken)
     {
-        var bet = await interfaceManager.GetBETStatus(betNumber, cancellationToken).ConfigureAwait(false);
+        var bet = interfaceManager.GetBETStatus(betNumber, cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback12(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with
@@ -309,9 +272,9 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback12);
     }
 
-    private async Task PollPowerMeter(CancellationToken cancellationToken)
+    private void PollPowerMeter(CancellationToken cancellationToken)
     {
-        var powerMeter = await interfaceManager.GetPowerMeterStatus(cancellationToken).ConfigureAwait(false);
+        var powerMeter = interfaceManager.GetPowerMeterStatus(cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback13(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with
@@ -323,9 +286,9 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback13);
     }
 
-    private async Task PollPicoMotor(CancellationToken cancellationToken)
+    private void PollPicoMotor(CancellationToken cancellationToken)
     {
-        var picoMotor = await interfaceManager.GetPicoMotorStatus(cancellationToken).ConfigureAwait(false);
+        var picoMotor = interfaceManager.GetPicoMotorStatus(cancellationToken);
         ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback14(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
             return snapshot with { PicoMotorStatus = picoMotor };
@@ -334,7 +297,7 @@ RunTask1,
         UpdateSnapshot(UpdateSnapshotSnapshotCallback14);
     }
 
-    private async Task PollMelsec(
+    private void PollMelsec(
         string selectedGroup,
         CancellationToken cancellationToken)
     {
@@ -395,7 +358,7 @@ RunTask1,
 
             try
             {
-                var value = await ReadMelsecValue(row, cancellationToken).ConfigureAwait(false);
+                var value = ReadMelsecValue(row, cancellationToken);
                 UpdateMelsecValue(new ST_MONITOR_MELSEC_VALUE(
                     row.Id,
                     value,
@@ -432,26 +395,26 @@ RunTask1,
         }
     }
 
-    private async Task<string> ReadMelsecValue(
+    private string ReadMelsecValue(
         ST_MELSEC_MAP_DATA row,
         CancellationToken cancellationToken)
     {
         switch (row.DataType)
         {
             case EN_MELSEC_DATA_TYPE.Bit:
-                return (await interfaceManager.Melsec.ReadBit(row.Id, cancellationToken).ConfigureAwait(false))
+                return (interfaceManager.Melsec.ReadBit(row.Id, cancellationToken))
                     .ToString()
                     .ToUpperInvariant();
             case EN_MELSEC_DATA_TYPE.Word:
             case EN_MELSEC_DATA_TYPE.DWord:
-                return (await interfaceManager.Melsec.ReadWord(row.Id, cancellationToken).ConfigureAwait(false))
+                return (interfaceManager.Melsec.ReadWord(row.Id, cancellationToken))
                     .ToString(CultureInfo.InvariantCulture);
             case EN_MELSEC_DATA_TYPE.Double:
             case EN_MELSEC_DATA_TYPE.Float:
-                return (await interfaceManager.Melsec.ReadDouble(row.Id, cancellationToken).ConfigureAwait(false))
+                return (interfaceManager.Melsec.ReadDouble(row.Id, cancellationToken))
                     .ToString("F3", CultureInfo.InvariantCulture);
             case EN_MELSEC_DATA_TYPE.String:
-                return await interfaceManager.Melsec.ReadString(row.Id, cancellationToken).ConfigureAwait(false);
+                return interfaceManager.Melsec.ReadString(row.Id, cancellationToken);
             default:
                 throw new InvalidOperationException($"Unsupported MELSEC read type: {row.DataType}");
         }

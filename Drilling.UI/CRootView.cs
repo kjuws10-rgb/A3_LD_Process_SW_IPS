@@ -15,6 +15,7 @@ using Drilling.Common.InterLock;
 using Drilling.Common.Product;
 using Drilling.Common.Review;
 using Drilling.Common.Station;
+using Drilling.UI.Threading;
 
 namespace Drilling.UI;
 
@@ -60,6 +61,7 @@ public sealed class CRootView : CBindingBase
     private readonly CInterLockManager _interLockManager;
     private readonly CRecipeManager _recipeManager;
     private readonly IReadOnlyDictionary<EN_MENU, CMenuBase> _menus;
+    private readonly CStationLogThread _stationLogThread;
     private readonly Dictionary<EN_EQP_MODULE, int> _selectedHeaderModuleIndexes = new();
 
     private CMenuItem _selectedMenu;
@@ -114,6 +116,8 @@ public sealed class CRootView : CBindingBase
         _alarmManager = alarmManager;
         _interLockManager = interLockManager;
         _recipeManager = recipeManager;
+        _stationLogThread = new CStationLogThread(manager.Log());
+        _stationLogThread.Start();
         CThemeManager.Apply(_currentTheme);
         CMenuItem SelectMenu1(EN_MENU menu)
         {
@@ -129,9 +133,9 @@ public sealed class CRootView : CBindingBase
 
         _currentScreen = CreateLoadingScreen(EN_MENU.Main, "MAIN");
 
-        async void HandleStartCommand2(object? _)
+        void HandleStartCommand2(object? _)
         {
-            await StartCycle();
+            StartCycle();
         }
 
         bool HandleStartCommand3(object? _)
@@ -141,9 +145,9 @@ public sealed class CRootView : CBindingBase
 
         StartCommand = new CButtonCommand(HandleStartCommand2, HandleStartCommand3);
 
-        async void HandleStopCommand4(object? _)
+        void HandleStopCommand4(object? _)
         {
-            await StopCycle();
+            StopCycle();
         }
 
         bool HandleStopCommand5(object? _)
@@ -153,9 +157,9 @@ public sealed class CRootView : CBindingBase
 
         StopCommand = new CButtonCommand(HandleStopCommand4, HandleStopCommand5);
 
-        async void HandleSelectHeadCommand6(object? parameter)
+        void HandleSelectHeadCommand6(object? parameter)
         {
-            await SelectHead(parameter);
+            SelectHead(parameter);
         }
 
         bool HandleSelectHeadCommand7(object? _)
@@ -165,9 +169,9 @@ public sealed class CRootView : CBindingBase
 
         SelectHeadCommand = new CButtonCommand(HandleSelectHeadCommand6, HandleSelectHeadCommand7);
 
-        async void HandleTogglePreviewHeadCommand8(object? parameter)
+        void HandleTogglePreviewHeadCommand8(object? parameter)
         {
-            await TogglePreviewHead(parameter);
+            TogglePreviewHead(parameter);
         }
 
         bool HandleTogglePreviewHeadCommand9(object? _)
@@ -179,9 +183,9 @@ public sealed class CRootView : CBindingBase
 HandleTogglePreviewHeadCommand8,
 HandleTogglePreviewHeadCommand9);
 
-        async void HandleToggleThemeCommand10(object? _)
+        void HandleToggleThemeCommand10(object? _)
         {
-            await ToggleTheme();
+            ToggleTheme();
         }
 
         ToggleThemeCommand = new CButtonCommand(HandleToggleThemeCommand10);
@@ -201,7 +205,7 @@ HandleTogglePreviewHeadCommand9);
             automationScriptFile);
 
         StartClock();
-        _ = PrepareInitialProcessPlan();
+        PrepareInitialProcessPlan();
     }
 
     public ObservableCollection<CMenuItem> Menus { get; }
@@ -209,6 +213,19 @@ HandleTogglePreviewHeadCommand9);
     public ObservableCollection<ST_HEADER_STATUS_ITEM> HeaderStatusItems { get; }
 
     public ObservableCollection<ST_HEADER_STATUS_ITEM> FooterStatusItems { get; }
+
+    public void Shutdown()
+    {
+        CancelMainLiveStatusRefresh();
+
+        foreach (CMenuBase menu in _menus.Values)
+        {
+            menu.Shutdown();
+        }
+
+        _stationLogThread.StopAndFlush();
+        _manager.Destroy();
+    }
 
     public CMenuItem SelectedMenu
     {
@@ -236,7 +253,7 @@ HandleTogglePreviewHeadCommand9);
             SelectHeadCommand.NotifyCanExecuteChanged();
             TogglePreviewHeadCommand.NotifyCanExecuteChanged();
             RefreshShellStatusItems();
-            _ = RefreshCurrentScreen();
+            RefreshCurrentScreen();
         }
     }
 
@@ -340,7 +357,7 @@ HandleTogglePreviewHeadCommand9);
         }
     }
 
-    private async Task RefreshCurrentScreen()
+    private void RefreshCurrentScreen()
     {
         if (_screenRefreshRunning)
         {
@@ -357,7 +374,7 @@ HandleTogglePreviewHeadCommand9);
                 return;
             }
 
-            CurrentScreen = await menu.Build();
+            CurrentScreen = menu.Build();
 
             if (SelectedMenu.Menu == EN_MENU.Recipe)
             {
@@ -374,7 +391,7 @@ HandleTogglePreviewHeadCommand9);
                 SyncSelectedSettingSelectionFromScreen();
             }
 
-            _systemStatus = await GetSystemStatus();
+            _systemStatus = GetSystemStatus();
             RefreshShellStatusItems();
             if (SelectedMenu.Menu == EN_MENU.Pm)
             {
@@ -402,13 +419,13 @@ HandleTogglePreviewHeadCommand9);
         }
     }
 
-    private async Task ToggleTheme()
+    private void ToggleTheme()
     {
         _currentTheme = CThemeManager.Toggle();
         OnPropertyChanged(nameof(ThemeToggleText));
         OnPropertyChanged(nameof(ThemeModeText));
         RefreshShellStatusItems();
-        await RefreshCurrentScreen();
+        RefreshCurrentScreen();
         StatusMessage = $"{ThemeModeText} applied.";
     }
 
@@ -419,7 +436,7 @@ HandleTogglePreviewHeadCommand9);
         OnPropertyChanged(nameof(CurrentUserText));
     }
 
-    private async Task RefreshSystemStatus()
+    private void RefreshSystemStatus()
     {
         if (_statusRefreshRunning)
         {
@@ -430,7 +447,7 @@ HandleTogglePreviewHeadCommand9);
 
         try
         {
-            _systemStatus = await GetSystemStatus();
+            _systemStatus = GetSystemStatus();
             RefreshShellStatusItems();
         }
         catch
@@ -443,7 +460,7 @@ HandleTogglePreviewHeadCommand9);
         }
     }
 
-    private async Task RefreshMonitorLiveData()
+    private void RefreshMonitorLiveData()
     {
         if (_monitorLiveRefreshRunning)
         {
@@ -456,10 +473,10 @@ HandleTogglePreviewHeadCommand9);
         {
             if (_menus.TryGetValue(EN_MENU.Monitor, out var menu) && menu is CMenuMonitor monitor)
             {
-                await monitor.RefreshLiveData();
+                monitor.RefreshLiveData();
             }
 
-            await RefreshShellCommunicationStatus();
+            RefreshShellCommunicationStatus();
         }
         catch
         {
@@ -471,7 +488,7 @@ HandleTogglePreviewHeadCommand9);
         }
     }
 
-    private async Task RefreshMainLiveStatus()
+    private void RefreshMainLiveStatus()
     {
         if (_mainLiveRefreshRunning)
         {
@@ -494,7 +511,7 @@ HandleTogglePreviewHeadCommand9);
             refreshCts = new CancellationTokenSource(MainLiveStatusTimeout);
             _mainLiveStatusRefreshCts = refreshCts;
 
-            await startedMainOperating.RefreshLiveStatus(refreshCts.Token);
+            startedMainOperating.RefreshLiveStatus(refreshCts.Token);
             if (IsMainLiveStatusTargetCurrent(startedScreen, startedMainOperating))
             {
                 ReportMainLiveStatusRestored();
@@ -622,19 +639,7 @@ HandleTogglePreviewHeadCommand9);
         string action,
         string detail)
     {
-        var logManager = _manager.Log();
-        void RunTask11()
-        {
-            try
-            {
-                logManager.WriteStationState("UI", stateName, action, detail);
-            }
-            catch (Exception exception)
-            {
-                Debug.WriteLine($"Station state log failed. {exception}");
-            }
-        }
-        _ = Task.Run(RunTask11);
+        _stationLogThread.Enqueue(stateName, action, detail);
     }
 
     private static bool HasElapsed(
@@ -653,9 +658,9 @@ HandleTogglePreviewHeadCommand9);
         return elapsedTicks >= requiredTicks;
     }
 
-    private async Task RefreshShellCommunicationStatus(CancellationToken cancellationToken = default)
+    private void RefreshShellCommunicationStatus(CancellationToken cancellationToken = default)
     {
-        var modules = await _interfaceManager.GetCommunicationStatus(cancellationToken);
+        var modules = _interfaceManager.GetCommunicationStatus(cancellationToken);
         _interfaceCommStatuses = _interfaceManager.GetInterfaceCommunicationList();
         _systemStatus = _systemStatus with
         {
@@ -668,11 +673,11 @@ HandleTogglePreviewHeadCommand9);
         RefreshShellStatusItems();
     }
 
-    private async Task<ST_SYSTEM_STATUS> GetSystemStatus(CancellationToken cancellationToken = default)
+    private ST_SYSTEM_STATUS GetSystemStatus(CancellationToken cancellationToken = default)
     {
-        var modules = await _interfaceManager.GetCommunicationStatus(cancellationToken);
+        var modules = _interfaceManager.GetCommunicationStatus(cancellationToken);
         _interfaceCommStatuses = _interfaceManager.GetInterfaceCommunicationList();
-        var alarms = await GetCurrentAlarms(cancellationToken);
+        var alarms = GetCurrentAlarms(cancellationToken);
 
         return new ST_SYSTEM_STATUS(
             string.IsNullOrWhiteSpace(_selectedRecipeId) ? "DRILL_A01" : _selectedRecipeId,
@@ -682,22 +687,22 @@ HandleTogglePreviewHeadCommand9);
             NormalizeCommunicationStatuses(modules));
     }
 
-    private async Task<IReadOnlyList<ST_ALARM_DATA>> GetCurrentAlarms(CancellationToken cancellationToken)
+    private IReadOnlyList<ST_ALARM_DATA> GetCurrentAlarms(CancellationToken cancellationToken)
     {
-        var snapshot = await GetDeviceStatus(cancellationToken);
+        var snapshot = GetDeviceStatus(cancellationToken);
         var interLock = _interLockManager.Evaluate(snapshot);
         return _alarmManager.Build(snapshot, interLock);
     }
 
-    private async Task<ST_DEVICE_STATUS> GetDeviceStatus(CancellationToken cancellationToken)
+    private ST_DEVICE_STATUS GetDeviceStatus(CancellationToken cancellationToken)
     {
-        var io = await _motionManager.GetIoStatus(cancellationToken);
-        var motors = await _motionManager.GetAxisStatus(cancellationToken);
-        var laserStatus = await _interfaceManager.GetLaserStatus(cancellationToken);
-        var chillerStatus = await _interfaceManager.GetChillerStatus(cancellationToken);
-        var attenuatorStatus = await _interfaceManager.GetAttenuatorStatus(cancellationToken);
-        var betStatus = await _interfaceManager.GetBETStatus(cancellationToken);
-        var powerMeterStatus = await _interfaceManager.GetPowerMeterStatus(cancellationToken);
+        var io = _motionManager.GetIoStatus(cancellationToken);
+        var motors = _motionManager.GetAxisStatus(cancellationToken);
+        var laserStatus = _interfaceManager.GetLaserStatus(cancellationToken);
+        var chillerStatus = _interfaceManager.GetChillerStatus(cancellationToken);
+        var attenuatorStatus = _interfaceManager.GetAttenuatorStatus(cancellationToken);
+        var betStatus = _interfaceManager.GetBETStatus(cancellationToken);
+        var powerMeterStatus = _interfaceManager.GetPowerMeterStatus(cancellationToken);
 
         return new ST_DEVICE_STATUS(
             io,
@@ -860,9 +865,9 @@ HandleTogglePreviewHeadCommand9);
         ];
     }
 
-    private async Task PrepareInitialProcessPlan()
+    private void PrepareInitialProcessPlan()
     {
-        var recipes = await _recipeManager.LoadRecipes();
+        var recipes = _recipeManager.LoadRecipes();
         var selectedRecipe = FindSelectedRecipe(recipes);
         var recipeId = selectedRecipe?.Id ??
             (string.IsNullOrWhiteSpace(_selectedRecipeId) ? "DRILL_A01" : _selectedRecipeId);
@@ -876,11 +881,11 @@ HandleTogglePreviewHeadCommand9);
             DateTimeOffset.Now,
             parameters);
 
-        await _stationManager.PrepareProcessPlan(processPlan);
+        _stationManager.PrepareProcessPlan(processPlan);
         StatusMessage = selectedRecipe is null
             ? "Process plan prepared with fallback data."
             : $"Process plan prepared from {recipeId}.csv.";
-        await RefreshCurrentScreen();
+        RefreshCurrentScreen();
     }
 
     private ST_RECIPE_DATA? FindSelectedRecipe(IReadOnlyList<ST_RECIPE_DATA> recipes)
@@ -953,22 +958,22 @@ HandleParameters20,
         return parameters;
     }
 
-    private async Task StartCycle()
+    private void StartCycle()
     {
-        await PrepareInitialProcessPlan();
-        await _stationManager.Start();
+        PrepareInitialProcessPlan();
+        _stationManager.Start();
         StatusMessage = "Cycle completed in simulation mode.";
-        await RefreshCurrentScreen();
+        RefreshCurrentScreen();
     }
 
-    private async Task StopCycle()
+    private void StopCycle()
     {
-        await _stationManager.Stop();
+        _stationManager.Stop();
         StatusMessage = "Cycle stopped.";
-        await RefreshCurrentScreen();
+        RefreshCurrentScreen();
     }
 
-    private async Task SelectHead(object? parameter)
+    private void SelectHead(object? parameter)
     {
         int EvaluateParameterSwitch1()
         {
@@ -996,10 +1001,10 @@ HandleParameters20,
         _selectedHeadNo = headNo;
         StatusMessage = $"HEAD {headNo:00} selected. Preview updated.";
         RefreshShellStatusItems();
-        await RefreshCurrentScreen();
+        RefreshCurrentScreen();
     }
 
-    private async Task TogglePreviewHead(object? parameter)
+    private void TogglePreviewHead(object? parameter)
     {
         if (parameter is string action)
         {
@@ -1012,7 +1017,7 @@ HandleParameters20,
                 }
 
                 UpdatePreviewHeadStatusMessage();
-                await RefreshCurrentScreen();
+                RefreshCurrentScreen();
                 return;
             }
 
@@ -1020,7 +1025,7 @@ HandleParameters20,
             {
                 _selectedPreviewHeadNos.Clear();
                 UpdatePreviewHeadStatusMessage();
-                await RefreshCurrentScreen();
+                RefreshCurrentScreen();
                 return;
             }
         }
@@ -1053,7 +1058,7 @@ HandleParameters20,
         }
 
         UpdatePreviewHeadStatusMessage();
-        await RefreshCurrentScreen();
+        RefreshCurrentScreen();
     }
 
     private void UpdatePreviewHeadStatusMessage()
@@ -1080,7 +1085,7 @@ HandleParameters20,
             Interval = TimeSpan.FromSeconds(1)
         };
 
-        async void TickHandler23(object? unusedParameter1, EventArgs unusedParameter2)
+        void TickHandler23(object? unusedParameter1, EventArgs unusedParameter2)
         {
             try
             {
@@ -1101,19 +1106,19 @@ HandleParameters20,
                 if (shouldRefreshMonitorScreen)
                 {
                     _lastMonitorScreenRefreshTimestamp = nowTimestamp;
-                    await RefreshMonitorLiveData();
+                    RefreshMonitorLiveData();
                     return;
                 }
 
                 if (shouldRefreshMainLiveStatus)
                 {
                     _lastMainLiveStatusRefreshTimestamp = nowTimestamp;
-                    await RefreshMainLiveStatus();
-                    await RefreshSystemStatus();
+                    RefreshMainLiveStatus();
+                    RefreshSystemStatus();
                     return;
                 }
 
-                await RefreshSystemStatus();
+                RefreshSystemStatus();
             }
             catch (Exception exception)
             {
@@ -1281,7 +1286,7 @@ HandleParameters20,
 
         void HandleMenus52()
         {
-            _ = RefreshCurrentScreen();
+            RefreshCurrentScreen();
         }
 
         string HandleMenus53()
@@ -1837,7 +1842,3 @@ HandleMenus54,
         return EvaluateMenuSwitch8();
     }
 }
-
-
-
-

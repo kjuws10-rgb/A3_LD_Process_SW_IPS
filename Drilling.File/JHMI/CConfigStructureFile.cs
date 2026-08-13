@@ -162,7 +162,7 @@ public sealed class CConfigStructureFile(string configRoot) : CConfigStructureFi
         ValueCsv("PowerMeter Default", "PowerMeter\\POWER_CHECK.pwm", [["STEP"], ["OPTION_NAME"], ["POWER_OUT"]], ValidateStepKey)
     ];
 
-    public override Task<IReadOnlyList<ST_CONFIG_FILE_STATUS>> Validate(
+    public override IReadOnlyList<ST_CONFIG_FILE_STATUS> Validate(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -198,7 +198,7 @@ public sealed class CConfigStructureFile(string configRoot) : CConfigStructureFi
         statuses.Add(CheckPowerMeterValueFiles(cancellationToken));
         statuses.Add(CheckReviewRuleValueFiles(cancellationToken));
 
-        return Task.FromResult<IReadOnlyList<ST_CONFIG_FILE_STATUS>>(statuses);
+        return statuses;
     }
 
     private ST_CONFIG_FILE_STATUS CheckRoot()

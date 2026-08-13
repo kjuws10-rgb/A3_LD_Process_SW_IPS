@@ -19,4 +19,3 @@ internal sealed class CACSMotion(CInterfaceManager? interfaceManager, int device
         }
     }
 }
-

@@ -133,8 +133,8 @@ public sealed record ST_DEVICE_COMMAND_RESULT(
 
 public abstract class CBETFileBase
 {
-    public abstract Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default);
-    public abstract Task Save(
+    public abstract IReadOnlyList<ST_BET_TABLE_DATA> Load(CancellationToken cancellationToken = default);
+    public abstract void Save(
             IReadOnlyList<ST_BET_TABLE_DATA> table,
             CancellationToken cancellationToken = default);
 }
@@ -148,7 +148,7 @@ public sealed class CInterfaceManager {
     private readonly CPicoMotorService _picoMotorService = new();
     private bool? _simulationMode;
 
-    public event Func<ST_INTERFACE_RECEIVED_MESSAGE, CancellationToken, Task<string>>? MessageReceived;
+    public event Func<ST_INTERFACE_RECEIVED_MESSAGE, CancellationToken, string>? MessageReceived;
 
     public CInterfaceManager(
         bool? simulationMode = null,
@@ -221,12 +221,12 @@ public sealed class CInterfaceManager {
         _devices[key] = device;
     }
 
-    public async Task Reload(
+    public void Reload(
         IReadOnlyList<ST_INTERFACE_DATA> interfaces,
         bool reconnect = true,
         CancellationToken cancellationToken = default)
     {
-        await Disconnect(cancellationToken);
+        Disconnect(cancellationToken);
         _devices.Clear();
 
         foreach (var data in interfaces)
@@ -239,24 +239,24 @@ public sealed class CInterfaceManager {
 
         if (reconnect)
         {
-            await Connect(cancellationToken: cancellationToken);
+            Connect(cancellationToken: cancellationToken);
         }
     }
 
-    public Task Initialize(CancellationToken cancellationToken = default)
+    public void Initialize(CancellationToken cancellationToken = default)
     {
-        return Connect(init: true, cancellationToken);
+        Connect(init: true, cancellationToken);
     }
 
-    public async Task Destroy(CancellationToken cancellationToken = default)
+    public void Destroy(CancellationToken cancellationToken = default)
     {
-        await Disconnect(cancellationToken);
+        Disconnect(cancellationToken);
         _picoMotorService.DisconnectAll();
         _devices.Clear();
         ClearDeviceStateMaps();
     }
 
-    public async Task<int> Connect(
+    public int Connect(
         bool init = false,
         CancellationToken cancellationToken = default)
     {
@@ -270,7 +270,7 @@ public sealed class CInterfaceManager {
             }
 
             var beforeState = device.ConnectionState;
-            await device.Connect(cancellationToken);
+            device.Connect(cancellationToken);
             WriteConnectionLog(init ? "INIT_CONNECT" : "CONNECT", device, beforeState);
 
             if (device.ConnectionState is EN_COMM_STATE.Online or EN_COMM_STATE.Simulation)
@@ -282,12 +282,12 @@ public sealed class CInterfaceManager {
         return connectedCount;
     }
 
-    public async Task<int> Disconnect(CancellationToken cancellationToken = default)
+    public int Disconnect(CancellationToken cancellationToken = default)
     {
         foreach (var device in _devices.Values)
         {
             var beforeState = device.ConnectionState;
-            await device.Disconnect(cancellationToken);
+            device.Disconnect(cancellationToken);
             WriteConnectionLog("DISCONNECT", device, beforeState);
         }
 
@@ -296,17 +296,17 @@ public sealed class CInterfaceManager {
         return _devices.Count;
     }
 
-    public async Task Connect(
+    public void Connect(
         EN_EQP_MODULE module,
         int number,
         bool autoConnection = true,
         CancellationToken cancellationToken = default)
     {
         var device = GetDeviceOrThrow(module, number);
-        await ConnectDevice(device, autoConnection, cancellationToken);
+        ConnectDevice(device, autoConnection, cancellationToken);
     }
 
-    public async Task Disconnect(
+    public void Disconnect(
         EN_EQP_MODULE module,
         int number,
         CancellationToken cancellationToken = default)
@@ -316,29 +316,29 @@ public sealed class CInterfaceManager {
             return;
         }
 
-        await DisconnectDevice(device, cancellationToken);
+        DisconnectDevice(device, cancellationToken);
     }
 
-    public async Task Reconnect(
+    public void Reconnect(
         EN_EQP_MODULE module,
         int number,
         CancellationToken cancellationToken = default)
     {
         var device = GetDeviceOrThrow(module, number);
         var beforeState = device.ConnectionState;
-        await device.Disconnect(cancellationToken);
-        await device.Connect(cancellationToken);
+        device.Disconnect(cancellationToken);
+        device.Connect(cancellationToken);
         WriteConnectionLog("RECONNECT", device, beforeState);
     }
 
-    public async Task<string> ExecuteFunction(
+    public string ExecuteFunction(
         EN_EQP_MODULE module,
         int number,
         string function,
         CancellationToken cancellationToken = default)
     {
         var device = GetDeviceOrThrow(module, number);
-        return await ExecuteDeviceFunction(device, function, cancellationToken);
+        return ExecuteDeviceFunction(device, function, cancellationToken);
     }
 
     public bool IsConnect(EN_EQP_MODULE module, int number)
@@ -360,16 +360,16 @@ public sealed class CInterfaceManager {
             : null;
     }
 
-    public async Task Connect(
+    public void Connect(
         string nickName,
         bool autoConnection = true,
         CancellationToken cancellationToken = default)
     {
         var device = GetDeviceByNickNameOrThrow(nickName);
-        await ConnectDevice(device, autoConnection, cancellationToken);
+        ConnectDevice(device, autoConnection, cancellationToken);
     }
 
-    public async Task Disconnect(
+    public void Disconnect(
         string nickName,
         CancellationToken cancellationToken = default)
     {
@@ -378,28 +378,28 @@ public sealed class CInterfaceManager {
             return;
         }
 
-        await DisconnectDevice(device, cancellationToken);
+        DisconnectDevice(device, cancellationToken);
     }
 
-    public async Task Reconnect(
+    public void Reconnect(
         string nickName,
         CancellationToken cancellationToken = default)
     {
         var device = GetDeviceByNickNameOrThrow(nickName);
 
         var beforeState = device.ConnectionState;
-        await device.Disconnect(cancellationToken);
-        await device.Connect(cancellationToken);
+        device.Disconnect(cancellationToken);
+        device.Connect(cancellationToken);
         WriteConnectionLog("RECONNECT", device, beforeState);
     }
 
-    public async Task<string> ExecuteFunction(
+    public string ExecuteFunction(
         string nickName,
         string function,
         CancellationToken cancellationToken = default)
     {
         var device = GetDeviceByNickNameOrThrow(nickName);
-        return await ExecuteDeviceFunction(device, function, cancellationToken);
+        return ExecuteDeviceFunction(device, function, cancellationToken);
     }
 
     public bool IsConnect(string nickName)
@@ -495,7 +495,7 @@ public sealed class CInterfaceManager {
             .ToArray();
     }
 
-    public Task<IReadOnlyList<ST_INTERFACE_HISTORY>> ReadInterfaceHistory(
+    public IReadOnlyList<ST_INTERFACE_HISTORY> ReadInterfaceHistory(
         EN_EQP_MODULE? module = null,
         string nickName = "",
         int maxRows = 100,
@@ -507,10 +507,10 @@ public sealed class CInterfaceManager {
             ? []
             : _logManager.ReadInterfaceRecent(module, nickName, maxRows);
 
-        return Task.FromResult(history);
+        return history;
     }
 
-    public Task<IReadOnlyList<ST_DEVICE_COMM_STATUS>> GetCommunicationStatus(
+    public IReadOnlyList<ST_DEVICE_COMM_STATUS> GetCommunicationStatus(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -542,7 +542,7 @@ public sealed class CInterfaceManager {
             .OrderBy(GetStatusSortKey14)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<ST_DEVICE_COMM_STATUS>>(statuses);
+        return statuses;
     }
 
     private static EN_COMM_STATE CollapseConnectionState(IEnumerable<EN_COMM_STATE> states)
@@ -570,7 +570,7 @@ public sealed class CInterfaceManager {
         return EN_COMM_STATE.Online;
     }
 
-    private async Task ConnectDevice(
+    private void ConnectDevice(
         CInterfaceDevice device,
         bool autoConnection,
         CancellationToken cancellationToken)
@@ -581,27 +581,27 @@ public sealed class CInterfaceManager {
         }
 
         var beforeState = device.ConnectionState;
-        await device.Connect(cancellationToken);
+        device.Connect(cancellationToken);
         WriteConnectionLog("CONNECT", device, beforeState);
     }
 
-    private async Task DisconnectDevice(
+    private void DisconnectDevice(
         CInterfaceDevice device,
         CancellationToken cancellationToken)
     {
         var beforeState = device.ConnectionState;
-        await device.Disconnect(cancellationToken);
+        device.Disconnect(cancellationToken);
         WriteConnectionLog("DISCONNECT", device, beforeState);
     }
 
-    private async Task<string> ExecuteDeviceFunction(
+    private string ExecuteDeviceFunction(
         CInterfaceDevice device,
         string function,
         CancellationToken cancellationToken)
     {
         try
         {
-            var response = await device.ExecuteFunction(function, cancellationToken);
+            var response = device.ExecuteFunction(function, cancellationToken);
             WriteCommandLog(device, function, response);
             return response;
         }
@@ -739,7 +739,7 @@ public sealed class CInterfaceManager {
             detail);
     }
 
-    private async Task<string> OnDeviceMessageReceived(
+    private string OnDeviceMessageReceived(
         CInterfaceDevice device,
         ST_COMM_RECEIVED_MESSAGE message,
         CancellationToken cancellationToken)
@@ -768,9 +768,9 @@ public sealed class CInterfaceManager {
 
         var response = "ACK";
         foreach (var callback in handler.GetInvocationList()
-                     .Cast<Func<ST_INTERFACE_RECEIVED_MESSAGE, CancellationToken, Task<string>>>())
+                     .Cast<Func<ST_INTERFACE_RECEIVED_MESSAGE, CancellationToken, string>>())
         {
-            var callbackResponse = await callback(receivedMessage, cancellationToken);
+            var callbackResponse = callback(receivedMessage, cancellationToken);
             if (!string.IsNullOrWhiteSpace(callbackResponse))
             {
                 response = callbackResponse;
@@ -867,13 +867,13 @@ public sealed class CInterfaceManager {
     private readonly Dictionary<int, ST_BET_STATUS> _betStatuses = [];
     private readonly Dictionary<int, ST_POWER_METER_STATUS> _powerMeterStatuses = [];
 
-    public async Task<ST_LASER_STATUS> GetLaserStatus(CancellationToken cancellationToken = default)
+    public ST_LASER_STATUS GetLaserStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetTalonInterfaceData();
-        return await GetLaserStatus(interfaceData?.Number ?? 0, cancellationToken);
+        return GetLaserStatus(interfaceData?.Number ?? 0, cancellationToken);
     }
 
-    public async Task<ST_LASER_STATUS> GetLaserStatus(
+    public ST_LASER_STATUS GetLaserStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -881,7 +881,7 @@ public sealed class CInterfaceManager {
 
         if (!IsInterfaceSimulation(interfaceData))
         {
-            var liveStatus = await RefreshTalonLaserStatus(number, cancellationToken);
+            var liveStatus = RefreshTalonLaserStatus(number, cancellationToken);
 
             return new ST_LASER_STATUS(
                 liveStatus.LaserOn,
@@ -902,16 +902,16 @@ public sealed class CInterfaceManager {
             outputPower);
     }
 
-    public async Task SetLaser(
+    public void SetLaser(
         int headNo,
         bool enabled,
         CancellationToken cancellationToken = default)
     {
         var interfaceData = GetTalonInterfaceData();
-        await SetLaser(interfaceData?.Number ?? 0, headNo, enabled, cancellationToken);
+        SetLaser(interfaceData?.Number ?? 0, headNo, enabled, cancellationToken);
     }
 
-    public async Task SetLaser(
+    public void SetLaser(
         int number,
         int headNo,
         bool enabled,
@@ -932,7 +932,7 @@ public sealed class CInterfaceManager {
             return;
         }
 
-        var result = await ExecuteTalonLaserCommand(
+        var result = ExecuteTalonLaserCommand(
             number,
             EN_TALON_COMMAND.SetLaserOnOff,
             enabled ? 1.0 : 0.0,
@@ -944,7 +944,7 @@ public sealed class CInterfaceManager {
         }
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteTalonLaserCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteTalonLaserCommand(
         EN_TALON_COMMAND command,
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
@@ -952,10 +952,10 @@ public sealed class CInterfaceManager {
         var interfaceData = GetTalonInterfaceData();
         return interfaceData is null
             ? new ST_DEVICE_COMMAND_RESULT(false, "Talon interface is not registered.")
-            : await ExecuteTalonLaserCommand(interfaceData.Number, command, parameter, cancellationToken);
+            : ExecuteTalonLaserCommand(interfaceData.Number, command, parameter, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteTalonLaserCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteTalonLaserCommand(
         int number,
         EN_TALON_COMMAND command,
         double parameter = 0.0,
@@ -993,7 +993,7 @@ public sealed class CInterfaceManager {
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
+            Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
         }
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
@@ -1003,7 +1003,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"Talon interface is offline: {FormatDeviceName(interfaceData)}");
         }
 
-        var response = await ExecuteFunction(
+        var response = ExecuteFunction(
             interfaceData.Device,
             interfaceData.Number,
             commandText,
@@ -1027,15 +1027,15 @@ public sealed class CInterfaceManager {
         return new ST_DEVICE_COMMAND_RESULT(true, response);
     }
 
-    public async Task<ST_TALON_STATUS> RefreshTalonLaserStatus(CancellationToken cancellationToken = default)
+    public ST_TALON_STATUS RefreshTalonLaserStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetTalonInterfaceData();
         return interfaceData is null
             ? ST_TALON_STATUS.Empty
-            : await RefreshTalonLaserStatus(interfaceData.Number, cancellationToken);
+            : RefreshTalonLaserStatus(interfaceData.Number, cancellationToken);
     }
 
-    public async Task<ST_TALON_STATUS> RefreshTalonLaserStatus(
+    public ST_TALON_STATUS RefreshTalonLaserStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -1064,7 +1064,7 @@ public sealed class CInterfaceManager {
 
         foreach (var command in commands)
         {
-            var result = await ExecuteTalonLaserCommand(number, command, cancellationToken: cancellationToken);
+            var result = ExecuteTalonLaserCommand(number, command, cancellationToken: cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -1075,19 +1075,19 @@ public sealed class CInterfaceManager {
         return GetTalonStatus(number);
     }
 
-    public async Task<ST_CHILLER_STATUS> GetChillerStatus(CancellationToken cancellationToken = default)
+    public ST_CHILLER_STATUS GetChillerStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetChillerInterfaceData();
-        return await GetChillerStatus(interfaceData?.Number ?? 0, cancellationToken);
+        return GetChillerStatus(interfaceData?.Number ?? 0, cancellationToken);
     }
 
-    public async Task<ST_CHILLER_STATUS> GetChillerStatus(
+    public ST_CHILLER_STATUS GetChillerStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
         if (!IsInterfaceSimulation(GetChillerInterfaceData(number)))
         {
-            await RefreshChillerStatus(number, cancellationToken);
+            RefreshChillerStatus(number, cancellationToken);
         }
 
         var status = GetChillerStatusValue(number);
@@ -1122,7 +1122,7 @@ public sealed class CInterfaceManager {
         return EvaluateStateSwitch2();
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteChillerCommand(
         EN_CHILLER_COMMAND command,
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
@@ -1130,10 +1130,10 @@ public sealed class CInterfaceManager {
         var interfaceData = GetChillerInterfaceData();
         return interfaceData is null
             ? new ST_DEVICE_COMMAND_RESULT(false, "Chiller interface is not registered.")
-            : await ExecuteChillerCommand(interfaceData.Number, command, parameter, cancellationToken);
+            : ExecuteChillerCommand(interfaceData.Number, command, parameter, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteChillerCommand(
         int number,
         EN_CHILLER_COMMAND command,
         double parameter = 0.0,
@@ -1192,7 +1192,7 @@ public sealed class CInterfaceManager {
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
+            Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
         }
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
@@ -1208,7 +1208,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"Chiller interface is offline: {FormatDeviceName(interfaceData)}");
         }
 
-        var response = await ExecuteFunction(
+        var response = ExecuteFunction(
             interfaceData.Device,
             interfaceData.Number,
             commandText,
@@ -1227,15 +1227,15 @@ public sealed class CInterfaceManager {
             : new ST_DEVICE_COMMAND_RESULT(false, $"Chiller command failed. Command={commandText}, Response={response}");
     }
 
-    public async Task<ST_ORION_CHILLER_STATUS> RefreshChillerStatus(CancellationToken cancellationToken = default)
+    public ST_ORION_CHILLER_STATUS RefreshChillerStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetChillerInterfaceData();
         return interfaceData is null
             ? ST_ORION_CHILLER_STATUS.Empty
-            : await RefreshChillerStatus(interfaceData.Number, cancellationToken);
+            : RefreshChillerStatus(interfaceData.Number, cancellationToken);
     }
 
-    public async Task<ST_ORION_CHILLER_STATUS> RefreshChillerStatus(
+    public ST_ORION_CHILLER_STATUS RefreshChillerStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -1256,7 +1256,7 @@ public sealed class CInterfaceManager {
 
         foreach (var command in commands)
         {
-            var result = await ExecuteChillerCommand(number, command, cancellationToken: cancellationToken);
+            var result = ExecuteChillerCommand(number, command, cancellationToken: cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -1267,25 +1267,25 @@ public sealed class CInterfaceManager {
         return GetChillerStatusValue(number);
     }
 
-    public async Task<ST_ATTENUATOR_STATUS> GetAttenuatorStatus(CancellationToken cancellationToken = default)
+    public ST_ATTENUATOR_STATUS GetAttenuatorStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetAttenuatorInterfaceData();
-        return await GetAttenuatorStatus(interfaceData?.Number ?? 0, cancellationToken);
+        return GetAttenuatorStatus(interfaceData?.Number ?? 0, cancellationToken);
     }
 
-    public async Task<ST_ATTENUATOR_STATUS> GetAttenuatorStatus(
+    public ST_ATTENUATOR_STATUS GetAttenuatorStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
         if (!IsInterfaceSimulation(GetAttenuatorInterfaceData(number)))
         {
-            await RefreshAttenuatorStatus(number, cancellationToken);
+            RefreshAttenuatorStatus(number, cancellationToken);
         }
 
         return GetAttenuatorStatusValue(number);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteAttenuatorCommand(
         EN_ATTENUATOR_COMMAND command,
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
@@ -1293,10 +1293,10 @@ public sealed class CInterfaceManager {
         var interfaceData = GetAttenuatorInterfaceData();
         return interfaceData is null
             ? new ST_DEVICE_COMMAND_RESULT(false, "CONEX_AGP interface is not registered.")
-            : await ExecuteAttenuatorCommand(interfaceData.Number, command, parameter, cancellationToken);
+            : ExecuteAttenuatorCommand(interfaceData.Number, command, parameter, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteAttenuatorCommand(
         int number,
         EN_ATTENUATOR_COMMAND command,
         double parameter = 0.0,
@@ -1306,7 +1306,7 @@ public sealed class CInterfaceManager {
 
         if (command == EN_ATTENUATOR_COMMAND.Refresh)
         {
-            var status = await RefreshAttenuatorStatus(number, cancellationToken);
+            var status = RefreshAttenuatorStatus(number, cancellationToken);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"CONEX_AGP refreshed. Position {status.CurrentPosition:F3} DEG.");
@@ -1342,7 +1342,7 @@ public sealed class CInterfaceManager {
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
+            Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
         }
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
@@ -1358,7 +1358,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"CONEX_AGP interface is offline: {FormatDeviceName(interfaceData)}");
         }
 
-        var response = await ExecuteFunction(
+        var response = ExecuteFunction(
             interfaceData.Device,
             interfaceData.Number,
             commandText,
@@ -1377,15 +1377,15 @@ public sealed class CInterfaceManager {
             : new ST_DEVICE_COMMAND_RESULT(false, $"CONEX_AGP command failed. Command={commandText}, Response={response}");
     }
 
-    public async Task<ST_ATTENUATOR_STATUS> RefreshAttenuatorStatus(CancellationToken cancellationToken = default)
+    public ST_ATTENUATOR_STATUS RefreshAttenuatorStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetAttenuatorInterfaceData();
         return interfaceData is null
             ? CreateDefaultAttenuatorStatus()
-            : await RefreshAttenuatorStatus(interfaceData.Number, cancellationToken);
+            : RefreshAttenuatorStatus(interfaceData.Number, cancellationToken);
     }
 
-    public async Task<ST_ATTENUATOR_STATUS> RefreshAttenuatorStatus(
+    public ST_ATTENUATOR_STATUS RefreshAttenuatorStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -1405,7 +1405,7 @@ public sealed class CInterfaceManager {
 
         foreach (var command in commands)
         {
-            var result = await ExecuteAttenuatorCommand(number, command, cancellationToken: cancellationToken);
+            var result = ExecuteAttenuatorCommand(number, command, cancellationToken: cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -1416,25 +1416,25 @@ public sealed class CInterfaceManager {
         return GetAttenuatorStatusValue(number);
     }
 
-    public async Task<ST_BET_STATUS> GetBETStatus(CancellationToken cancellationToken = default)
+    public ST_BET_STATUS GetBETStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetBETInterfaceData();
-        return await GetBETStatus(interfaceData?.Number ?? 0, cancellationToken);
+        return GetBETStatus(interfaceData?.Number ?? 0, cancellationToken);
     }
 
-    public async Task<ST_BET_STATUS> GetBETStatus(
+    public ST_BET_STATUS GetBETStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
         if (!IsInterfaceSimulation(GetBETInterfaceData(number)))
         {
-            await RefreshBETStatus(number, cancellationToken);
+            RefreshBETStatus(number, cancellationToken);
         }
 
         return GetBETStatusValue(number);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteBETCommand(
         EN_BET_COMMAND command,
         double parameter1 = 0.0,
         double parameter2 = 0.0,
@@ -1443,10 +1443,10 @@ public sealed class CInterfaceManager {
         var interfaceData = GetBETInterfaceData();
         return interfaceData is null
             ? new ST_DEVICE_COMMAND_RESULT(false, "BeamExpander interface is not registered.")
-            : await ExecuteBETCommand(interfaceData.Number, command, parameter1, parameter2, cancellationToken);
+            : ExecuteBETCommand(interfaceData.Number, command, parameter1, parameter2, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecuteBETCommand(
         int number,
         EN_BET_COMMAND command,
         double parameter1 = 0.0,
@@ -1457,7 +1457,7 @@ public sealed class CInterfaceManager {
 
         if (command == EN_BET_COMMAND.Refresh)
         {
-            var status = await RefreshBETStatus(number, cancellationToken);
+            var status = RefreshBETStatus(number, cancellationToken);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"BET refreshed. MAG {status.CurrentMagnification:F3}, DIV {status.CurrentDivergence:F3}.");
@@ -1465,7 +1465,7 @@ public sealed class CInterfaceManager {
 
         if (command == EN_BET_COMMAND.MoveTable)
         {
-            var table = await LoadBETData(cancellationToken);
+            var table = LoadBETData(cancellationToken);
             var index = (int)Math.Round(parameter1);
             bool MatchItem19(ST_BET_TABLE_DATA item)
             {
@@ -1479,7 +1479,7 @@ public sealed class CInterfaceManager {
                 return new ST_DEVICE_COMMAND_RESULT(false, $"BET table row was not found: {index}");
             }
 
-            return await ExecuteBETCommand(
+            return ExecuteBETCommand(
                 number,
                 EN_BET_COMMAND.MoveManual,
                 row.Magnification,
@@ -1519,7 +1519,7 @@ public sealed class CInterfaceManager {
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
+            Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
         }
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
@@ -1535,7 +1535,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"BeamExpander interface is offline: {FormatDeviceName(interfaceData)}");
         }
 
-        var response = await ExecuteFunction(
+        var response = ExecuteFunction(
             interfaceData.Device,
             interfaceData.Number,
             commandText,
@@ -1555,15 +1555,15 @@ public sealed class CInterfaceManager {
             : new ST_DEVICE_COMMAND_RESULT(false, $"BeamExpander command failed. Command={logCommandText}, Response={response}");
     }
 
-    public async Task<ST_BET_STATUS> RefreshBETStatus(CancellationToken cancellationToken = default)
+    public ST_BET_STATUS RefreshBETStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetBETInterfaceData();
         return interfaceData is null
             ? CreateDefaultBETStatus()
-            : await RefreshBETStatus(interfaceData.Number, cancellationToken);
+            : RefreshBETStatus(interfaceData.Number, cancellationToken);
     }
 
-    public async Task<ST_BET_STATUS> RefreshBETStatus(
+    public ST_BET_STATUS RefreshBETStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -1582,7 +1582,7 @@ public sealed class CInterfaceManager {
 
         foreach (var command in commands)
         {
-            var result = await ExecuteBETCommand(number, command, cancellationToken: cancellationToken);
+            var result = ExecuteBETCommand(number, command, cancellationToken: cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -1593,88 +1593,93 @@ public sealed class CInterfaceManager {
         return GetBETStatusValue(number);
     }
 
-    public Task<IReadOnlyList<ST_BET_TABLE_DATA>> LoadBETData(CancellationToken cancellationToken = default)
+    public IReadOnlyList<ST_BET_TABLE_DATA> LoadBETData(CancellationToken cancellationToken = default)
     {
         return _betFile is null
-            ? Task.FromResult<IReadOnlyList<ST_BET_TABLE_DATA>>(CreateDefaultBETData())
+            ? CreateDefaultBETData()
             : _betFile.Load(cancellationToken);
     }
 
-    public Task SaveBETData(
+    public void SaveBETData(
         IReadOnlyList<ST_BET_TABLE_DATA> table,
         CancellationToken cancellationToken = default)
     {
-        return _betFile is null
-            ? Task.CompletedTask
-            : _betFile.Save(table, cancellationToken);
+        if (_betFile != null)
+        {
+            _betFile.Save(table, cancellationToken);
+        }
     }
 
-    public Task<ST_POWER_METER_TABLE_DATA> LoadPowerMeterData(
+    public ST_POWER_METER_TABLE_DATA LoadPowerMeterData(
         string processFile = "",
         CancellationToken cancellationToken = default)
     {
         return _powerMeterFile is null
-            ? Task.FromResult(CreateDefaultPowerMeterData(processFile))
+            ? CreateDefaultPowerMeterData(processFile)
             : _powerMeterFile.Load(processFile, cancellationToken);
     }
 
-    public Task CreatePowerMeterData(
+    public void CreatePowerMeterData(
         string processFile,
         CancellationToken cancellationToken = default)
     {
-        return _powerMeterFile is null
-            ? Task.CompletedTask
-            : _powerMeterFile.Create(processFile, cancellationToken);
+        if (_powerMeterFile != null)
+        {
+            _powerMeterFile.Create(processFile, cancellationToken);
+        }
     }
 
-    public Task DeletePowerMeterData(
+    public void DeletePowerMeterData(
         string processFile,
         CancellationToken cancellationToken = default)
     {
-        return _powerMeterFile is null
-            ? Task.CompletedTask
-            : _powerMeterFile.Delete(processFile, cancellationToken);
+        if (_powerMeterFile != null)
+        {
+            _powerMeterFile.Delete(processFile, cancellationToken);
+        }
     }
 
-    public Task RenamePowerMeterData(
+    public void RenamePowerMeterData(
         string oldProcessFile,
         string newProcessFile,
         CancellationToken cancellationToken = default)
     {
-        return _powerMeterFile is null
-            ? Task.CompletedTask
-            : _powerMeterFile.Rename(oldProcessFile, newProcessFile, cancellationToken);
+        if (_powerMeterFile != null)
+        {
+            _powerMeterFile.Rename(oldProcessFile, newProcessFile, cancellationToken);
+        }
     }
 
-    public Task SavePowerMeterData(
+    public void SavePowerMeterData(
         string processFile,
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
         CancellationToken cancellationToken = default)
     {
-        return _powerMeterFile is null
-            ? Task.CompletedTask
-            : _powerMeterFile.Save(processFile, steps, cancellationToken);
+        if (_powerMeterFile != null)
+        {
+            _powerMeterFile.Save(processFile, steps, cancellationToken);
+        }
     }
 
-    public async Task<ST_POWER_METER_STATUS> GetPowerMeterStatus(CancellationToken cancellationToken = default)
+    public ST_POWER_METER_STATUS GetPowerMeterStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetPowerMeterInterfaceData();
-        return await GetPowerMeterStatus(interfaceData?.Number ?? 0, cancellationToken);
+        return GetPowerMeterStatus(interfaceData?.Number ?? 0, cancellationToken);
     }
 
-    public async Task<ST_POWER_METER_STATUS> GetPowerMeterStatus(
+    public ST_POWER_METER_STATUS GetPowerMeterStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
         if (!IsInterfaceSimulation(GetPowerMeterInterfaceData(number)))
         {
-            await RefreshPowerMeterStatus(number, cancellationToken);
+            RefreshPowerMeterStatus(number, cancellationToken);
         }
 
         return GetPowerMeterStatusValue(number);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecutePowerMeterCommand(
         EN_POWER_METER_COMMAND command,
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
@@ -1682,10 +1687,10 @@ public sealed class CInterfaceManager {
         var interfaceData = GetPowerMeterInterfaceData();
         return interfaceData is null
             ? new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter interface is not registered.")
-            : await ExecutePowerMeterCommand(interfaceData.Number, command, parameter, cancellationToken);
+            : ExecutePowerMeterCommand(interfaceData.Number, command, parameter, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecutePowerMeterCommand(
         int number,
         EN_POWER_METER_COMMAND command,
         double parameter = 0.0,
@@ -1695,7 +1700,7 @@ public sealed class CInterfaceManager {
 
         if (command == EN_POWER_METER_COMMAND.Refresh)
         {
-            var status = await RefreshPowerMeterStatus(number, cancellationToken);
+            var status = RefreshPowerMeterStatus(number, cancellationToken);
             return new ST_DEVICE_COMMAND_RESULT(
                 true,
                 $"PowerMeter refreshed. Power {status.MeasuredPower.ToString("F4", CultureInfo.InvariantCulture)} {status.Unit}.");
@@ -1731,7 +1736,7 @@ public sealed class CInterfaceManager {
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
         {
-            await Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
+            Connect(interfaceData.Device, interfaceData.Number, cancellationToken: cancellationToken);
         }
 
         if (!IsConnect(interfaceData.Device, interfaceData.Number))
@@ -1746,7 +1751,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter interface is offline: {FormatDeviceName(interfaceData)}");
         }
 
-        var response = await ExecuteFunction(
+        var response = ExecuteFunction(
             interfaceData.Device,
             interfaceData.Number,
             commandText,
@@ -1765,15 +1770,15 @@ public sealed class CInterfaceManager {
             : new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter command failed. Command={commandText}, Response={response}");
     }
 
-    public async Task<ST_POWER_METER_STATUS> RefreshPowerMeterStatus(CancellationToken cancellationToken = default)
+    public ST_POWER_METER_STATUS RefreshPowerMeterStatus(CancellationToken cancellationToken = default)
     {
         var interfaceData = GetPowerMeterInterfaceData();
         return interfaceData is null
             ? ST_POWER_METER_STATUS.Empty
-            : await RefreshPowerMeterStatus(interfaceData.Number, cancellationToken);
+            : RefreshPowerMeterStatus(interfaceData.Number, cancellationToken);
     }
 
-    public async Task<ST_POWER_METER_STATUS> RefreshPowerMeterStatus(
+    public ST_POWER_METER_STATUS RefreshPowerMeterStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -1795,7 +1800,7 @@ public sealed class CInterfaceManager {
 
         foreach (var command in commands)
         {
-            var result = await ExecutePowerMeterCommand(number, command, cancellationToken: cancellationToken);
+            var result = ExecutePowerMeterCommand(number, command, cancellationToken: cancellationToken);
 
             if (!result.IsSuccess)
             {
@@ -1806,7 +1811,7 @@ public sealed class CInterfaceManager {
         return GetPowerMeterStatusValue(number);
     }
 
-    public async Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(
+    public ST_PICO_MOTOR_STATUS GetPicoMotorStatus(
         CancellationToken cancellationToken = default)
     {
         int GetItemSortKey20(ST_INTERFACE_DATA item)
@@ -1827,10 +1832,10 @@ public sealed class CInterfaceManager {
             };
         }
 
-        return await GetPicoMotorStatus(data.Number, cancellationToken);
+        return GetPicoMotorStatus(data.Number, cancellationToken);
     }
 
-    public async Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(
+    public ST_PICO_MOTOR_STATUS GetPicoMotorStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
@@ -1853,7 +1858,7 @@ public sealed class CInterfaceManager {
 
         try
         {
-            return await _picoMotorService.Refresh(
+            return _picoMotorService.Refresh(
                 data.Number,
                 IsInterfaceSimulation(data),
                 cancellationToken);
@@ -1869,20 +1874,20 @@ public sealed class CInterfaceManager {
         }
     }
 
-    public Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(
+    public ST_PICO_MOTOR_STATUS RefreshPicoMotorStatus(
         CancellationToken cancellationToken = default)
     {
         return GetPicoMotorStatus(cancellationToken);
     }
 
-    public Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(
+    public ST_PICO_MOTOR_STATUS RefreshPicoMotorStatus(
         int number,
         CancellationToken cancellationToken = default)
     {
         return GetPicoMotorStatus(number, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecutePicoMotorCommand(
         EN_PICO_MOTOR_COMMAND command,
         int motorNo = 1,
         double parameter = 0.0,
@@ -1901,10 +1906,10 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, "PicoMotor interface is not registered.");
         }
 
-        return await ExecutePicoMotorCommand(data.Number, command, motorNo, parameter, cancellationToken);
+        return ExecutePicoMotorCommand(data.Number, command, motorNo, parameter, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
+    public ST_DEVICE_COMMAND_RESULT ExecutePicoMotorCommand(
         int number,
         EN_PICO_MOTOR_COMMAND command,
         int motorNo = 1,
@@ -1923,7 +1928,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PicoMotor interface {number} is not registered.");
         }
 
-        var result = await _picoMotorService.Execute(
+        var result = _picoMotorService.Execute(
             data.Number,
             IsInterfaceSimulation(data),
             command,
@@ -1942,7 +1947,7 @@ public sealed class CInterfaceManager {
         return result;
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorAllMove(
+    public ST_DEVICE_COMMAND_RESULT ExecutePicoMotorAllMove(
         IReadOnlyCollection<int> motorNos,
         double positionMm,
         int count,
@@ -1961,10 +1966,10 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, "PicoMotor interface is not registered.");
         }
 
-        return await ExecutePicoMotorAllMove(data.Number, motorNos, positionMm, count, cancellationToken);
+        return ExecutePicoMotorAllMove(data.Number, motorNos, positionMm, count, cancellationToken);
     }
 
-    public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorAllMove(
+    public ST_DEVICE_COMMAND_RESULT ExecutePicoMotorAllMove(
         int number,
         IReadOnlyCollection<int> motorNos,
         double positionMm,
@@ -1983,7 +1988,7 @@ public sealed class CInterfaceManager {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PicoMotor interface {number} is not registered.");
         }
 
-        var result = await _picoMotorService.ExecuteAllMove(
+        var result = _picoMotorService.ExecuteAllMove(
             data.Number,
             IsInterfaceSimulation(data),
             motorNos,
@@ -2329,6 +2334,11 @@ public sealed class CInterfaceManager {
     }
 }
 
+internal delegate string CInterfaceDeviceMessageHandler(
+    CInterfaceDevice device,
+    ST_COMM_RECEIVED_MESSAGE message,
+    CancellationToken cancellationToken);
+
 public sealed class CInterfaceDevice
 {
     private bool _simulationMode;
@@ -2338,7 +2348,7 @@ public sealed class CInterfaceDevice
     private string _simulationLastError = "";
     private DateTimeOffset? _simulationLastChangedAt;
 
-    internal event Func<CInterfaceDevice, ST_COMM_RECEIVED_MESSAGE, CancellationToken, Task<string>>? MessageReceived;
+    internal event CInterfaceDeviceMessageHandler? MessageReceived;
 
     public CInterfaceDevice(
         ST_INTERFACE_DATA data,
@@ -2410,37 +2420,37 @@ public sealed class CInterfaceDevice
 
         if (_simulationMode)
         {
-            _comm.Disconnect().GetAwaiter().GetResult();
+            _comm.Disconnect();
             TouchSimulationState();
         }
     }
 
-    public Task Connect(CancellationToken cancellationToken = default)
+    public void Connect(CancellationToken cancellationToken = default)
     {
         if (_simulationMode)
         {
             cancellationToken.ThrowIfCancellationRequested();
             _simulationLastError = "";
             TouchSimulationState();
-            return Task.CompletedTask;
+            return;
         }
 
-        return _comm.Connect(cancellationToken);
+        _comm.Connect(cancellationToken);
     }
 
-    public Task Disconnect(CancellationToken cancellationToken = default)
+    public void Disconnect(CancellationToken cancellationToken = default)
     {
         if (_simulationMode)
         {
             cancellationToken.ThrowIfCancellationRequested();
             TouchSimulationState();
-            return Task.CompletedTask;
+            return;
         }
 
-        return _comm.Disconnect(cancellationToken);
+        _comm.Disconnect(cancellationToken);
     }
 
-    public Task<string> ExecuteFunction(
+    public string ExecuteFunction(
         string function,
         CancellationToken cancellationToken = default)
     {
@@ -2451,7 +2461,7 @@ public sealed class CInterfaceDevice
             _simulationLastReceived = $"SIM:{Data.NickName}:{function}:OK";
             _simulationLastError = "";
             TouchSimulationState();
-            return Task.FromResult(_simulationLastReceived);
+            return _simulationLastReceived;
         }
 
         return _comm.Execute(function, cancellationToken);
@@ -2462,7 +2472,7 @@ public sealed class CInterfaceDevice
         _simulationLastChangedAt = DateTimeOffset.Now;
     }
 
-    private async Task<string> OnCommMessageReceived(
+    private string OnCommMessageReceived(
         ST_COMM_RECEIVED_MESSAGE message,
         CancellationToken cancellationToken)
     {
@@ -2473,11 +2483,12 @@ public sealed class CInterfaceDevice
             return "ACK";
         }
 
-        var response = "ACK";
-        foreach (var callback in handler.GetInvocationList()
-                     .Cast<Func<CInterfaceDevice, ST_COMM_RECEIVED_MESSAGE, CancellationToken, Task<string>>>())
+        string response = "ACK";
+        foreach (Delegate callbackItem in handler.GetInvocationList())
         {
-            var callbackResponse = await callback(this, message, cancellationToken);
+            CInterfaceDeviceMessageHandler callback =
+                (CInterfaceDeviceMessageHandler)callbackItem;
+            string callbackResponse = callback(this, message, cancellationToken);
             if (!string.IsNullOrWhiteSpace(callbackResponse))
             {
                 response = callbackResponse;
@@ -2729,6 +2740,3 @@ internal static class CInterfaceConnectOption
             : defaultValue;
     }
 }
-
-
-

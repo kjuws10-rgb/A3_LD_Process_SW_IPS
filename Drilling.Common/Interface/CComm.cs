@@ -4,7 +4,9 @@ using Drilling.Common.InterLock;
 using Drilling.Common.Managers;
 using Drilling.Common.Motion;
 using Drilling.Common.Station;
+using Drilling.Common.Threading;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace Drilling.Common.Interface;
 
@@ -128,11 +130,46 @@ internal static class CComm
     }
 }
 
+internal enum EN_COMM_THREAD_COMMAND
+{
+    Connect,
+    Disconnect,
+    Execute
+}
+
+internal sealed class CCommThreadRequest
+{
+    public CCommThreadRequest(
+        EN_COMM_THREAD_COMMAND command,
+        string function,
+        CancellationToken cancellationToken)
+    {
+        Command = command;
+        Function = function;
+        CancellationToken = cancellationToken;
+    }
+
+    public EN_COMM_THREAD_COMMAND Command { get; }
+
+    public string Function { get; }
+
+    public CancellationToken CancellationToken { get; }
+
+    public ManualResetEvent Completed { get; } = new ManualResetEvent(false);
+
+    public string Result { get; set; } = "";
+
+    public Exception? Error { get; set; }
+}
+
 internal abstract class CCommBase(
     ST_INTERFACE_DATA data,
-    ST_INTERFACE_CONNECT_OPTION option) {
+    ST_INTERFACE_CONNECT_OPTION option) : CtrlThread
+{
     protected readonly ST_INTERFACE_DATA Data = data;
     protected readonly ST_INTERFACE_CONNECT_OPTION Option = option;
+    private readonly object mobjCommandLock = new object();
+    private readonly Queue<CCommThreadRequest> mobjCommandQueue = new Queue<CCommThreadRequest>();
 
     public EN_COMM_STATE ConnectionState { get; protected set; } = EN_COMM_STATE.Offline;
 
@@ -152,18 +189,107 @@ internal abstract class CCommBase(
 
     public DateTimeOffset? LastChangedAt { get; protected set; }
 
-    public abstract Task Connect(CancellationToken cancellationToken = default);
+    public void Connect(CancellationToken cancellationToken = default)
+    {
+        CCommThreadRequest request = new CCommThreadRequest(
+            EN_COMM_THREAD_COMMAND.Connect,
+            "",
+            cancellationToken);
+        ExecuteRequest(request);
+    }
 
-    public virtual Task Disconnect(CancellationToken cancellationToken = default)
+    public void Disconnect(CancellationToken cancellationToken = default)
+    {
+        BeforeQueueDisconnect();
+        if (!IsRunning)
+        {
+            DisconnectCore(cancellationToken);
+            SetState(EN_COMM_STATE.Offline);
+            return;
+        }
+
+        CCommThreadRequest request = new CCommThreadRequest(
+            EN_COMM_THREAD_COMMAND.Disconnect,
+            "",
+            cancellationToken);
+        ExecuteRequest(request);
+        Stop();
+    }
+
+    public string Execute(
+        string function,
+        CancellationToken cancellationToken = default)
+    {
+        BeforeQueueExecute(function);
+        CCommThreadRequest request = new CCommThreadRequest(
+            EN_COMM_THREAD_COMMAND.Execute,
+            function,
+            cancellationToken);
+        ExecuteRequest(request);
+        return request.Result;
+    }
+
+    public override void Run()
+    {
+        CCommThreadRequest? request = GetCommand();
+        if (request == null)
+        {
+            Poll();
+            return;
+        }
+
+        try
+        {
+            request.CancellationToken.ThrowIfCancellationRequested();
+            switch (request.Command)
+            {
+                case EN_COMM_THREAD_COMMAND.Connect:
+                    ConnectCore(request.CancellationToken);
+                    break;
+                case EN_COMM_THREAD_COMMAND.Disconnect:
+                    DisconnectCore(request.CancellationToken);
+                    SetState(EN_COMM_STATE.Offline);
+                    break;
+                case EN_COMM_THREAD_COMMAND.Execute:
+                    request.Result = ExecuteCore(
+                        request.Function,
+                        request.CancellationToken);
+                    break;
+            }
+        }
+        catch (Exception exception)
+        {
+            request.Error = exception;
+        }
+        finally
+        {
+            request.Completed.Set();
+        }
+    }
+
+    protected abstract void ConnectCore(CancellationToken cancellationToken);
+
+    protected virtual void DisconnectCore(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         SetState(EN_COMM_STATE.Offline);
-        return Task.CompletedTask;
     }
 
-    public abstract Task<string> Execute(
+    protected abstract string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken);
+
+    protected virtual void Poll()
+    {
+    }
+
+    protected virtual void BeforeQueueDisconnect()
+    {
+    }
+
+    protected virtual void BeforeQueueExecute(string function)
+    {
+    }
 
     protected void SetState(EN_COMM_STATE state)
     {
@@ -182,29 +308,65 @@ internal abstract class CCommBase(
         LastError = message;
         SetState(EN_COMM_STATE.Offline);
     }
+
+    private void ExecuteRequest(CCommThreadRequest request)
+    {
+        request.CancellationToken.ThrowIfCancellationRequested();
+        Start(1, "COMM_" + Data.Number.ToString() + "_" + Data.Device.ToString());
+
+        lock (mobjCommandLock)
+        {
+            mobjCommandQueue.Enqueue(request);
+        }
+
+        while (!request.Completed.WaitOne(20))
+        {
+            request.CancellationToken.ThrowIfCancellationRequested();
+            if (!IsRunning)
+            {
+                throw new InvalidOperationException(
+                    "Communication thread stopped before command completion: " + Data.Device);
+            }
+        }
+
+        if (request.Error != null)
+        {
+            ExceptionDispatchInfo.Capture(request.Error).Throw();
+        }
+    }
+
+    private CCommThreadRequest? GetCommand()
+    {
+        lock (mobjCommandLock)
+        {
+            if (mobjCommandQueue.Count == 0)
+            {
+                return null;
+            }
+
+            return mobjCommandQueue.Dequeue();
+        }
+    }
 }
 
 internal sealed class CReadyOnlyComm(
     ST_INTERFACE_DATA data,
     ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option)
 {
-    public override Task Connect(CancellationToken cancellationToken = default)
+    protected override void ConnectCore(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         SetError($"Live channel is not ready for {Data.InterfaceType}.");
-        return Task.CompletedTask;
     }
 
-    public override Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         LastSent = function;
         LastReceived = "";
         SetError($"Live command is not ready for {Data.InterfaceType}.");
-        return Task.FromResult("");
+        return "";
     }
 }
-
-

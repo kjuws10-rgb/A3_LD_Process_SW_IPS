@@ -50,13 +50,13 @@ public sealed class CJhmiRecipeFile(string configRoot) : CRecipeFileBase
     private readonly string _recipeDirectory = Path.Combine(configRoot, "RECIPE");
     private readonly CLogManager _logManager = new(configRoot);
 
-    public override Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_RECIPE_DATA> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!Directory.Exists(_recipeDirectory))
         {
-            return Task.FromResult<IReadOnlyList<ST_RECIPE_DATA>>([]);
+            return [];
         }
 
         var formItems = LoadFormItems();
@@ -82,10 +82,10 @@ public sealed class CJhmiRecipeFile(string configRoot) : CRecipeFileBase
             .OrderBy(GetRecipeSortKey3)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<ST_RECIPE_DATA>>(recipes);
+        return recipes;
     }
 
-    public override Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default)
+    public override ST_RECIPE_DATA? Find(string recipeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -95,10 +95,10 @@ public sealed class CJhmiRecipeFile(string configRoot) : CRecipeFileBase
             ? LoadRecipe(path, formItems)
             : null;
 
-        return Task.FromResult(recipe);
+        return recipe;
     }
 
-    public override Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
+    public override void Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -268,10 +268,10 @@ HandleOldValues6,
             _logManager.WriteRecipeCreate(recipeName);
         }
 
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task Rename(
+    public override void Rename(
         string oldRecipeId,
         string newRecipeId,
         CancellationToken cancellationToken = default)
@@ -285,7 +285,7 @@ HandleOldValues6,
 
         if (!System.IO.File.Exists(oldPath))
         {
-            return Task.CompletedTask;
+            return;
         }
 
         if (System.IO.File.Exists(newPath))
@@ -382,10 +382,10 @@ HandleOldValues15,
         System.IO.File.Delete(oldPath);
         _logManager.WriteRecipeRename(oldRecipeName, newRecipeId);
 
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task Delete(string recipeId, CancellationToken cancellationToken = default)
+    public override void Delete(string recipeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -427,7 +427,7 @@ HandleValues23,
             _logManager.WriteRecipeDelete(recipeName);
         }
 
-        return Task.CompletedTask;
+        return;
     }
 
     private ST_RECIPE_DATA? LoadRecipe(string path, IReadOnlyList<ST_RECIPE_FORM_ITEM> formItems)
@@ -1199,10 +1199,3 @@ HandleActualValues52,
         }
     }
 }
-
-
-
-
-
-
-

@@ -19,4 +19,3 @@ internal sealed class CUmacMotion(CInterfaceManager? interfaceManager, int devic
         }
     }
 }
-

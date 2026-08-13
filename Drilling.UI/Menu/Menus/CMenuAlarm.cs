@@ -16,7 +16,7 @@ public sealed class CMenuAlarm(
     CStationManager stationManager,
     Action<string> setStatusMessage,
     Action refreshShellStatus,
-    Func<Task> refreshCurrentScreen) : CMenuBase
+    Action refreshCurrentScreen) : CMenuBase
 {
     public override EN_MENU Menu
     {
@@ -30,9 +30,9 @@ public sealed class CMenuAlarm(
     {
         get
         {
-            async void HandleValueCallback1(object? _)
+            void HandleValueCallback1(object? _)
             {
-                await ResetAlarm();
+                ResetAlarm();
             }
 
             return new(HandleValueCallback1);
@@ -72,9 +72,9 @@ public sealed class CMenuAlarm(
 
     public IReadOnlyList<ST_ALARM_SUMMARY_ITEM> SummaryItems { get; private set; } = [];
 
-    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override CScreenViewModel Build(CancellationToken cancellationToken = default)
     {
-        var alarms = await GetCurrentAlarms(cancellationToken);
+        var alarms = GetCurrentAlarms(cancellationToken);
         ST_DISPLAY_ITEM SelectItem3(ST_ALARM_DATA item)
         {
             return new ST_DISPLAY_ITEM(item.Code.ToString(), item.Message, item.Severity.ToString());
@@ -127,34 +127,34 @@ public sealed class CMenuAlarm(
             alarm: this);
     }
 
-    private async Task<IReadOnlyList<ST_ALARM_DATA>> GetCurrentAlarms(CancellationToken cancellationToken)
+    private IReadOnlyList<ST_ALARM_DATA> GetCurrentAlarms(CancellationToken cancellationToken)
     {
-        var snapshot = await GetDeviceStatus(cancellationToken);
+        var snapshot = GetDeviceStatus(cancellationToken);
         var interLock = interLockManager.Evaluate(snapshot);
         return alarmManager.Build(snapshot, interLock);
     }
 
-    private async Task ResetAlarm()
+    private void ResetAlarm()
     {
         alarmManager.Reset();
-        var station = await stationManager.Reset();
+        var station = stationManager.Reset();
         var isResetBlocked = station.ProcessStep == EN_PROCESS_STEP.Error;
         setStatusMessage(isResetBlocked
             ? $"Alarm reset blocked. {station.Result?.Message ?? "Check InterLock state."}"
             : "Alarm reset completed. Station is ready.");
         refreshShellStatus();
-        await refreshCurrentScreen();
+        refreshCurrentScreen();
     }
 
-    private async Task<ST_DEVICE_STATUS> GetDeviceStatus(CancellationToken cancellationToken)
+    private ST_DEVICE_STATUS GetDeviceStatus(CancellationToken cancellationToken)
     {
-        var io = await motionManager.GetIoStatus(cancellationToken);
-        var motors = await motionManager.GetAxisStatus(cancellationToken);
-        var laserStatus = await interfaceManager.GetLaserStatus(cancellationToken);
-        var chillerStatus = await interfaceManager.GetChillerStatus(cancellationToken);
-        var attenuatorStatus = await interfaceManager.GetAttenuatorStatus(cancellationToken);
-        var betStatus = await interfaceManager.GetBETStatus(cancellationToken);
-        var powerMeterStatus = await interfaceManager.GetPowerMeterStatus(cancellationToken);
+        var io = motionManager.GetIoStatus(cancellationToken);
+        var motors = motionManager.GetAxisStatus(cancellationToken);
+        var laserStatus = interfaceManager.GetLaserStatus(cancellationToken);
+        var chillerStatus = interfaceManager.GetChillerStatus(cancellationToken);
+        var attenuatorStatus = interfaceManager.GetAttenuatorStatus(cancellationToken);
+        var betStatus = interfaceManager.GetBETStatus(cancellationToken);
+        var powerMeterStatus = interfaceManager.GetPowerMeterStatus(cancellationToken);
 
         return new ST_DEVICE_STATUS(
             io,
@@ -472,8 +472,3 @@ public sealed record ST_ALARM_SUMMARY_ITEM(
         }
     }
 }
-
-
-
-
-

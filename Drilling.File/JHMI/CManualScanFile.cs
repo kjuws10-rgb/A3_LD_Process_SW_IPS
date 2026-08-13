@@ -21,13 +21,13 @@ public sealed class CManualScanFile(string configRoot) : CManualScanFileBase
 
     private readonly string _manualDirectory = Path.Combine(configRoot, "Manual");
 
-    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<string> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!Directory.Exists(_manualDirectory))
         {
-            return Task.FromResult<IReadOnlyList<string>>([]);
+            return [];
         }
         bool FilterName1(string? name)
         {
@@ -47,22 +47,22 @@ public sealed class CManualScanFile(string configRoot) : CManualScanFileBase
             .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
-        return Task.FromResult<IReadOnlyList<string>>(settingNames);
+        return settingNames;
     }
 
-    public override Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default)
+    public override IReadOnlyList<ST_MANUAL_SCAN_FORM> LoadForm(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.FromResult(LoadFormItems());
+        return LoadFormItems();
     }
 
-    public override Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default)
+    public override ST_MANUAL_SCAN_PARAM Load(CancellationToken cancellationToken = default)
     {
         return Load(GetDefaultSettingName(), cancellationToken);
     }
 
-    public override Task<ST_MANUAL_SCAN_PARAM> Load(
+    public override ST_MANUAL_SCAN_PARAM Load(
         string settingName,
         CancellationToken cancellationToken = default)
     {
@@ -109,15 +109,15 @@ HandleValues5,
             ReadInt(values, formItems, "GridRowLines", 5),
             ReadInt(values, formItems, "GridColLines", 5));
 
-        return Task.FromResult(settings);
+        return settings;
     }
 
-    public override Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default)
+    public override void Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default)
     {
-        return Save(GetDefaultSettingName(), settings, cancellationToken);
+        Save(GetDefaultSettingName(), settings, cancellationToken);
     }
 
-    public override Task Save(
+    public override void Save(
         string settingName,
         ST_MANUAL_SCAN_PARAM settings,
         CancellationToken cancellationToken = default)
@@ -172,10 +172,10 @@ HandleValues5,
 
         CCsvParser.Write(GetSettingPath(normalizedName), ValueHeaders, rows);
         ValidateSavedSetting(normalizedName, values);
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task Rename(
+    public override void Rename(
         string oldSettingName,
         string newSettingName,
         CancellationToken cancellationToken = default)
@@ -197,10 +197,10 @@ HandleValues5,
 
         Directory.CreateDirectory(_manualDirectory);
         System.IO.File.Move(oldPath, newPath);
-        return Task.CompletedTask;
+        return;
     }
 
-    public override Task Delete(string settingName, CancellationToken cancellationToken = default)
+    public override void Delete(string settingName, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -211,7 +211,7 @@ HandleValues5,
             System.IO.File.Delete(path);
         }
 
-        return Task.CompletedTask;
+        return;
     }
 
     private string GetDefaultSettingName()
@@ -557,8 +557,3 @@ HandleActualValues14,
         ];
     }
 }
-
-
-
-
-

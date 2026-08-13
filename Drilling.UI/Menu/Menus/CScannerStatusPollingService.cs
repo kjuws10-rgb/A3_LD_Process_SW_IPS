@@ -1,38 +1,22 @@
 using System.Globalization;
 using Drilling.Common.Automation;
 using Drilling.Common.Managers;
+using Drilling.Common.Threading;
 
 namespace Drilling.UI.Menu.Menus;
 
 internal sealed class CScannerStatusPollingService(
     CAutomationManager automationManager,
-    CSettingManager settingManager)
+    CSettingManager settingManager) : CtrlThread
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 
-    private readonly SemaphoreSlim _pollLock = new(1, 1);
     private readonly object _snapshotLock = new();
-    private CancellationTokenSource? _stopSource;
-    private Task? _pollTask;
     private IReadOnlyList<ST_SCANNER_AXIS_STATUS_ITEM> _snapshot = [];
 
     public void Start()
     {
-        if (_pollTask is { IsCompleted: false })
-        {
-            return;
-        }
-
-        _stopSource?.Dispose();
-        _stopSource = new CancellationTokenSource();
-        Task? RunTask1()
-        {
-            return PollLoop(_stopSource.Token);
-        }
-
-        _pollTask = Task.Run(
-RunTask1,
-            CancellationToken.None);
+        base.Start((int)PollInterval.TotalMilliseconds, "ScannerStatusPolling");
     }
 
     public IReadOnlyList<ST_SCANNER_AXIS_STATUS_ITEM> GetSnapshot()
@@ -43,39 +27,24 @@ RunTask1,
         }
     }
 
-    private async Task PollLoop(CancellationToken cancellationToken)
+    public override void Run()
     {
-        try
-        {
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await RefreshSnapshot(cancellationToken).ConfigureAwait(false);
-                await Task.Delay(PollInterval, cancellationToken).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-        }
+        RefreshSnapshot(CancellationToken.None);
     }
 
-    private async Task RefreshSnapshot(CancellationToken cancellationToken)
+    private void RefreshSnapshot(CancellationToken cancellationToken)
     {
-        if (!await _pollLock.WaitAsync(TimeSpan.Zero, cancellationToken).ConfigureAwait(false))
-        {
-            return;
-        }
-
         try
         {
-            var settings = await settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken)
-                .ConfigureAwait(false);
+            var settings = settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken)
+                ;
             var axisDefinitions = BuildAxisDefinitions(settings);
             var items = new List<ST_SCANNER_AXIS_STATUS_ITEM>(axisDefinitions.Count);
 
             foreach (var axis in axisDefinitions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                items.Add(await BuildScannerAxisStatusItem(axis, cancellationToken).ConfigureAwait(false));
+                items.Add(BuildScannerAxisStatusItem(axis, cancellationToken));
             }
 
             SetSnapshot(items);
@@ -84,13 +53,9 @@ RunTask1,
         {
             SetSnapshot(CreatePollingErrorSnapshot(exception.Message));
         }
-        finally
-        {
-            _pollLock.Release();
-        }
     }
 
-    private async Task<ST_SCANNER_AXIS_STATUS_ITEM> BuildScannerAxisStatusItem(
+    private ST_SCANNER_AXIS_STATUS_ITEM BuildScannerAxisStatusItem(
         ST_SCANNER_AXIS_SETTING axis,
         CancellationToken cancellationToken)
     {
@@ -115,11 +80,11 @@ RunTask1,
                     "Automation not connected.");
             }
 
-            var status = await automationManager.ReadAxisStatus(
+            var status = automationManager.ReadAxisStatus(
                     axisNoText,
                     axis.AutomationNo,
                     cancellationToken)
-                .ConfigureAwait(false);
+                ;
 
             return new ST_SCANNER_AXIS_STATUS_ITEM(
                 $"H{axis.HeadNo:00}",

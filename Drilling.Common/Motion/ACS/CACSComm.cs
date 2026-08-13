@@ -14,15 +14,13 @@ internal sealed class CACSComm(
     ST_INTERFACE_DATA data,
     ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option)
 {
-    private readonly SemaphoreSlim _commLock = new(1, 1);
     private Api? _api;
 
-    public override async Task Connect(CancellationToken cancellationToken = default)
+    protected override void ConnectCore(CancellationToken cancellationToken)
     {
-        await _commLock.WaitAsync(cancellationToken);
-
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             ConnectLocked();
         }
         catch (Exception ex)
@@ -30,33 +28,19 @@ internal sealed class CACSComm(
             CloseApi();
             SetError(ex);
         }
-        finally
-        {
-            _commLock.Release();
-        }
     }
 
-    public override async Task Disconnect(CancellationToken cancellationToken = default)
+    protected override void DisconnectCore(CancellationToken cancellationToken)
     {
-        await _commLock.WaitAsync(cancellationToken);
-
-        try
-        {
-            CloseApi();
-            SetState(EN_COMM_STATE.Offline);
-        }
-        finally
-        {
-            _commLock.Release();
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        CloseApi();
+        SetState(EN_COMM_STATE.Offline);
     }
 
-    public override async Task<string> Execute(
+    protected override string ExecuteCore(
         string function,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken)
     {
-        await _commLock.WaitAsync(cancellationToken);
-
         try
         {
             if (_api is null || ConnectionState != EN_COMM_STATE.Online)
@@ -81,10 +65,6 @@ internal sealed class CACSComm(
             LastReceived = "";
             SetError(ex);
             return "";
-        }
-        finally
-        {
-            _commLock.Release();
         }
     }
 
@@ -298,5 +278,3 @@ internal sealed class CACSComm(
         return result;
     }
 }
-
-

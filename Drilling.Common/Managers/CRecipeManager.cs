@@ -78,38 +78,37 @@ public sealed record ST_RECIPE_VALUE(
 
 public abstract class CRecipeFileBase
 {
-    public abstract Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default);
-    public abstract Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default);
-    public abstract Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default);
-    public abstract Task Rename(
+    public abstract IReadOnlyList<ST_RECIPE_DATA> LoadAll(CancellationToken cancellationToken = default);
+    public abstract ST_RECIPE_DATA? Find(string recipeId, CancellationToken cancellationToken = default);
+    public abstract void Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default);
+    public abstract void Rename(
             string oldRecipeId,
             string newRecipeId,
             CancellationToken cancellationToken = default);
-    public abstract Task Delete(string recipeId, CancellationToken cancellationToken = default);
+    public abstract void Delete(string recipeId, CancellationToken cancellationToken = default);
 }
 
 public sealed class CRecipeManager(CRecipeFileBase recipeFile) {
-    public Task<IReadOnlyList<ST_RECIPE_DATA>> LoadRecipes(CancellationToken cancellationToken = default)
+    public IReadOnlyList<ST_RECIPE_DATA> LoadRecipes(CancellationToken cancellationToken = default)
     {
         return recipeFile.LoadAll(cancellationToken);
     }
 
-    public Task SaveRecipe(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
+    public void SaveRecipe(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
     {
-        return recipeFile.Save(recipe, cancellationToken);
+        recipeFile.Save(recipe, cancellationToken);
     }
 
-    public Task RenameRecipe(
+    public void RenameRecipe(
         string oldRecipeId,
         string newRecipeId,
         CancellationToken cancellationToken = default)
     {
-        return recipeFile.Rename(oldRecipeId, newRecipeId, cancellationToken);
+        recipeFile.Rename(oldRecipeId, newRecipeId, cancellationToken);
     }
 
-    public Task DeleteRecipe(string recipeId, CancellationToken cancellationToken = default)
+    public void DeleteRecipe(string recipeId, CancellationToken cancellationToken = default)
     {
-        return recipeFile.Delete(recipeId, cancellationToken);
+        recipeFile.Delete(recipeId, cancellationToken);
     }
 }
-

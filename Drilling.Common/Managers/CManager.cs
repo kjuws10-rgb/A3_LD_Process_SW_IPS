@@ -417,6 +417,7 @@ RunInitializeStepCallbackCallback2,
 
     public void Destroy(CancellationToken cancellationToken = default)
     {
+        _reviewManager.Shutdown();
         _stationManager.Destroy();
         _motionManager.Destroy(cancellationToken);
         _interfaceManager.Destroy(cancellationToken);

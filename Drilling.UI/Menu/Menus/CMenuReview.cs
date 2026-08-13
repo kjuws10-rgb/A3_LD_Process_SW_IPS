@@ -1412,9 +1412,25 @@ HandleStartCommand5);
             }
             void HandleStatus35(ST_REVIEW_PLAN plan)
             {
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher is not null && !dispatcher.CheckAccess())
+                {
+                    Action<ST_REVIEW_PLAN> callback = HandleStatus35;
+                    dispatcher.BeginInvoke(callback, plan);
+                    return;
+                }
+
                 if (isOneHoleRun)
                 {
                     CaptureOneHoleResult(plan, oneHoleRunKey);
+                }
+
+                var currentStatus = _reviewManager.LastStatus;
+                if (IsTerminalReviewState(currentStatus.State))
+                {
+                    _statusReporter($"{currentStatus.Message} ({currentStatus.CompletedCount}/{currentStatus.TotalCount}, NG={currentStatus.NgCount})");
+                    _isStartRequestPending = false;
+                    NotifyReviewExecutionCommandStates();
                 }
 
                 _refreshScreen();
@@ -1523,8 +1539,23 @@ HandleRuleFileName36);
     {
         try
         {
-            void HandleStatus37(ST_REVIEW_PLAN _)
+            void HandleStatus37(ST_REVIEW_PLAN plan)
             {
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher is not null && !dispatcher.CheckAccess())
+                {
+                    Action<ST_REVIEW_PLAN> callback = HandleStatus37;
+                    dispatcher.BeginInvoke(callback, plan);
+                    return;
+                }
+
+                var currentStatus = _reviewManager.LastStatus;
+                if (IsTerminalReviewState(currentStatus.State))
+                {
+                    _statusReporter($"{currentStatus.Message} ({currentStatus.CompletedCount}/{currentStatus.TotalCount}, NG={currentStatus.NgCount})");
+                    NotifyReviewExecutionCommandStates();
+                }
+
                 _refreshScreen();
             }
 
@@ -1539,6 +1570,13 @@ HandleStatus37,
         {
             _statusReporter($"Review retry failed: {exception.Message}");
         }
+    }
+
+    private static bool IsTerminalReviewState(EN_REVIEW_SEQUENCE_STATE state)
+    {
+        return state is EN_REVIEW_SEQUENCE_STATE.Stopped or
+            EN_REVIEW_SEQUENCE_STATE.Completed or
+            EN_REVIEW_SEQUENCE_STATE.Failed;
     }
 
     private void ApplyReviewRule(ST_REVIEW_RULE_DATA rule)

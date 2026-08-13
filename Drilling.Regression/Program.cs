@@ -7,6 +7,7 @@ using Drilling.Common.Log;
 using Drilling.Common.Managers;
 using Drilling.Common.Motion;
 using Drilling.Common.Recipe;
+using Drilling.Common.Review;
 using Drilling.Common.Station;
 using Drilling.Common.Threading;
 using Drilling.File.JHMI;
@@ -39,6 +40,7 @@ internal static class Program
             RunAlarmFlow(snapshot);
             RunLogFlow(testRoot, snapshot);
             RunCtrlThreadFlow();
+            RunReviewThreadFlow();
 
             string? outputDirectory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrWhiteSpace(outputDirectory))
@@ -95,6 +97,88 @@ internal static class Program
         thread.Stop();
 
         Assert(firstRunCount >= 3, "CtrlThread initial Run count was not reached.");
+    }
+
+    private static void RunReviewThreadFlow()
+    {
+        CInterfaceManager interfaceManager = new CInterfaceManager(true);
+        interfaceManager.Register(CreateSimulatedInterface(
+            EN_INTERFACE_TYPE.SocketClient,
+            EN_EQP_MODULE.WonikCtrl,
+            0,
+            "REVIEW_STAGE_TEST"));
+        interfaceManager.Register(CreateSimulatedInterface(
+            EN_INTERFACE_TYPE.SocketClient,
+            EN_EQP_MODULE.Vision,
+            0,
+            "REVIEW_VISION_TEST"));
+        interfaceManager.Initialize();
+
+        CRegressionSettingFile settingFile = new CRegressionSettingFile();
+        CRegressionInterfaceFile interfaceFile = new CRegressionInterfaceFile();
+        CSettingManager settingManager = new CSettingManager(settingFile, interfaceFile, interfaceManager);
+        CRegressionReviewResultFile resultFile = new CRegressionReviewResultFile();
+        CReviewManager reviewManager = new CReviewManager(resultFile, interfaceManager, settingManager);
+        ST_REVIEW_PLAN_POINT point = new ST_REVIEW_PLAN_POINT(
+            1,
+            "C01-H0001",
+            1,
+            1,
+            1,
+            1,
+            1,
+            true,
+            10.0,
+            20.0,
+            10.0,
+            20.0,
+            0.0,
+            0.0,
+            EN_REVIEW_POINT_STATE.Ready,
+            "WAIT");
+        ST_REVIEW_PLAN plan = new ST_REVIEW_PLAN(
+            "REVIEW_TEST",
+            "Review Test",
+            1,
+            1,
+            0.030,
+            0.030,
+            EN_VISION_AXIS_MODE.Normal,
+            FixedTime,
+            new[] { point });
+
+        System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        ST_REVIEW_SEQUENCE_STATUS startStatus = reviewManager.Start(plan);
+        stopwatch.Stop();
+        Assert(stopwatch.ElapsedMilliseconds < 500, "Review Start blocked the caller thread.");
+        Assert(startStatus.State == EN_REVIEW_SEQUENCE_STATE.Running,
+            "Review Start did not enter the running state.");
+        WaitForReviewState(reviewManager, EN_REVIEW_SEQUENCE_STATE.Completed, 5000);
+        Assert(resultFile.SaveCount == 1, "Review result was not saved once.");
+
+        reviewManager.Start(plan);
+        Thread.Sleep(50);
+        reviewManager.Stop();
+        WaitForReviewState(reviewManager, EN_REVIEW_SEQUENCE_STATE.Stopped, 1000);
+        reviewManager.Shutdown();
+        Assert(!reviewManager.IsRunning, "Review thread remained alive after Shutdown.");
+        interfaceManager.Destroy();
+    }
+
+    private static void WaitForReviewState(
+        CReviewManager reviewManager,
+        EN_REVIEW_SEQUENCE_STATE expectedState,
+        int timeoutMsec)
+    {
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMsec);
+        while (reviewManager.SequenceState != expectedState && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(10);
+        }
+
+        Assert(reviewManager.SequenceState == expectedState,
+            "Review sequence did not reach state " + expectedState +
+            ". Current state: " + reviewManager.SequenceState);
     }
 
     private static void WaitForRunCount(CTestCtrlThread thread, int target, int timeoutMsec)
@@ -720,6 +804,84 @@ internal static class Program
         snapshot.Add("[Log]");
         snapshot.Add($"RelativePath={NormalizeDateDigits(Path.GetRelativePath(testRoot, files[0]).Replace('\\', '/'))}");
         snapshot.Add($"Payload={Escape(line.Substring(payloadStart))}");
+    }
+
+    private sealed class CRegressionSettingFile : CSettingFileBase
+    {
+        public override IReadOnlyList<ST_SYSTEM_PARAMETER> Load(
+            EN_SETTING_TAB section,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Array.Empty<ST_SYSTEM_PARAMETER>();
+        }
+
+        public override void Save(
+            EN_SETTING_TAB section,
+            IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+
+        public override IReadOnlyList<ST_SETTING_HISTORY> LoadHistory(
+            EN_SETTING_TAB section,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Array.Empty<ST_SETTING_HISTORY>();
+        }
+    }
+
+    private sealed class CRegressionInterfaceFile : CInterfaceFileBase
+    {
+        public override IReadOnlyList<ST_INTERFACE_DATA> LoadAll(
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Array.Empty<ST_INTERFACE_DATA>();
+        }
+
+        public override void SaveAll(
+            IReadOnlyList<ST_INTERFACE_DATA> interfaces,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
+    private sealed class CRegressionReviewResultFile : CReviewResultFileBase
+    {
+        public int SaveCount { get; private set; }
+
+        public override string RootPath
+        {
+            get
+            {
+                return Path.GetTempPath();
+            }
+        }
+
+        public override ST_REVIEW_RESULT_FILE_DATA Load(
+            string path,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ST_REVIEW_RESULT_FILE_DATA(
+                path,
+                Path.GetFileName(path),
+                "",
+                FixedTime,
+                Array.Empty<ST_REVIEW_RESULT_FILE_ROW>());
+        }
+
+        public override void Save(
+            ST_REVIEW_RESULT_DATA result,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            SaveCount++;
+        }
     }
 
     private static int CountCsvFields(string line)

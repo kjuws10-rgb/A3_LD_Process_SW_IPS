@@ -4,10 +4,24 @@ using System.Windows;
 using System.Windows.Media;
 using Drilling.Common.Managers;
 using Drilling.Common.Station;
+using Drilling.Common.Threading;
 using Drilling.UI.Menu;
 using Drilling.UI.Popup;
 
 namespace Drilling.UI.Menu.Menus;
+
+public enum EN_MANUAL_OPERATION
+{
+    Ready,
+    CenterMove,
+    PositionMove,
+    ShapeStart,
+    MoveStop,
+    ShapeStop,
+    LaserOn,
+    LaserOff,
+    CenterOn
+}
 
 public sealed class CMenuManual : CMenuBase
 {
@@ -22,6 +36,7 @@ public sealed class CMenuManual : CMenuBase
     private readonly Action<string> _setStatusMessage;
     private readonly Action _refreshShellStatus;
     private readonly Action _refreshCurrentScreen;
+    private readonly CManualOperationThread _manualOperationThread;
 
     private string _targetGx = "";
     private string _targetGy = "";
@@ -109,21 +124,21 @@ public sealed class CMenuManual : CMenuBase
 
         void HandleCenterMoveCommand6(object? _)
         {
-            CenterMove();
+            RequestManualOperation(EN_MANUAL_OPERATION.CenterMove);
         }
 
         CenterMoveCommand = new CButtonCommand(HandleCenterMoveCommand6);
 
         void HandlePositionMoveCommand7(object? _)
         {
-            PositionMove();
+            RequestManualOperation(EN_MANUAL_OPERATION.PositionMove);
         }
 
         PositionMoveCommand = new CButtonCommand(HandlePositionMoveCommand7);
 
         void HandleMoveStopCommand8(object? _)
         {
-            MoveStop();
+            RequestManualStopOperation(EN_MANUAL_OPERATION.MoveStop);
         }
 
         MoveStopCommand = new CButtonCommand(HandleMoveStopCommand8);
@@ -137,35 +152,35 @@ public sealed class CMenuManual : CMenuBase
 
         void HandleShapeStartCommand10(object? _)
         {
-            ShapeStart();
+            RequestManualOperation(EN_MANUAL_OPERATION.ShapeStart);
         }
 
         ShapeStartCommand = new CButtonCommand(HandleShapeStartCommand10);
 
         void HandleShapeStopCommand11(object? _)
         {
-            ShapeStop();
+            RequestManualStopOperation(EN_MANUAL_OPERATION.ShapeStop);
         }
 
         ShapeStopCommand = new CButtonCommand(HandleShapeStopCommand11);
 
         void HandleLaserOnCommand12(object? _)
         {
-            LaserOn();
+            RequestManualOperation(EN_MANUAL_OPERATION.LaserOn);
         }
 
         LaserOnCommand = new CButtonCommand(HandleLaserOnCommand12);
 
         void HandleLaserOffCommand13(object? _)
         {
-            LaserOff();
+            RequestManualOperation(EN_MANUAL_OPERATION.LaserOff);
         }
 
         LaserOffCommand = new CButtonCommand(HandleLaserOffCommand13);
 
         void HandleCenterOnCommand14(object? _)
         {
-            CenterOn();
+            RequestManualOperation(EN_MANUAL_OPERATION.CenterOn);
         }
 
         CenterOnCommand = new CButtonCommand(HandleCenterOnCommand14);
@@ -185,10 +200,18 @@ public sealed class CMenuManual : CMenuBase
         StageStopCommand = new CButtonCommand(HandleStageStopCommand16);
         VisionShotCommand = new CButtonCommand(VisionShot);
 
+        _manualOperationThread = new CManualOperationThread(this);
+        _manualOperationThread.Start(5, "ManualOperation");
+
         StageAxes =
         [
             new("Y", "mm")
         ];
+    }
+
+    public override void Shutdown()
+    {
+        _manualOperationThread.Shutdown();
     }
 
     public override EN_MENU Menu
@@ -873,7 +896,91 @@ HandleNewSettingName19);
         _refreshCurrentScreen();
     }
 
-    private void CenterMove()
+    private void RequestManualOperation(EN_MANUAL_OPERATION operation)
+    {
+        try
+        {
+            var settings = ReadManualParamFromScreen();
+            var headNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
+            var targetGx = 0.0;
+            var targetGy = 0.0;
+            if (operation == EN_MANUAL_OPERATION.PositionMove)
+            {
+                targetGx = ReadRequiredDouble(TargetGx, "GX Target");
+                targetGy = ReadRequiredDouble(TargetGy, "GY Target");
+            }
+
+            var request = new CManualOperationRequest(
+                operation,
+                settings,
+                headNo,
+                targetGx,
+                targetGy);
+            if (!_manualOperationThread.Add(request))
+            {
+                DispatchStatusMessage("The same manual command is already queued or running.");
+            }
+        }
+        catch (InvalidDataException exception)
+        {
+            _lastCommand = operation.ToString().ToUpperInvariant();
+            _lastResult = "ERROR: " + exception.Message;
+            DispatchStatusMessage(exception.Message);
+            ShowManualWarning(exception.Message);
+            RefreshCommandStateRows();
+            DispatchShellRefresh();
+        }
+    }
+
+    private void RequestManualStopOperation(EN_MANUAL_OPERATION operation)
+    {
+        var request = new CManualOperationRequest(
+            operation,
+            null,
+            Math.Clamp(_selectedHeadNoProvider(), 1, 8),
+            0.0,
+            0.0);
+        _manualOperationThread.AddStop(request);
+    }
+
+    private void ExecuteManualOperation(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
+    {
+        switch (request.Operation)
+        {
+            case EN_MANUAL_OPERATION.Ready:
+                break;
+            case EN_MANUAL_OPERATION.CenterMove:
+                CenterMove(request, cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.PositionMove:
+                PositionMove(request, cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.ShapeStart:
+                ShapeStart(request, cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.MoveStop:
+                StopManualTask("MOVE_STOP", cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.ShapeStop:
+                StopManualTask("SHAPE_STOP", cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.LaserOn:
+                LaserOn(request, cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.LaserOff:
+                LaserOff(request, cancellationToken);
+                break;
+            case EN_MANUAL_OPERATION.CenterOn:
+                CenterOn(request, cancellationToken);
+                break;
+        }
+    }
+
+    private void CenterMove(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
     {
         void RunManualScriptScriptCallback20(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
         {
@@ -882,26 +989,25 @@ HandleNewSettingName19);
         }
         RunManualScript(
             "CENTER_MOVE",
-RunManualScriptScriptCallback20);
+RunManualScriptScriptCallback20,
+            request,
+            cancellationToken: cancellationToken);
     }
 
-    private void PositionMove()
+    private void PositionMove(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
     {
         void RunManualScriptScriptCallback21(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
         {
-            var gx = ReadRequiredDouble(TargetGx, "GX Target");
-            var gy = ReadRequiredDouble(TargetGy, "GY Target");
-            script.Jump(gx, gy);
+            script.Jump(request.TargetGx, request.TargetGy);
             script.WaitMoveDone();
         }
         RunManualScript(
             "POSITION_MOVE",
-RunManualScriptScriptCallback21);
-    }
-
-    private void MoveStop()
-    {
-        StopManualTask("MOVE_STOP");
+RunManualScriptScriptCallback21,
+            request,
+            cancellationToken: cancellationToken);
     }
 
     private void SelectShape(object? parameter)
@@ -914,10 +1020,11 @@ RunManualScriptScriptCallback21);
         return;
     }
 
-    private void ShapeStart()
+    private void ShapeStart(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
     {
-        var headNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
-        var scriptName = BuildShapeScanScriptName(headNo, ShapeName);
+        var scriptName = BuildShapeScanScriptName(request.HeadNo, request.Settings!.ShapeName);
         void RunManualScriptScriptCallback22(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
         {
             AppendShape(script, settings);
@@ -926,16 +1033,15 @@ RunManualScriptScriptCallback21);
         RunManualScript(
             scriptName,
 RunManualScriptScriptCallback22,
+            request,
             ApplyManualFigureScanSetup,
-            scriptName);
+            scriptName,
+            cancellationToken);
     }
 
-    private void ShapeStop()
-    {
-        StopManualTask("SHAPE_STOP");
-    }
-
-    private void LaserOn()
+    private void LaserOn(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
     {
         void RunManualScriptScriptCallback23(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
         {
@@ -948,7 +1054,9 @@ RunManualScriptScriptCallback22,
         RunManualScript(
             "LASER_ON",
 RunManualScriptScriptCallback23,
-            ApplyLaserActionScriptSetup);
+            request,
+            ApplyLaserActionScriptSetup,
+            cancellationToken: cancellationToken);
 
         if (!_lastResult.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
         {
@@ -956,7 +1064,9 @@ RunManualScriptScriptCallback23,
         }
     }
 
-    private void LaserOff()
+    private void LaserOff(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
     {
         void RunManualScriptScriptCallback24(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
         {
@@ -966,7 +1076,9 @@ RunManualScriptScriptCallback23,
         RunManualScript(
             "LASER_OFF",
 RunManualScriptScriptCallback24,
-            ApplyManualLaserOffScriptSetup);
+            request,
+            ApplyManualLaserOffScriptSetup,
+            cancellationToken: cancellationToken);
 
         if (!_lastResult.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
         {
@@ -975,7 +1087,9 @@ RunManualScriptScriptCallback24,
         }
     }
 
-    private void CenterOn()
+    private void CenterOn(
+        CManualOperationRequest request,
+        CancellationToken cancellationToken)
     {
         void RunManualScriptScriptCallback25(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
         {
@@ -990,7 +1104,9 @@ RunManualScriptScriptCallback24,
         RunManualScript(
             "CENTER_ON",
 RunManualScriptScriptCallback25,
-            ApplyLaserActionScriptSetup);
+            request,
+            ApplyLaserActionScriptSetup,
+            cancellationToken: cancellationToken);
 
         if (!_lastResult.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
         {
@@ -1002,6 +1118,7 @@ RunManualScriptScriptCallback25,
     private void RunManualScript(
         string commandName,
         Action<CAutomation1ScriptBase, ST_MANUAL_SCAN_PARAM> buildScript,
+        CManualOperationRequest request,
         Action<CAutomation1ScriptBase, ST_MANUAL_SCAN_PARAM>? setupScript = null,
         string? scriptFileName = null,
         CancellationToken cancellationToken = default)
@@ -1011,8 +1128,9 @@ RunManualScriptScriptCallback25,
 
         try
         {
-            var settings = ReadManualParamFromScreen();
-            var headNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
+            var settings = request.Settings ?? throw new InvalidDataException(
+                "Manual operation settings are empty.");
+            var headNo = request.HeadNo;
             var fileName = string.IsNullOrWhiteSpace(scriptFileName)
                 ? $"MANUAL_H{headNo:00}_{NormalizeScriptName(commandName)}.ascript"
                 : $"{NormalizeScriptName(scriptFileName)}.ascript";
@@ -1040,12 +1158,17 @@ RunManualScriptScriptCallback25,
             EnsureAutomationResponse(runResponse, $"{commandName} run");
 
             _lastResult = $"Running {savedScript.FileName}";
-            _setStatusMessage($"{commandName} script uploaded and started: {savedScript.FileName}");
+            DispatchStatusMessage($"{commandName} script uploaded and started: {savedScript.FileName}");
+        }
+        catch (OperationCanceledException)
+        {
+            _lastResult = "Canceled";
+            DispatchStatusMessage($"{commandName} canceled for a stop request.");
         }
         catch (Exception exception) when (exception is InvalidDataException or InvalidOperationException or IOException or TimeoutException or KeyNotFoundException)
         {
             _lastResult = $"ERROR: {exception.Message}";
-            _setStatusMessage($"{commandName} failed. {exception.Message}");
+            DispatchStatusMessage($"{commandName} failed. {exception.Message}");
             if (exception is InvalidDataException)
             {
                 ShowManualWarning(exception.Message);
@@ -1053,7 +1176,7 @@ RunManualScriptScriptCallback25,
         }
 
         RefreshCommandStateRows();
-        _refreshShellStatus();
+        DispatchShellRefresh();
     }
 
     private void StopManualTask(
@@ -1073,16 +1196,21 @@ RunManualScriptScriptCallback25,
             _laserState = "OFF";
             _centerState = "OFF";
             _lastResult = "Stopped";
-            _setStatusMessage($"{commandName} command sent.");
+            DispatchStatusMessage($"{commandName} command sent.");
+        }
+        catch (OperationCanceledException)
+        {
+            _lastResult = "Canceled";
+            DispatchStatusMessage($"{commandName} canceled.");
         }
         catch (Exception exception) when (exception is InvalidOperationException or IOException or TimeoutException or KeyNotFoundException)
         {
             _lastResult = $"ERROR: {exception.Message}";
-            _setStatusMessage($"{commandName} failed. {exception.Message}");
+            DispatchStatusMessage($"{commandName} failed. {exception.Message}");
         }
 
         RefreshCommandStateRows();
-        _refreshShellStatus();
+        DispatchShellRefresh();
     }
 
     private void RefreshCommandStateRows()
@@ -1852,14 +1980,195 @@ RunManualScriptScriptCallback25,
         return dialog.ShowDialog() == true;
     }
 
+    private void DispatchStatusMessage(string message)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            Action<string> callback = DispatchStatusMessage;
+            dispatcher.BeginInvoke(callback, message);
+            return;
+        }
+
+        _setStatusMessage(message);
+    }
+
+    private void DispatchShellRefresh()
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            Action callback = DispatchShellRefresh;
+            dispatcher.BeginInvoke(callback);
+            return;
+        }
+
+        _refreshShellStatus();
+    }
+
     private static void ShowManualWarning(string message)
     {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is not null && !dispatcher.CheckAccess())
+        {
+            Action<string> callback = ShowManualWarning;
+            dispatcher.BeginInvoke(callback, message);
+            return;
+        }
+
         MessageBox.Show(
             GetActiveWindow(),
             message,
             "Manual Scan Warning",
             MessageBoxButton.OK,
             MessageBoxImage.Warning);
+    }
+
+    private sealed class CManualOperationRequest
+    {
+        public CManualOperationRequest(
+            EN_MANUAL_OPERATION operation,
+            ST_MANUAL_SCAN_PARAM? settings,
+            int headNo,
+            double targetGx,
+            double targetGy)
+        {
+            Operation = operation;
+            Settings = settings;
+            HeadNo = headNo;
+            TargetGx = targetGx;
+            TargetGy = targetGy;
+        }
+
+        public EN_MANUAL_OPERATION Operation { get; }
+
+        public ST_MANUAL_SCAN_PARAM? Settings { get; }
+
+        public int HeadNo { get; }
+
+        public double TargetGx { get; }
+
+        public double TargetGy { get; }
+    }
+
+    private sealed class CManualOperationThread : CtrlThread
+    {
+        private readonly CMenuManual mobjOwner;
+        private readonly object mobjQueueLock = new object();
+        private readonly Queue<CManualOperationRequest> mobjQueue = new Queue<CManualOperationRequest>();
+        private CancellationTokenSource? mobjOperationCancellation;
+        private EN_MANUAL_OPERATION meCurrentOperation = EN_MANUAL_OPERATION.Ready;
+        private bool mblnShutdown;
+
+        public CManualOperationThread(CMenuManual owner)
+        {
+            mobjOwner = owner;
+        }
+
+        public bool Add(CManualOperationRequest request)
+        {
+            lock (mobjQueueLock)
+            {
+                if (mblnShutdown || meCurrentOperation == request.Operation)
+                {
+                    return false;
+                }
+
+                foreach (CManualOperationRequest queuedRequest in mobjQueue)
+                {
+                    if (queuedRequest.Operation == request.Operation)
+                    {
+                        return false;
+                    }
+                }
+
+                mobjQueue.Enqueue(request);
+                return true;
+            }
+        }
+
+        public void AddStop(CManualOperationRequest request)
+        {
+            CancellationTokenSource? operationCancellation;
+            lock (mobjQueueLock)
+            {
+                if (mblnShutdown)
+                {
+                    return;
+                }
+
+                operationCancellation = mobjOperationCancellation;
+                mobjQueue.Clear();
+                mobjQueue.Enqueue(request);
+            }
+
+            CancelOperation(operationCancellation);
+        }
+
+        public override void Run()
+        {
+            CManualOperationRequest? request = null;
+            CancellationTokenSource? operationCancellation = null;
+
+            lock (mobjQueueLock)
+            {
+                if (mobjQueue.Count == 0)
+                {
+                    return;
+                }
+
+                request = mobjQueue.Dequeue();
+                meCurrentOperation = request.Operation;
+                operationCancellation = new CancellationTokenSource();
+                mobjOperationCancellation = operationCancellation;
+            }
+
+            try
+            {
+                mobjOwner.ExecuteManualOperation(request, operationCancellation.Token);
+            }
+            finally
+            {
+                lock (mobjQueueLock)
+                {
+                    if (mobjOperationCancellation == operationCancellation)
+                    {
+                        mobjOperationCancellation = null;
+                    }
+
+                    meCurrentOperation = EN_MANUAL_OPERATION.Ready;
+                }
+
+                operationCancellation.Dispose();
+            }
+        }
+
+        public void Shutdown()
+        {
+            CancellationTokenSource? operationCancellation;
+            lock (mobjQueueLock)
+            {
+                mblnShutdown = true;
+                mobjQueue.Clear();
+                operationCancellation = mobjOperationCancellation;
+            }
+
+            CancelOperation(operationCancellation);
+            Stop();
+        }
+
+        private static void CancelOperation(CancellationTokenSource? operationCancellation)
+        {
+            try
+            {
+                operationCancellation?.Cancel();
+            }
+            catch (ObjectDisposedException exception)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "Manual operation cancellation was already disposed. " + exception.Message);
+            }
+        }
     }
 
     private static Window? GetActiveWindow()

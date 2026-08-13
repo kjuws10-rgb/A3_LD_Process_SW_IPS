@@ -107,8 +107,11 @@ public sealed class CStationProcess : CtrlThread
     private readonly CAutomationManager _automationManager;
     private readonly CLogManager? _logManager;
     private readonly object mobjSequenceLock = new object();
+    private readonly object mobjBufferedWorkerLock = new object();
     private readonly List<ST_PROCESS_LOG_ITEM> _processLogs = [];
     private readonly Dictionary<string, string> _autoStepStates = CreateAutoStepStateMap();
+    private readonly Dictionary<int, CBufferedRunGroupThread> mobjBufferedWorkers =
+        new Dictionary<int, CBufferedRunGroupThread>();
 
     private DateTimeOffset? _scriptCreatedAt;
     private DateTimeOffset? _scriptStartedAt;
@@ -334,6 +337,7 @@ public sealed class CStationProcess : CtrlThread
         }
 
         base.Stop();
+        ShutdownBufferedRunWorkers();
         lock (mobjSequenceLock)
         {
             mobjSequenceCancellation?.Dispose();
@@ -1445,31 +1449,61 @@ WaitForOpticReadyStatusCallback27,
         }
 
         using var bufferedRunCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        ST_BUFFERED_RUN_GROUP_RESULT SelectGroup38(IGrouping<int, ST_AUTOMATION1_HEAD_SCRIPT> group)
-        {
-            return RunBufferedHeadScriptGroup(
-                            group.Key,
-                            group.ToArray(),
-                            queueSize,
-                            linesPerCommand,
-                            timeoutMs,
-                            bufferedRunCancellation.Token);
-        }
-
         var results = new List<ST_BUFFERED_RUN_GROUP_RESULT>();
+        var workers = new List<CBufferedRunGroupThread>();
         Exception? firstException = null;
 
         foreach (IGrouping<int, ST_AUTOMATION1_HEAD_SCRIPT> group in groups)
         {
-            try
+            var worker = GetBufferedRunWorker(group.Key);
+            worker.Request(
+                group.ToArray(),
+                queueSize,
+                linesPerCommand,
+                timeoutMs,
+                bufferedRunCancellation.Token);
+            workers.Add(worker);
+        }
+
+        var completedWorkers = new HashSet<CBufferedRunGroupThread>();
+        while (completedWorkers.Count < workers.Count)
+        {
+            if (cancellationToken.IsCancellationRequested)
             {
-                results.Add(SelectGroup38(group));
-            }
-            catch (Exception exception)
-            {
-                firstException = exception;
-                AddProcessLog("ERROR", "A1_RUN", $"Buffered run group failed. {firstException.Message}");
+                firstException = new OperationCanceledException(cancellationToken);
+                AddProcessLog("ERROR", "A1_RUN", "Buffered run group canceled.");
                 break;
+            }
+
+            foreach (CBufferedRunGroupThread worker in workers)
+            {
+                if (completedWorkers.Contains(worker) || !worker.IsComplete)
+                {
+                    continue;
+                }
+
+                completedWorkers.Add(worker);
+                if (worker.Error is not null)
+                {
+                    firstException = worker.Error;
+                    AddProcessLog("ERROR", "A1_RUN", $"Buffered run group failed. {firstException.Message}");
+                    break;
+                }
+
+                if (worker.Result is not null)
+                {
+                    results.Add(worker.Result);
+                }
+            }
+
+            if (firstException is not null)
+            {
+                break;
+            }
+
+            if (completedWorkers.Count < workers.Count)
+            {
+                Thread.Sleep(10);
             }
         }
 
@@ -1477,6 +1511,11 @@ WaitForOpticReadyStatusCallback27,
         {
             bufferedRunCancellation.Cancel();
             StopBufferedRunTasks(headScripts, firstException);
+
+            foreach (CBufferedRunGroupThread worker in workers)
+            {
+                worker.WaitForCompletion(3000);
+            }
 
             ExceptionDispatchInfo.Capture(firstException).Throw();
         }
@@ -1524,6 +1563,37 @@ WaitForOpticReadyStatusCallback27,
             automationNo,
             string.Join(", ", headScripts.Select(SelectScript40)),
             response);
+    }
+
+    private CBufferedRunGroupThread GetBufferedRunWorker(int automationNo)
+    {
+        lock (mobjBufferedWorkerLock)
+        {
+            if (mobjBufferedWorkers.TryGetValue(automationNo, out var worker))
+            {
+                return worker;
+            }
+
+            worker = new CBufferedRunGroupThread(this, automationNo);
+            worker.Start(5, "BufferedRunA1_" + automationNo.ToString(CultureInfo.InvariantCulture));
+            mobjBufferedWorkers.Add(automationNo, worker);
+            return worker;
+        }
+    }
+
+    private void ShutdownBufferedRunWorkers()
+    {
+        CBufferedRunGroupThread[] workers;
+        lock (mobjBufferedWorkerLock)
+        {
+            workers = mobjBufferedWorkers.Values.ToArray();
+            mobjBufferedWorkers.Clear();
+        }
+
+        foreach (CBufferedRunGroupThread worker in workers)
+        {
+            worker.Stop();
+        }
     }
 
     private void StopBufferedRunTasks(
@@ -3197,6 +3267,148 @@ ToDictionaryValueCallback60,
         int AutomationNo,
         string HeadSummary,
         string Response);
+
+    private sealed class CBufferedRunGroupThread : CtrlThread
+    {
+        private readonly CStationProcess mobjOwner;
+        private readonly int mintAutomationNo;
+        private readonly object mobjRequestLock = new object();
+        private readonly ManualResetEvent mobjCompletedEvent = new ManualResetEvent(true);
+        private IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> mobjHeadScripts =
+            Array.Empty<ST_AUTOMATION1_HEAD_SCRIPT>();
+        private CancellationToken mobjCancellationToken;
+        private int mintQueueSize;
+        private int mintLinesPerCommand;
+        private int mintTimeoutMs;
+        private bool mblnRequestPending;
+        private bool mblnBusy;
+        private volatile bool mblnComplete = true;
+        private ST_BUFFERED_RUN_GROUP_RESULT? mobjResult;
+        private Exception? mobjError;
+
+        public CBufferedRunGroupThread(CStationProcess owner, int automationNo)
+        {
+            mobjOwner = owner;
+            mintAutomationNo = automationNo;
+        }
+
+        public bool IsComplete
+        {
+            get
+            {
+                return mblnComplete;
+            }
+        }
+
+        public ST_BUFFERED_RUN_GROUP_RESULT? Result
+        {
+            get
+            {
+                lock (mobjRequestLock)
+                {
+                    return mobjResult;
+                }
+            }
+        }
+
+        public Exception? Error
+        {
+            get
+            {
+                lock (mobjRequestLock)
+                {
+                    return mobjError;
+                }
+            }
+        }
+
+        public void Request(
+            IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts,
+            int queueSize,
+            int linesPerCommand,
+            int timeoutMs,
+            CancellationToken cancellationToken)
+        {
+            lock (mobjRequestLock)
+            {
+                if (mblnBusy || mblnRequestPending)
+                {
+                    throw new InvalidOperationException(
+                        "Buffered run worker is already busy. Automation1 #" +
+                        mintAutomationNo.ToString(CultureInfo.InvariantCulture));
+                }
+
+                mobjHeadScripts = headScripts.ToArray();
+                mintQueueSize = queueSize;
+                mintLinesPerCommand = linesPerCommand;
+                mintTimeoutMs = timeoutMs;
+                mobjCancellationToken = cancellationToken;
+                mobjResult = null;
+                mobjError = null;
+                mblnComplete = false;
+                mblnRequestPending = true;
+                mobjCompletedEvent.Reset();
+            }
+        }
+
+        public override void Run()
+        {
+            IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts;
+            CancellationToken cancellationToken;
+            int queueSize;
+            int linesPerCommand;
+            int timeoutMs;
+
+            lock (mobjRequestLock)
+            {
+                if (!mblnRequestPending)
+                {
+                    return;
+                }
+
+                mblnRequestPending = false;
+                mblnBusy = true;
+                headScripts = mobjHeadScripts;
+                queueSize = mintQueueSize;
+                linesPerCommand = mintLinesPerCommand;
+                timeoutMs = mintTimeoutMs;
+                cancellationToken = mobjCancellationToken;
+            }
+
+            ST_BUFFERED_RUN_GROUP_RESULT? result = null;
+            Exception? error = null;
+            try
+            {
+                result = mobjOwner.RunBufferedHeadScriptGroup(
+                    mintAutomationNo,
+                    headScripts,
+                    queueSize,
+                    linesPerCommand,
+                    timeoutMs,
+                    cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                error = exception;
+            }
+            finally
+            {
+                lock (mobjRequestLock)
+                {
+                    mobjResult = result;
+                    mobjError = error;
+                    mblnBusy = false;
+                    mblnComplete = true;
+                    mobjCompletedEvent.Set();
+                }
+            }
+        }
+
+        public bool WaitForCompletion(int timeoutMsec)
+        {
+            return mobjCompletedEvent.WaitOne(timeoutMsec);
+        }
+    }
 
     private sealed class CBufferedRunTarget
     {

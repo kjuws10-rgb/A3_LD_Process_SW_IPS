@@ -48,8 +48,13 @@ internal sealed class CMonitorStatusPollingService(
 
         _stopSource?.Dispose();
         _stopSource = new CancellationTokenSource();
+        Task? RunTask1()
+        {
+            return PollLoop(_stopSource.Token);
+        }
+
         _pollTask = Task.Run(
-            () => PollLoop(_stopSource.Token),
+RunTask1,
             CancellationToken.None);
     }
 
@@ -122,16 +127,31 @@ internal sealed class CMonitorStatusPollingService(
                     await TryPoll(PollMotor, cancellationToken).ConfigureAwait(false);
                     break;
                 case "LASER" when IsDue(ref _lastLaserPoll, now, ActiveInterval):
-                    await TryPoll(token => PollLaser(context.LaserNumber, token), cancellationToken).ConfigureAwait(false);
+                    Task TryPollTokenCallback2(CancellationToken token)
+                    {
+                        return PollLaser(context.LaserNumber, token);
+                    }
+
+                    await TryPoll(TryPollTokenCallback2, cancellationToken).ConfigureAwait(false);
                     break;
                 case "CHILLER" when IsDue(ref _lastChillerPoll, now, ActiveInterval):
                     await TryPoll(PollChiller, cancellationToken).ConfigureAwait(false);
                     break;
                 case "ATTENUATOR" when IsDue(ref _lastAttenuatorPoll, now, ActiveInterval):
-                    await TryPoll(token => PollAttenuator(context.AttenuatorNumber, token), cancellationToken).ConfigureAwait(false);
+                    Task TryPollTokenCallback3(CancellationToken token)
+                    {
+                        return PollAttenuator(context.AttenuatorNumber, token);
+                    }
+
+                    await TryPoll(TryPollTokenCallback3, cancellationToken).ConfigureAwait(false);
                     break;
                 case "BET" when IsDue(ref _lastBetPoll, now, ActiveInterval):
-                    await TryPoll(token => PollBet(context.BetNumber, token), cancellationToken).ConfigureAwait(false);
+                    Task TryPollTokenCallback4(CancellationToken token)
+                    {
+                        return PollBet(context.BetNumber, token);
+                    }
+
+                    await TryPoll(TryPollTokenCallback4, cancellationToken).ConfigureAwait(false);
                     break;
                 case "POWER METER" when IsDue(ref _lastPowerMeterPoll, now, GetPowerMeterInterval()):
                     await TryPoll(PollPowerMeter, cancellationToken).ConfigureAwait(false);
@@ -140,7 +160,12 @@ internal sealed class CMonitorStatusPollingService(
                     await TryPoll(PollPicoMotor, cancellationToken).ConfigureAwait(false);
                     break;
                 case "MELSEC":
-                    await TryPoll(token => PollMelsec(context.MelsecGroup, token), cancellationToken).ConfigureAwait(false);
+                    Task TryPollTokenCallback5(CancellationToken token)
+                    {
+                        return PollMelsec(context.MelsecGroup, token);
+                    }
+
+                    await TryPoll(TryPollTokenCallback5, cancellationToken).ConfigureAwait(false);
                     break;
             }
 
@@ -178,25 +203,40 @@ internal sealed class CMonitorStatusPollingService(
     private async Task PollCommunication(CancellationToken cancellationToken)
     {
         var communication = await interfaceManager.GetCommunicationStatus(cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with { Communication = communication });
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback6(ST_MONITOR_STATUS_SNAPSHOT snapshot)
+        {
+            return snapshot with { Communication = communication };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback6);
     }
 
     private async Task PollIo(CancellationToken cancellationToken)
     {
         var io = await motionManager.GetIoStatus(cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback7(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { Io = io }
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { Io = io }
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback7);
     }
 
     private async Task PollMotor(CancellationToken cancellationToken)
     {
         var motors = await motionManager.GetAxisStatus(cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback8(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { Motors = motors }
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { Motors = motors }
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback8);
     }
 
     private async Task PollLaser(
@@ -210,21 +250,30 @@ internal sealed class CMonitorStatusPollingService(
             talonStatus.ShutterOpen,
             talonStatus.GateOpen,
             talonStatus.OutputPower);
-
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback9(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { Laser = laserStatus },
-            TalonStatus = talonStatus
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { Laser = laserStatus },
+                TalonStatus = talonStatus
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback9);
     }
 
     private async Task PollChiller(CancellationToken cancellationToken)
     {
         var chiller = await interfaceManager.GetChillerStatus(cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback10(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { Chiller = chiller }
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { Chiller = chiller }
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback10);
     }
 
     private async Task PollAttenuator(
@@ -233,10 +282,15 @@ internal sealed class CMonitorStatusPollingService(
     {
         var attenuator = await interfaceManager.GetAttenuatorStatus(attenuatorNumber, cancellationToken)
             .ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback11(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { Attenuator = attenuator }
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { Attenuator = attenuator }
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback11);
     }
 
     private async Task PollBet(
@@ -244,25 +298,40 @@ internal sealed class CMonitorStatusPollingService(
         CancellationToken cancellationToken)
     {
         var bet = await interfaceManager.GetBETStatus(betNumber, cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback12(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { Bet = bet }
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { Bet = bet }
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback12);
     }
 
     private async Task PollPowerMeter(CancellationToken cancellationToken)
     {
         var powerMeter = await interfaceManager.GetPowerMeterStatus(cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback13(ST_MONITOR_STATUS_SNAPSHOT snapshot)
         {
-            DeviceStatus = snapshot.DeviceStatus with { PowerMeter = powerMeter }
-        });
+            return snapshot with
+            {
+                DeviceStatus = snapshot.DeviceStatus with { PowerMeter = powerMeter }
+            };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback13);
     }
 
     private async Task PollPicoMotor(CancellationToken cancellationToken)
     {
         var picoMotor = await interfaceManager.GetPicoMotorStatus(cancellationToken).ConfigureAwait(false);
-        UpdateSnapshot(snapshot => snapshot with { PicoMotorStatus = picoMotor });
+        ST_MONITOR_STATUS_SNAPSHOT UpdateSnapshotSnapshotCallback14(ST_MONITOR_STATUS_SNAPSHOT snapshot)
+        {
+            return snapshot with { PicoMotorStatus = picoMotor };
+        }
+
+        UpdateSnapshot(UpdateSnapshotSnapshotCallback14);
     }
 
     private async Task PollMelsec(
@@ -272,8 +341,13 @@ internal sealed class CMonitorStatusPollingService(
         var mapRows = selectedGroup.Equals("ALL", StringComparison.OrdinalIgnoreCase)
             ? interfaceManager.Melsec.Map
             : interfaceManager.Melsec.GetMapList(selectedGroup);
+        bool FilterRow15(ST_MELSEC_MAP_DATA row)
+        {
+            return row.Access != EN_MELSEC_ACCESS.Write;
+        }
+
         var readRows = mapRows
-            .Where(row => row.Access != EN_MELSEC_ACCESS.Write)
+            .Where(FilterRow15)
             .ToArray();
         var now = DateTimeOffset.Now;
 
@@ -287,12 +361,31 @@ internal sealed class CMonitorStatusPollingService(
                 now);
             return;
         }
+        bool FilterRow16(ST_MELSEC_MAP_DATA row)
+        {
+            return row.Access != EN_MELSEC_ACCESS.Write;
+        }
+
+        string GetRowSortKey17(ST_MELSEC_MAP_DATA row)
+        {
+            return row.Group;
+        }
+
+        string GetRowSortKey18(ST_MELSEC_MAP_DATA row)
+        {
+            return row.Id;
+        }
+
+        bool FilterRow19(ST_MELSEC_MAP_DATA row)
+        {
+            return IsMelsecDue(row, now);
+        }
 
         var dueRows = mapRows
-            .Where(row => row.Access != EN_MELSEC_ACCESS.Write)
-            .OrderBy(row => row.Group, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(row => row.Id, StringComparer.OrdinalIgnoreCase)
-            .Where(row => IsMelsecDue(row, now))
+            .Where(FilterRow16)
+            .OrderBy(GetRowSortKey17, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(GetRowSortKey18, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterRow19)
             .Take(MaxMelsecReadPerCycle)
             .ToArray();
 
@@ -323,8 +416,13 @@ internal sealed class CMonitorStatusPollingService(
                     "ERROR",
                     exception.Message,
                     failureTime));
+                bool FilterReadRow20(ST_MELSEC_MAP_DATA readRow)
+                {
+                    return !readRow.Id.Equals(row.Id, StringComparison.OrdinalIgnoreCase);
+                }
+
                 UpdateMelsecValues(
-                    readRows.Where(readRow => !readRow.Id.Equals(row.Id, StringComparison.OrdinalIgnoreCase)),
+                    readRows.Where(FilterReadRow20),
                     "ERR",
                     "ERROR",
                     exception.Message,
@@ -338,14 +436,25 @@ internal sealed class CMonitorStatusPollingService(
         ST_MELSEC_MAP_DATA row,
         CancellationToken cancellationToken)
     {
-        return row.DataType switch
+        switch (row.DataType)
         {
-            EN_MELSEC_DATA_TYPE.Bit => (await interfaceManager.Melsec.ReadBit(row.Id, cancellationToken).ConfigureAwait(false)).ToString().ToUpperInvariant(),
-            EN_MELSEC_DATA_TYPE.Word or EN_MELSEC_DATA_TYPE.DWord => (await interfaceManager.Melsec.ReadWord(row.Id, cancellationToken).ConfigureAwait(false)).ToString(CultureInfo.InvariantCulture),
-            EN_MELSEC_DATA_TYPE.Double or EN_MELSEC_DATA_TYPE.Float => (await interfaceManager.Melsec.ReadDouble(row.Id, cancellationToken).ConfigureAwait(false)).ToString("F3", CultureInfo.InvariantCulture),
-            EN_MELSEC_DATA_TYPE.String => await interfaceManager.Melsec.ReadString(row.Id, cancellationToken).ConfigureAwait(false),
-            _ => throw new InvalidOperationException($"Unsupported MELSEC read type: {row.DataType}")
-        };
+            case EN_MELSEC_DATA_TYPE.Bit:
+                return (await interfaceManager.Melsec.ReadBit(row.Id, cancellationToken).ConfigureAwait(false))
+                    .ToString()
+                    .ToUpperInvariant();
+            case EN_MELSEC_DATA_TYPE.Word:
+            case EN_MELSEC_DATA_TYPE.DWord:
+                return (await interfaceManager.Melsec.ReadWord(row.Id, cancellationToken).ConfigureAwait(false))
+                    .ToString(CultureInfo.InvariantCulture);
+            case EN_MELSEC_DATA_TYPE.Double:
+            case EN_MELSEC_DATA_TYPE.Float:
+                return (await interfaceManager.Melsec.ReadDouble(row.Id, cancellationToken).ConfigureAwait(false))
+                    .ToString("F3", CultureInfo.InvariantCulture);
+            case EN_MELSEC_DATA_TYPE.String:
+                return await interfaceManager.Melsec.ReadString(row.Id, cancellationToken).ConfigureAwait(false);
+            default:
+                throw new InvalidOperationException($"Unsupported MELSEC read type: {row.DataType}");
+        }
     }
 
     private ST_MONITOR_POLLING_CONTEXT GetContext()

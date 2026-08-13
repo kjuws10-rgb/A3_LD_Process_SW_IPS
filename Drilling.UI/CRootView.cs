@@ -115,9 +115,13 @@ public sealed class CRootView : CBindingBase
         _interLockManager = interLockManager;
         _recipeManager = recipeManager;
         CThemeManager.Apply(_currentTheme);
+        CMenuItem SelectMenu1(EN_MENU menu)
+        {
+            return new CMenuItem(menu, GetMenuDisplayName(menu));
+        }
 
         Menus = new ObservableCollection<CMenuItem>(
-            OperatorMenus.Select(menu => new CMenuItem(menu, GetMenuDisplayName(menu))));
+            OperatorMenus.Select(SelectMenu1));
         _selectedMenu = Menus[0];
         HeaderStatusItems = new ObservableCollection<ST_HEADER_STATUS_ITEM>();
         FooterStatusItems = new ObservableCollection<ST_HEADER_STATUS_ITEM>();
@@ -125,13 +129,62 @@ public sealed class CRootView : CBindingBase
 
         _currentScreen = CreateLoadingScreen(EN_MENU.Main, "MAIN");
 
-        StartCommand = new CButtonCommand(async _ => await StartCycle(), _ => SelectedMenu.Menu == EN_MENU.Main);
-        StopCommand = new CButtonCommand(async _ => await StopCycle(), _ => SelectedMenu.Menu == EN_MENU.Main);
-        SelectHeadCommand = new CButtonCommand(async parameter => await SelectHead(parameter), _ => CanSelectHead);
+        async void HandleStartCommand2(object? _)
+        {
+            await StartCycle();
+        }
+
+        bool HandleStartCommand3(object? _)
+        {
+            return SelectedMenu.Menu == EN_MENU.Main;
+        }
+
+        StartCommand = new CButtonCommand(HandleStartCommand2, HandleStartCommand3);
+
+        async void HandleStopCommand4(object? _)
+        {
+            await StopCycle();
+        }
+
+        bool HandleStopCommand5(object? _)
+        {
+            return SelectedMenu.Menu == EN_MENU.Main;
+        }
+
+        StopCommand = new CButtonCommand(HandleStopCommand4, HandleStopCommand5);
+
+        async void HandleSelectHeadCommand6(object? parameter)
+        {
+            await SelectHead(parameter);
+        }
+
+        bool HandleSelectHeadCommand7(object? _)
+        {
+            return CanSelectHead;
+        }
+
+        SelectHeadCommand = new CButtonCommand(HandleSelectHeadCommand6, HandleSelectHeadCommand7);
+
+        async void HandleTogglePreviewHeadCommand8(object? parameter)
+        {
+            await TogglePreviewHead(parameter);
+        }
+
+        bool HandleTogglePreviewHeadCommand9(object? _)
+        {
+            return SelectedMenu.Menu == EN_MENU.Main;
+        }
+
         TogglePreviewHeadCommand = new CButtonCommand(
-            async parameter => await TogglePreviewHead(parameter),
-            _ => SelectedMenu.Menu == EN_MENU.Main);
-        ToggleThemeCommand = new CButtonCommand(async _ => await ToggleTheme());
+HandleTogglePreviewHeadCommand8,
+HandleTogglePreviewHeadCommand9);
+
+        async void HandleToggleThemeCommand10(object? _)
+        {
+            await ToggleTheme();
+        }
+
+        ToggleThemeCommand = new CButtonCommand(HandleToggleThemeCommand10);
 
         _menus = CreateMenus(
             stationManager,
@@ -570,7 +623,7 @@ public sealed class CRootView : CBindingBase
         string detail)
     {
         var logManager = _manager.Log();
-        _ = Task.Run(() =>
+        void RunTask11()
         {
             try
             {
@@ -580,7 +633,8 @@ public sealed class CRootView : CBindingBase
             {
                 Debug.WriteLine($"Station state log failed. {exception}");
             }
-        });
+        }
+        _ = Task.Run(RunTask11);
     }
 
     private static bool HasElapsed(
@@ -690,8 +744,12 @@ public sealed class CRootView : CBindingBase
             new("RECIPE", GetHeaderRecipeId(status), "RECIPE"),
             new("MODE", OperationModeValue(status.OperationMode), OperationModeState(status.OperationMode))
         };
+        ST_HEADER_STATUS_ITEM SelectModule12(EN_EQP_MODULE module)
+        {
+            return ModuleHeader(status, module);
+        }
 
-        items.AddRange(HeaderModules.Select(module => ModuleHeader(status, module)));
+        items.AddRange(HeaderModules.Select(SelectModule12));
         items.Add(new ST_HEADER_STATUS_ITEM("ALARM", alarmState, alarmState));
 
         return items;
@@ -713,7 +771,12 @@ public sealed class CRootView : CBindingBase
 
         if (menu == EN_MENU.Recipe)
         {
-            var hasRecipeChanges = CurrentScreen.Recipe?.AllManagedItems.Any(item => item.IsEdited) == true;
+            bool CheckItem13(ST_RECIPE_MANAGED_ITEM item)
+            {
+                return item.IsEdited;
+            }
+
+            var hasRecipeChanges = CurrentScreen.Recipe?.AllManagedItems.Any(CheckItem13) == true;
 
             return
             [
@@ -725,7 +788,12 @@ public sealed class CRootView : CBindingBase
 
         if (menu == EN_MENU.Setting)
         {
-            var modifiedCount = CurrentScreen.Setting?.AllParameterRows.Count(item => item.IsModified) ?? 0;
+            bool HandleModifiedCount14(ST_SYSTEM_PARAMETER_ROW item)
+            {
+                return item.IsModified;
+            }
+
+            var modifiedCount = CurrentScreen.Setting?.AllParameterRows.Count(HandleModifiedCount14) ?? 0;
 
             return
             [
@@ -824,28 +892,55 @@ public sealed class CRootView : CBindingBase
 
         if (!string.IsNullOrWhiteSpace(_selectedRecipeId))
         {
-            var selectedRecipe = recipes.FirstOrDefault(recipe =>
-                recipe.Id.Equals(_selectedRecipeId, StringComparison.OrdinalIgnoreCase));
+            bool MatchRecipe15(ST_RECIPE_DATA recipe)
+            {
+                return recipe.Id.Equals(_selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var selectedRecipe = recipes.FirstOrDefault(MatchRecipe15);
 
             if (selectedRecipe is not null)
             {
                 return selectedRecipe;
             }
         }
+        bool MatchRecipe16(ST_RECIPE_DATA recipe)
+        {
+            return recipe.Id.Equals("DRILL_A01", StringComparison.OrdinalIgnoreCase);
+        }
 
-        return recipes.FirstOrDefault(recipe =>
-                recipe.Id.Equals("DRILL_A01", StringComparison.OrdinalIgnoreCase))
+        return recipes.FirstOrDefault(MatchRecipe16)
             ?? recipes[0];
     }
 
     private static IReadOnlyDictionary<string, string> CreateProcessParameters(ST_RECIPE_DATA? recipe)
     {
+        bool FilterParameter17(ST_RECIPE_PARAM parameter)
+        {
+            return !string.IsNullOrWhiteSpace(parameter.Key);
+        }
+
+        string GroupByParameterCallback18(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Key;
+        }
+
+        string HandleParameters19(IGrouping<string, ST_RECIPE_PARAM> group)
+        {
+            return group.Key;
+        }
+
+        string HandleParameters20(IGrouping<string, ST_RECIPE_PARAM> group)
+        {
+            return group.Last().Value;
+        }
+
         var parameters = recipe?.Parameters
-            .Where(parameter => !string.IsNullOrWhiteSpace(parameter.Key))
-            .GroupBy(parameter => parameter.Key, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterParameter17)
+            .GroupBy(GroupByParameterCallback18, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last().Value,
+HandleParameters19,
+HandleParameters20,
                 StringComparer.OrdinalIgnoreCase)
             ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
@@ -963,9 +1058,19 @@ public sealed class CRootView : CBindingBase
 
     private void UpdatePreviewHeadStatusMessage()
     {
+        int GetValueSortKey21(int value)
+        {
+            return value;
+        }
+
+        string SelectValue22(int value)
+        {
+            return $"H{value:00}";
+        }
+
         StatusMessage = _selectedPreviewHeadNos.Count == 0
             ? "Head preview selection cleared."
-            : $"Head preview: {string.Join(", ", _selectedPreviewHeadNos.OrderBy(value => value).Select(value => $"H{value:00}"))}";
+            : $"Head preview: {string.Join(", ", _selectedPreviewHeadNos.OrderBy(GetValueSortKey21).Select(SelectValue22))}";
     }
 
     private void StartClock()
@@ -975,7 +1080,7 @@ public sealed class CRootView : CBindingBase
             Interval = TimeSpan.FromSeconds(1)
         };
 
-        timer.Tick += async (_, _) =>
+        async void TickHandler23(object? unusedParameter1, EventArgs unusedParameter2)
         {
             try
             {
@@ -1014,7 +1119,8 @@ public sealed class CRootView : CBindingBase
             {
                 ReportClockTickError(exception);
             }
-        };
+        }
+        timer.Tick += TickHandler23;
 
         timer.Start();
     }
@@ -1033,6 +1139,161 @@ public sealed class CRootView : CBindingBase
         IReviewRuleFile reviewRuleFile,
         IAutomationScriptFile automationScriptFile)
     {
+        string HandleMenus24()
+        {
+            return _selectedRecipeId;
+        }
+
+        IReadOnlySet<int> HandleMenus25()
+        {
+            return _selectedPreviewHeadNos;
+        }
+
+        void HandleMenus26(string message)
+        {
+            StatusMessage = message;
+        }
+
+        int HandleMenus27()
+        {
+            return _selectedHeadNo;
+        }
+
+        string HandleMenus28()
+        {
+            return _selectedManualSettingName;
+        }
+
+        void HandleMenus29(string value)
+        {
+            _selectedManualSettingName = value;
+        }
+
+        void HandleMenus30(string message)
+        {
+            StatusMessage = message;
+        }
+
+        string HandleMenus31()
+        {
+            return _selectedRecipeId;
+        }
+
+        void HandleMenus32(string value)
+        {
+            _selectedRecipeId = value;
+        }
+
+        string HandleMenus33()
+        {
+            return _selectedRecipeCategory;
+        }
+
+        void HandleMenus34(string value)
+        {
+            _selectedRecipeCategory = value;
+        }
+
+        CMenuRecipe? HandleMenus35()
+        {
+            return CurrentScreen.Recipe;
+        }
+
+        void HandleMenus36(string message)
+        {
+            StatusMessage = message;
+        }
+
+        void HandleMenus37(EN_MENU menu, string title)
+        {
+            CurrentScreen = CreateLoadingScreen(menu, title);
+        }
+
+        string HandleMenus38()
+        {
+            return _selectedSettingTab;
+        }
+
+        void HandleMenus39(string value)
+        {
+            _selectedSettingTab = value;
+        }
+
+        string HandleMenus40()
+        {
+            return _selectedSettingGroup;
+        }
+
+        void HandleMenus41(string value)
+        {
+            _selectedSettingGroup = value;
+        }
+
+        CMenuSetting? HandleMenus42()
+        {
+            return CurrentScreen.Setting;
+        }
+
+        void HandleMenus43(string message)
+        {
+            StatusMessage = message;
+        }
+
+        void HandleMenus44(EN_MENU menu, string title)
+        {
+            CurrentScreen = CreateLoadingScreen(menu, title);
+        }
+
+        void HandleMenus45(string message)
+        {
+            StatusMessage = message;
+        }
+
+        string HandleMenus46()
+        {
+            return _selectedRecipeId;
+        }
+
+        string HandleMenus47()
+        {
+            return _selectedMonitorTab;
+        }
+
+        void HandleMenus48(string value)
+        {
+            _selectedMonitorTab = value;
+        }
+
+        void HandleMenus49(string message)
+        {
+            StatusMessage = message;
+        }
+
+        string HandleMenus50()
+        {
+            return _selectedRecipeId;
+        }
+
+        void HandleMenus51(string message)
+        {
+            StatusMessage = message;
+        }
+
+        void HandleMenus52()
+        {
+            _ = RefreshCurrentScreen();
+        }
+
+        string HandleMenus53()
+        {
+            return _selectedRecipeId;
+        }
+
+        void HandleMenus54(string message)
+        {
+            StatusMessage = message;
+        }
+
         IMenu[] menus =
         [
             new CMenuMain(
@@ -1042,43 +1303,43 @@ public sealed class CRootView : CBindingBase
                 recipeManager,
                 settingManager,
                 reviewManager,
-                () => _selectedRecipeId,
-                () => _selectedPreviewHeadNos,
+HandleMenus24,
+HandleMenus25,
                 TogglePreviewHeadCommand,
-                message => StatusMessage = message,
+HandleMenus26,
                 RefreshCurrentScreen),
             new CMenuManual(
                 _manager,
                 manualScanFile,
                 automationScriptFile,
-                () => _selectedHeadNo,
-                () => _selectedManualSettingName,
-                value => _selectedManualSettingName = value,
+HandleMenus27,
+HandleMenus28,
+HandleMenus29,
                 SelectHeadCommand,
-                message => StatusMessage = message,
+HandleMenus30,
                 RefreshShellStatusItems,
                 RefreshCurrentScreen),
             new CMenuRecipe(
                 recipeManager,
                 settingManager,
-                () => _selectedRecipeId,
-                value => _selectedRecipeId = value,
-                () => _selectedRecipeCategory,
-                value => _selectedRecipeCategory = value,
-                () => CurrentScreen.Recipe,
-                message => StatusMessage = message,
-                (menu, title) => CurrentScreen = CreateLoadingScreen(menu, title),
+HandleMenus31,
+HandleMenus32,
+HandleMenus33,
+HandleMenus34,
+HandleMenus35,
+HandleMenus36,
+HandleMenus37,
                 RefreshShellStatusItems,
                 RefreshCurrentScreen),
             new CMenuSetting(
                 settingManager,
-                () => _selectedSettingTab,
-                value => _selectedSettingTab = value,
-                () => _selectedSettingGroup,
-                value => _selectedSettingGroup = value,
-                () => CurrentScreen.Setting,
-                message => StatusMessage = message,
-                (menu, title) => CurrentScreen = CreateLoadingScreen(menu, title),
+HandleMenus38,
+HandleMenus39,
+HandleMenus40,
+HandleMenus41,
+HandleMenus42,
+HandleMenus43,
+HandleMenus44,
                 RefreshShellStatusItems,
                 RefreshCurrentScreen),
             new CMenuAlarm(
@@ -1087,7 +1348,7 @@ public sealed class CRootView : CBindingBase
                 alarmManager,
                 interLockManager,
                 stationManager,
-                message => StatusMessage = message,
+HandleMenus45,
                 RefreshShellStatusItems,
                 RefreshCurrentScreen),
             new CMenuMonitor(
@@ -1097,31 +1358,35 @@ public sealed class CRootView : CBindingBase
                 productManager,
                 recipeManager,
                 settingManager,
-                () => _selectedRecipeId,
-                () => _selectedMonitorTab,
-                value => _selectedMonitorTab = value,
-                message => StatusMessage = message,
+HandleMenus46,
+HandleMenus47,
+HandleMenus48,
+HandleMenus49,
                 RefreshShellStatusItems,
                 RefreshCurrentScreen),
             new CMenuReview(
                 reviewManager,
                 reviewRuleFile,
                 recipeManager,
-                () => _selectedRecipeId,
-                message => StatusMessage = message,
-                () => _ = RefreshCurrentScreen()),
+HandleMenus50,
+HandleMenus51,
+HandleMenus52),
             new CMenuCorrection(
                 _manager.ReviewResultFile(),
                 recipeManager,
                 settingManager,
-                () => _selectedRecipeId,
-                message => StatusMessage = message,
+HandleMenus53,
+HandleMenus54,
                 RefreshCurrentScreen),
             new CMenuPm(GetPMLockStatus, EnterPMLock),
             new CMenuExit()
         ];
+        EN_MENU ToDictionaryMenuCallback55(IMenu menu)
+        {
+            return menu.Menu;
+        }
 
-        return menus.ToDictionary(menu => menu.Menu);
+        return menus.ToDictionary(ToDictionaryMenuCallback55);
     }
 
     private static CScreenViewModel CreateLoadingScreen(EN_MENU menu, string title)
@@ -1299,9 +1564,19 @@ public sealed class CRootView : CBindingBase
     private static IReadOnlyList<ST_DEVICE_COMM_STATUS> NormalizeCommunicationStatuses(
         IReadOnlyList<ST_DEVICE_COMM_STATUS> modules)
     {
+        ST_DEVICE_COMM_STATUS SelectModule56(EN_EQP_MODULE module)
+        {
+            bool MatchStatus1(ST_DEVICE_COMM_STATUS status)
+            {
+                return status.Module == module;
+            }
+
+            return modules.FirstOrDefault(MatchStatus1)
+                            ?? new ST_DEVICE_COMM_STATUS(module, EN_COMM_STATE.Offline);
+        }
+
         return Enum.GetValues<EN_EQP_MODULE>()
-            .Select(module => modules.FirstOrDefault(status => status.Module == module)
-                ?? new ST_DEVICE_COMM_STATUS(module, EN_COMM_STATE.Offline))
+            .Select(SelectModule56)
             .ToArray();
     }
 
@@ -1327,6 +1602,20 @@ public sealed class CRootView : CBindingBase
         var pageText = moduleStatuses.Count > 1
             ? $"{displayNumber}/{moduleStatuses.Count}"
             : "";
+        void HandleValueCallback57(object? _)
+        {
+            SelectPreviousModuleStatus(module);
+        }
+
+        void HandleValueCallback58(object? _)
+        {
+            SelectNextModuleStatus(module);
+        }
+
+        void HandleValueCallback59(object? _)
+        {
+            ShowModuleStatusPopup(module);
+        }
 
         return new ST_HEADER_STATUS_ITEM(
             ModuleDisplayName(module),
@@ -1334,17 +1623,32 @@ public sealed class CRootView : CBindingBase
             value,
             moduleStatuses.Count > 1,
             pageText,
-            new CButtonCommand(_ => SelectPreviousModuleStatus(module)),
-            new CButtonCommand(_ => SelectNextModuleStatus(module)),
-            new CButtonCommand(_ => ShowModuleStatusPopup(module)));
+            new CButtonCommand(HandleValueCallback57),
+            new CButtonCommand(HandleValueCallback58),
+            new CButtonCommand(HandleValueCallback59));
     }
 
     private IReadOnlyList<ST_INTERFACE_COMM_STATUS> GetModuleCommunicationStatuses(EN_EQP_MODULE module)
     {
+        bool FilterStatus60(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Module == module;
+        }
+
+        int GetStatusSortKey61(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
+
+        string GetStatusSortKey62(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.NickName;
+        }
+
         return _interfaceCommStatuses
-            .Where(status => status.Module == module)
-            .OrderBy(status => status.Number)
-            .ThenBy(status => status.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterStatus60)
+            .OrderBy(GetStatusSortKey61)
+            .ThenBy(GetStatusSortKey62, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
@@ -1397,9 +1701,14 @@ public sealed class CRootView : CBindingBase
         }
 
         var dialog = new CInterfaceStatusDialog(ModuleDisplayName(module), moduleStatuses);
+        bool MatchWindow63(Window window)
+        {
+            return window.IsActive;
+        }
+
         var owner = Application.Current.Windows
             .OfType<Window>()
-            .FirstOrDefault(window => window.IsActive)
+            .FirstOrDefault(MatchWindow63)
             ?? Application.Current.MainWindow;
 
         if (owner is not null && !ReferenceEquals(owner, dialog))

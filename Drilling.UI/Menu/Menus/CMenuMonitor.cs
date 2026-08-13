@@ -99,19 +99,96 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         _refreshCurrentScreen = refreshCurrentScreen;
         _statusPollingService = new CMonitorStatusPollingService(_interfaceManager, _motionManager);
 
-        SelectTabCommand = new CButtonCommand(async parameter => await SelectTab(parameter));
-        SelectHeadDeviceCommand = new CButtonCommand(async parameter => await SelectHeadDevice(parameter));
-        ExecuteOperationCommand = new CButtonCommand(async parameter => await ExecuteOperation(parameter));
-        SetOutputOnCommand = new CButtonCommand(async parameter => await SetOutput(parameter, true));
-        SetOutputOffCommand = new CButtonCommand(async parameter => await SetOutput(parameter, false));
-        SelectMelsecGroupCommand = new CButtonCommand(async parameter => await SelectMelsecGroup(parameter));
-        WriteMelsecCommand = new CButtonCommand(async parameter => await WriteMelsec(parameter));
-        PicoJogStartCommand = new CButtonCommand(async parameter => await StartPicoJog(parameter));
-        PicoJogStopCommand = new CButtonCommand(async _ => await StopPicoJog());
-        SelectCoordinateBasisCommand = new CButtonCommand(async parameter => await SelectCoordinateBasis(parameter));
-        SelectCoordinateCellCommand = new CButtonCommand(async parameter => await SelectCoordinateCell(parameter));
-        SelectCoordinateHoleCommand = new CButtonCommand(async parameter => await SelectCoordinateHole(parameter));
-        BackToCoordinateGlassPreviewCommand = new CButtonCommand(async _ => await BackToCoordinateGlassPreview());
+        async void HandleSelectTabCommand1(object? parameter)
+        {
+            await SelectTab(parameter);
+        }
+
+        SelectTabCommand = new CButtonCommand(HandleSelectTabCommand1);
+
+        async void HandleSelectHeadDeviceCommand2(object? parameter)
+        {
+            await SelectHeadDevice(parameter);
+        }
+
+        SelectHeadDeviceCommand = new CButtonCommand(HandleSelectHeadDeviceCommand2);
+
+        async void HandleExecuteOperationCommand3(object? parameter)
+        {
+            await ExecuteOperation(parameter);
+        }
+
+        ExecuteOperationCommand = new CButtonCommand(HandleExecuteOperationCommand3);
+
+        async void HandleSetOutputOnCommand4(object? parameter)
+        {
+            await SetOutput(parameter, true);
+        }
+
+        SetOutputOnCommand = new CButtonCommand(HandleSetOutputOnCommand4);
+
+        async void HandleSetOutputOffCommand5(object? parameter)
+        {
+            await SetOutput(parameter, false);
+        }
+
+        SetOutputOffCommand = new CButtonCommand(HandleSetOutputOffCommand5);
+
+        async void HandleSelectMelsecGroupCommand6(object? parameter)
+        {
+            await SelectMelsecGroup(parameter);
+        }
+
+        SelectMelsecGroupCommand = new CButtonCommand(HandleSelectMelsecGroupCommand6);
+
+        async void HandleWriteMelsecCommand7(object? parameter)
+        {
+            await WriteMelsec(parameter);
+        }
+
+        WriteMelsecCommand = new CButtonCommand(HandleWriteMelsecCommand7);
+
+        async void HandlePicoJogStartCommand8(object? parameter)
+        {
+            await StartPicoJog(parameter);
+        }
+
+        PicoJogStartCommand = new CButtonCommand(HandlePicoJogStartCommand8);
+
+        async void HandlePicoJogStopCommand9(object? _)
+        {
+            await StopPicoJog();
+        }
+
+        PicoJogStopCommand = new CButtonCommand(HandlePicoJogStopCommand9);
+
+        async void HandleSelectCoordinateBasisCommand10(object? parameter)
+        {
+            await SelectCoordinateBasis(parameter);
+        }
+
+        SelectCoordinateBasisCommand = new CButtonCommand(HandleSelectCoordinateBasisCommand10);
+
+        async void HandleSelectCoordinateCellCommand11(object? parameter)
+        {
+            await SelectCoordinateCell(parameter);
+        }
+
+        SelectCoordinateCellCommand = new CButtonCommand(HandleSelectCoordinateCellCommand11);
+
+        async void HandleSelectCoordinateHoleCommand12(object? parameter)
+        {
+            await SelectCoordinateHole(parameter);
+        }
+
+        SelectCoordinateHoleCommand = new CButtonCommand(HandleSelectCoordinateHoleCommand12);
+
+        async void HandleBackToCoordinateGlassPreviewCommand13(object? _)
+        {
+            await BackToCoordinateGlassPreview();
+        }
+
+        BackToCoordinateGlassPreviewCommand = new CButtonCommand(HandleBackToCoordinateGlassPreviewCommand13);
     }
 
     public EN_MENU Menu
@@ -334,7 +411,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         get
         {
-            return AxisRows.FirstOrDefault(row => row.Axis.Equals(_selectedAxisId, StringComparison.OrdinalIgnoreCase));
+            bool MatchRow14(ST_MONITOR_AXIS_ROW row)
+            {
+                return row.Axis.Equals(_selectedAxisId, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return AxisRows.FirstOrDefault(MatchRow14);
         }
 
         set
@@ -350,7 +432,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         get
         {
-            return PwmProcessRows.FirstOrDefault(row => row.IsSelected);
+            bool MatchRow15(ST_PWM_PROCESS_ROW row)
+            {
+                return row.IsSelected;
+            }
+
+            return PwmProcessRows.FirstOrDefault(MatchRow15);
         }
 
         set
@@ -370,7 +457,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         get
         {
-            return PwmStepRows.FirstOrDefault(row => row.IsSelected);
+            bool MatchRow16(ST_PWM_STEP_ROW row)
+            {
+                return row.IsSelected;
+            }
+
+            return PwmStepRows.FirstOrDefault(MatchRow16);
         }
 
         set
@@ -465,8 +557,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         get
         {
+            ST_MONITOR_OPERATION_BUTTON SelectNumber17(int number)
+            {
+                return new ST_MONITOR_OPERATION_BUTTON($"MOTOR {number}", "Move", _selectedPicoMotorNo == number ? "Blue" : "Dark");
+            }
+
             return Enumerable.Range(1, 4)
-        .Select(number => new ST_MONITOR_OPERATION_BUTTON($"MOTOR {number}", "Move", _selectedPicoMotorNo == number ? "Blue" : "Dark"))
+        .Select(SelectNumber17)
         .ToArray();
         }
     }
@@ -518,12 +615,17 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         get
         {
+            ST_MONITOR_OPERATION_BUTTON SelectNumber18(int number)
+            {
+                return new ST_MONITOR_OPERATION_BUTTON(
+                            $"MOTOR {number}",
+                            "Move",
+                            _picoAllMoveMotorNos.Contains(number) ? "Blue" : "Dark",
+                            $"ALL MOTOR {number}");
+            }
+
             return Enumerable.Range(1, 4)
-        .Select(number => new ST_MONITOR_OPERATION_BUTTON(
-            $"MOTOR {number}",
-            "Move",
-            _picoAllMoveMotorNos.Contains(number) ? "Blue" : "Dark",
-            $"ALL MOTOR {number}"))
+        .Select(SelectNumber18)
         .ToArray();
         }
     }
@@ -633,8 +735,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         var (product, productHistory, productError) = selectedTab == "PRODUCT"
             ? await LoadProductDisplay(cancellationToken)
             : (null, [], "");
+        ST_MONITOR_TAB SelectTab19(string tab)
+        {
+            return new ST_MONITOR_TAB(tab, tab == selectedTab);
+        }
+
         var tabs = MonitorTabs
-            .Select(tab => new ST_MONITOR_TAB(tab, tab == selectedTab))
+            .Select(SelectTab19)
             .ToArray();
         var melsecGroups = CreateMelsecGroups(selectedTab);
         SaveMelsecWriteValues();
@@ -651,8 +758,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         var selectedLaserStatus = snapshot.Laser;
 
         var axisRows = CreateAxisRows(snapshot, _selectedAxisId);
+        bool CheckRow20(ST_MONITOR_AXIS_ROW row)
+        {
+            return row.IsSelected;
+        }
 
-        if (axisRows.Count > 0 && !axisRows.Any(row => row.IsSelected))
+        if (axisRows.Count > 0 && !axisRows.Any(CheckRow20))
         {
             _selectedAxisId = axisRows[0].Axis;
             axisRows = CreateAxisRows(snapshot, _selectedAxisId);
@@ -708,6 +819,20 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             ParameterRows = CreatePicoErrorRows();
             PositionRows = CreatePicoMotorPositionRows(picoMotorStatus);
         }
+        ST_DISPLAY_ITEM SelectRow21(ST_MONITOR_IO_ROW row)
+        {
+            return new ST_DISPLAY_ITEM(row.Address, row.State, row.Name);
+        }
+
+        ST_DISPLAY_ITEM SelectRow22(ST_MONITOR_AXIS_ROW row)
+        {
+            return new ST_DISPLAY_ITEM(row.Axis, row.CurrentPosition, row.State);
+        }
+
+        ST_DISPLAY_ITEM SelectRow23(ST_MONITOR_STATUS_ROW row)
+        {
+            return new ST_DISPLAY_ITEM(row.Item, row.Value, row.State);
+        }
 
         return new CScreenViewModel(
             EN_MENU.Monitor,
@@ -719,9 +844,9 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Output", OutputRows.Count.ToString())
             ],
             [
-                new("IO", InputRows.Select(row => new ST_DISPLAY_ITEM(row.Address, row.State, row.Name)).ToArray()),
-                new("MOTOR", AxisRows.Select(row => new ST_DISPLAY_ITEM(row.Axis, row.CurrentPosition, row.State)).ToArray()),
-                new("LASER", StatusRows.Select(row => new ST_DISPLAY_ITEM(row.Item, row.Value, row.State)).ToArray())
+                new("IO", InputRows.Select(SelectRow21).ToArray()),
+                new("MOTOR", AxisRows.Select(SelectRow22).ToArray()),
+                new("LASER", StatusRows.Select(SelectRow23).ToArray())
             ],
             monitor: this);
     }
@@ -729,8 +854,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private async Task<CScreenViewModel> BuildCoordinateViewerScreen(CancellationToken cancellationToken)
     {
         var selectedTab = "COORDINATE VIEWER";
+        ST_MONITOR_TAB SelectTab24(string tab)
+        {
+            return new ST_MONITOR_TAB(tab, tab == selectedTab);
+        }
+
         var tabs = MonitorTabs
-            .Select(tab => new ST_MONITOR_TAB(tab, tab == selectedTab))
+            .Select(SelectTab24)
             .ToArray();
         var coordinateViewerData = await BuildCoordinateViewerData(cancellationToken);
 
@@ -772,6 +902,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             [],
             []);
         ApplyCoordinateViewerData(coordinateViewerData);
+        ST_DISPLAY_ITEM SelectRow25(ST_MONITOR_COORDINATE_VALUE_ROW row)
+        {
+            return new ST_DISPLAY_ITEM(row.Parameter, row.Value, row.Unit);
+        }
 
         return new CScreenViewModel(
             EN_MENU.Monitor,
@@ -785,7 +919,7 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             [
                 new("COORDINATE VIEWER", CoordinateValueRows
                     .Take(8)
-                    .Select(row => new ST_DISPLAY_ITEM(row.Parameter, row.Value, row.Unit))
+                    .Select(SelectRow25)
                     .ToArray())
             ],
             monitor: this);
@@ -874,8 +1008,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
                 case "MOTOR":
                     var axisRows = CreateAxisRows(snapshot, _selectedAxisId);
+                    bool CheckRow26(ST_MONITOR_AXIS_ROW row)
+                    {
+                        return row.IsSelected;
+                    }
 
-                    if (axisRows.Count > 0 && !axisRows.Any(row => row.IsSelected))
+                    if (axisRows.Count > 0 && !axisRows.Any(CheckRow26))
                     {
                         _selectedAxisId = axisRows[0].Axis;
                         axisRows = CreateAxisRows(snapshot, _selectedAxisId);
@@ -1177,17 +1315,36 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
         SaveOperationFieldValues(SelectedTab);
 
-        var result = SelectedTab switch
+        ST_DEVICE_COMMAND_RESULT result;
+        switch (SelectedTab)
         {
-            "MOTOR" => await ExecuteMotorOperation(label),
-            "LASER" => await ExecuteLaserOperation(label),
-            "CHILLER" => await ExecuteChillerOperation(label),
-            "ATTENUATOR" => await ExecuteAttenuatorOperation(label),
-            "BET" => await ExecuteBETOperation(label),
-            "POWER METER" => await ExecutePowerMeterOperation(label),
-            "PICO MOTOR" => await ExecutePicoMotorOperation(label),
-            _ => new ST_DEVICE_COMMAND_RESULT(false, $"Monitor {SelectedTab} command is not connected yet: {label}")
-        };
+            case "MOTOR":
+                result = await ExecuteMotorOperation(label);
+                break;
+            case "LASER":
+                result = await ExecuteLaserOperation(label);
+                break;
+            case "CHILLER":
+                result = await ExecuteChillerOperation(label);
+                break;
+            case "ATTENUATOR":
+                result = await ExecuteAttenuatorOperation(label);
+                break;
+            case "BET":
+                result = await ExecuteBETOperation(label);
+                break;
+            case "POWER METER":
+                result = await ExecutePowerMeterOperation(label);
+                break;
+            case "PICO MOTOR":
+                result = await ExecutePicoMotorOperation(label);
+                break;
+            default:
+                result = new ST_DEVICE_COMMAND_RESULT(
+                    false,
+                    $"Monitor {SelectedTab} command is not connected yet: {label}");
+                break;
+        }
 
         _setStatusMessage(result.Message);
 
@@ -1331,7 +1488,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
             if (!interLock.CanManualMove)
             {
-                var blockedItem = interLock.Items.FirstOrDefault(item => item.Level != EN_INTERLOCK_LEVEL.Ok);
+                bool MatchItem27(Common.InterLock.ST_INTERLOCK_ITEM item)
+                {
+                    return item.Level != EN_INTERLOCK_LEVEL.Ok;
+                }
+
+                var blockedItem = interLock.Items.FirstOrDefault(MatchItem27);
                 var detail = blockedItem is null
                     ? "InterLock is not ready."
                     : $"{blockedItem.Signal}: {blockedItem.Detail}";
@@ -1756,8 +1918,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             {
                 return new ST_DEVICE_COMMAND_RESULT(false, "PICO_MOTOR ALL_MOVE is already running.");
             }
+            int GetNumberSortKey28(int number)
+            {
+                return number;
+            }
 
-            var selectedMotors = _picoAllMoveMotorNos.OrderBy(number => number).ToArray();
+            var selectedMotors = _picoAllMoveMotorNos.OrderBy(GetNumberSortKey28).ToArray();
             var setCount = Math.Max(0, (int)Math.Round(ReadOperationField("Set Count", 0)));
             var position = ReadOperationField("Position", 0.0);
 
@@ -1922,8 +2088,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private bool IsPicoMotorSimulation()
     {
+        int GetItemSortKey29(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = _interfaceManager.GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey29)
             .FirstOrDefault();
         return data is not null && _interfaceManager.IsSimul(data.Device, data.Number);
     }
@@ -2082,24 +2253,52 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
         var cellCount = Math.Max(1, holePlan?.CellCount ?? ReadCoordinateInt(parameterMap, 1, "CELL_COUNT"));
         _coordinateSelectedCellNo = Math.Clamp(_coordinateSelectedCellNo, 1, cellCount);
+        bool FilterPoint30(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.CellNo == _coordinateSelectedCellNo;
+        }
+
+        int GetPointSortKey31(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.Row;
+        }
+
+        int GetPointSortKey32(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.Column;
+        }
+
+        int GetPointSortKey33(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.HoleNo;
+        }
+
         var selectedCellPoints = holePlan?.Points
-            .Where(point => point.CellNo == _coordinateSelectedCellNo)
-            .OrderBy(point => point.Row)
-            .ThenBy(point => point.Column)
-            .ThenBy(point => point.HoleNo)
+            .Where(FilterPoint30)
+            .OrderBy(GetPointSortKey31)
+            .ThenBy(GetPointSortKey32)
+            .ThenBy(GetPointSortKey33)
             .ToArray() ?? [];
+        bool CheckPoint34(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.HoleKey.Equals(_coordinateSelectedHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
+
         if (selectedCellPoints.Length == 0)
         {
             _coordinateSelectedHoleKey = "";
         }
         else if (string.IsNullOrWhiteSpace(_coordinateSelectedHoleKey) ||
-                 !selectedCellPoints.Any(point => point.HoleKey.Equals(_coordinateSelectedHoleKey, StringComparison.OrdinalIgnoreCase)))
+                 !selectedCellPoints.Any(CheckPoint34))
         {
             _coordinateSelectedHoleKey = selectedCellPoints[0].HoleKey;
         }
+        bool MatchPoint35(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.HoleKey.Equals(_coordinateSelectedHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var selectedPoint = holePlan?.Points.FirstOrDefault(point =>
-            point.HoleKey.Equals(_coordinateSelectedHoleKey, StringComparison.OrdinalIgnoreCase));
+        var selectedPoint = holePlan?.Points.FirstOrDefault(MatchPoint35);
         var previewPoints = holePlan is null
             ? Array.Empty<ST_REVIEW_PLAN_POINT>()
             : CreateCoordinatePreviewPoints(holePlan.Points, selectedPoint?.HoleKey, _coordinateBasis);
@@ -2130,11 +2329,18 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         var recipes = await _recipeManager.LoadRecipes(cancellationToken);
         var selectedRecipeId = (_selectedRecipeIdProvider() ?? "").Trim();
+        bool MatchRecipe36(ST_RECIPE_DATA recipe)
+        {
+            return recipe.Id.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+        }
 
-        return recipes.FirstOrDefault(recipe =>
-                recipe.Id.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase)) ??
-            recipes.FirstOrDefault(recipe =>
-                recipe.Name.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase)) ??
+        bool MatchRecipe37(ST_RECIPE_DATA recipe)
+        {
+            return recipe.Name.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return recipes.FirstOrDefault(MatchRecipe36) ??
+            recipes.FirstOrDefault(MatchRecipe37) ??
             recipes.FirstOrDefault();
     }
 
@@ -2183,31 +2389,69 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             new("RECIPE", "SELECTED", "Recipe", $"{recipe.Id} / {recipe.Name}", "", "RECIPE_ID")
         };
+        EN_SETTING_TAB GetSettingSortKey38(ST_SYSTEM_PARAMETER setting)
+        {
+            return setting.Section;
+        }
+
+        int GetSettingSortKey39(ST_SYSTEM_PARAMETER setting)
+        {
+            return setting.DisplayOrder;
+        }
+
+        ST_MONITOR_COORDINATE_VALUE_ROW SelectSetting40(ST_SYSTEM_PARAMETER setting)
+        {
+            return new ST_MONITOR_COORDINATE_VALUE_ROW(
+                            "SETTING",
+                            string.IsNullOrWhiteSpace(setting.Group) ? "-" : setting.Group,
+                            GetCoordinateDisplayName(setting.Name, setting.Key),
+                            setting.Value,
+                            setting.Unit,
+                            GetCoordinateDisplayKey(setting.Key, setting.Name));
+        }
 
         rows.AddRange(settings
             .Where(IsCoordinateSetting)
-            .OrderBy(setting => setting.Section)
-            .ThenBy(setting => setting.DisplayOrder)
-            .Select(setting => new ST_MONITOR_COORDINATE_VALUE_ROW(
-                "SETTING",
-                string.IsNullOrWhiteSpace(setting.Group) ? "-" : setting.Group,
-                GetCoordinateDisplayName(setting.Name, setting.Key),
-                setting.Value,
-                setting.Unit,
-                GetCoordinateDisplayKey(setting.Key, setting.Name))));
+            .OrderBy(GetSettingSortKey38)
+            .ThenBy(GetSettingSortKey39)
+            .Select(SelectSetting40));
+        bool FilterParameter41(ST_RECIPE_PARAM parameter)
+        {
+            return IsCoordinateRecipeParameter(parameter, cellCount);
+        }
+
+        string GetParameterSortKey42(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Tab;
+        }
+
+        string GetParameterSortKey43(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Group;
+        }
+
+        int GetParameterSortKey44(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.DisplayOrder;
+        }
+
+        ST_MONITOR_COORDINATE_VALUE_ROW SelectParameter45(ST_RECIPE_PARAM parameter)
+        {
+            return new ST_MONITOR_COORDINATE_VALUE_ROW(
+                            "RECIPE",
+                            string.IsNullOrWhiteSpace(parameter.Group) ? "-" : parameter.Group,
+                            GetCoordinateRecipeDisplayName(parameter.Name, parameter.Key),
+                            parameter.Value,
+                            parameter.Unit,
+                            GetCoordinateDisplayKey(parameter.Key, parameter.Name));
+        }
 
         rows.AddRange(recipe.Parameters
-            .Where(parameter => IsCoordinateRecipeParameter(parameter, cellCount))
-            .OrderBy(parameter => parameter.Tab)
-            .ThenBy(parameter => parameter.Group)
-            .ThenBy(parameter => parameter.DisplayOrder)
-            .Select(parameter => new ST_MONITOR_COORDINATE_VALUE_ROW(
-                "RECIPE",
-                string.IsNullOrWhiteSpace(parameter.Group) ? "-" : parameter.Group,
-                GetCoordinateRecipeDisplayName(parameter.Name, parameter.Key),
-                parameter.Value,
-                parameter.Unit,
-                GetCoordinateDisplayKey(parameter.Key, parameter.Name))));
+            .Where(FilterParameter41)
+            .OrderBy(GetParameterSortKey42)
+            .ThenBy(GetParameterSortKey43)
+            .ThenBy(GetParameterSortKey44)
+            .Select(SelectParameter45));
 
         rows.AddRange(BuildCoordinateCalculatedRows(parameters));
         return rows;
@@ -2257,23 +2501,58 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         ST_RECIPE_HOLE_PLAN holePlan,
         IReadOnlyDictionary<string, string> parameters)
     {
+        bool FilterPoint46(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.CellNo == _coordinateSelectedCellNo;
+        }
+
+        int GroupByPointCallback47(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.Row;
+        }
+
+        int GetGroupSortKey48(IGrouping<int, ST_RECIPE_HOLE_POINT> group)
+        {
+            return group.Key;
+        }
+
+        ST_MONITOR_COORDINATE_HOLE_MATRIX_ROW SelectGroup49(IGrouping<int, ST_RECIPE_HOLE_POINT> group)
+        {
+            int GetPointSortKey1(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.Column;
+            }
+
+            int GetPointSortKey2(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.HoleNo;
+            }
+
+            ST_MONITOR_COORDINATE_HOLE_BUTTON SelectPoint3(ST_RECIPE_HOLE_POINT point)
+            {
+                return new ST_MONITOR_COORDINATE_HOLE_BUTTON(
+                                                    point.HoleKey,
+                                                    CReviewHoleNameFormatter.ToMatrixName(point.HoleNo, point.PixelCountX),
+                                                    point.HeadNo > 0 ? $"H{point.HeadNo:00}" : "-",
+                                                    CreateCoordinateHoleButtonDetail(point, parameters),
+                                                    point.HoleKey.Equals(_coordinateSelectedHoleKey, StringComparison.OrdinalIgnoreCase),
+                                                    SelectCoordinateHoleCommand);
+            }
+
+            return new ST_MONITOR_COORDINATE_HOLE_MATRIX_ROW(
+                            group.Key + 1,
+                            group
+                                .OrderBy(GetPointSortKey1)
+                                .ThenBy(GetPointSortKey2)
+                                .Select(SelectPoint3)
+                                .ToArray());
+        }
+
         return holePlan.Points
-            .Where(point => point.CellNo == _coordinateSelectedCellNo)
-            .GroupBy(point => point.Row)
-            .OrderBy(group => group.Key)
-            .Select(group => new ST_MONITOR_COORDINATE_HOLE_MATRIX_ROW(
-                group.Key + 1,
-                group
-                    .OrderBy(point => point.Column)
-                    .ThenBy(point => point.HoleNo)
-                    .Select(point => new ST_MONITOR_COORDINATE_HOLE_BUTTON(
-                        point.HoleKey,
-                        CReviewHoleNameFormatter.ToMatrixName(point.HoleNo, point.PixelCountX),
-                        point.HeadNo > 0 ? $"H{point.HeadNo:00}" : "-",
-                        CreateCoordinateHoleButtonDetail(point, parameters),
-                        point.HoleKey.Equals(_coordinateSelectedHoleKey, StringComparison.OrdinalIgnoreCase),
-                        SelectCoordinateHoleCommand))
-                    .ToArray()))
+            .Where(FilterPoint46)
+            .GroupBy(GroupByPointCallback47)
+            .OrderBy(GetGroupSortKey48)
+            .Select(SelectGroup49)
             .ToArray();
     }
 
@@ -2282,35 +2561,36 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         string? selectedHoleKey,
         string basis)
     {
-        return points
-            .Select(point =>
+        ST_REVIEW_PLAN_POINT SelectPoint50(ST_RECIPE_HOLE_POINT point)
+        {
+            var designPosition = GetCoordinatePreviewPosition(point, basis);
+            return new ST_REVIEW_PLAN_POINT(
+                point.SequenceNo,
+                point.HoleKey,
+                point.HeadNo,
+                point.CellNo,
+                point.HoleNo,
+                point.PixelCountX,
+                point.PixelCountY,
+                true,
+                designPosition.X,
+                designPosition.Y,
+                designPosition.X,
+                designPosition.Y,
+                0.0,
+                0.0,
+                !string.IsNullOrWhiteSpace(selectedHoleKey) &&
+                    point.HoleKey.Equals(selectedHoleKey, StringComparison.OrdinalIgnoreCase)
+                        ? EN_REVIEW_POINT_STATE.Current
+                        : EN_REVIEW_POINT_STATE.Ready,
+                "READY")
             {
-                var designPosition = GetCoordinatePreviewPosition(point, basis);
-                return new ST_REVIEW_PLAN_POINT(
-                    point.SequenceNo,
-                    point.HoleKey,
-                    point.HeadNo,
-                    point.CellNo,
-                    point.HoleNo,
-                    point.PixelCountX,
-                    point.PixelCountY,
-                    true,
-                    designPosition.X,
-                    designPosition.Y,
-                    designPosition.X,
-                    designPosition.Y,
-                    0.0,
-                    0.0,
-                    !string.IsNullOrWhiteSpace(selectedHoleKey) &&
-                        point.HoleKey.Equals(selectedHoleKey, StringComparison.OrdinalIgnoreCase)
-                            ? EN_REVIEW_POINT_STATE.Current
-                            : EN_REVIEW_POINT_STATE.Ready,
-                    "READY")
-                {
-                    ReviewOffsetX = point.ReviewOffsetX,
-                    ReviewOffsetY = point.ReviewOffsetY
-                };
-            })
+                ReviewOffsetX = point.ReviewOffsetX,
+                ReviewOffsetY = point.ReviewOffsetY
+            };
+        }
+        return points
+            .Select(SelectPoint50)
             .ToArray();
     }
 
@@ -2831,8 +3111,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private void SetOperationFieldValue(string parameter, string value)
     {
-        var field = OperationFields.FirstOrDefault(item =>
-            item.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem51(ST_MONITOR_PARAMETER_ROW item)
+        {
+            return item.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var field = OperationFields.FirstOrDefault(MatchItem51);
         if (field is not null)
         {
             field.Value = value;
@@ -2842,12 +3126,22 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private async Task<ST_DEVICE_COMMAND_RESULT> CreatePowerMeterProcess()
     {
         var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
-        var existing = table.Processes.Select(process => process.FileName).ToArray();
+        string SelectProcess52(ST_POWER_METER_PROCESS_DATA process)
+        {
+            return process.FileName;
+        }
+
+        var existing = table.Processes.Select(SelectProcess52).ToArray();
+        string HandleProcessName53(string value)
+        {
+            return ValidatePowerMeterProcessName(value, existing);
+        }
+
         var processName = ShowPowerMeterNameDialog(
             "Create PowerMeter Process",
             "Enter the PowerMeter process file name.",
             "",
-            value => ValidatePowerMeterProcessName(value, existing));
+HandleProcessName53);
 
         if (processName is null)
         {
@@ -2910,13 +3204,22 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter process rename skipped. No process is selected.");
         }
+        string SelectProcess54(ST_POWER_METER_PROCESS_DATA process)
+        {
+            return process.FileName;
+        }
 
-        var existing = table.Processes.Select(process => process.FileName).ToArray();
+        var existing = table.Processes.Select(SelectProcess54).ToArray();
+        string HandleNewName55(string value)
+        {
+            return ValidatePowerMeterProcessName(value, existing, oldName);
+        }
+
         var newName = ShowPowerMeterNameDialog(
             "Rename PowerMeter Process",
             "Enter the new PowerMeter process file name.",
             Path.GetFileNameWithoutExtension(oldName),
-            value => ValidatePowerMeterProcessName(value, existing, oldName));
+HandleNewName55);
 
         if (newName is null)
         {
@@ -2960,7 +3263,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
 
         var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
-        var selectedStep = table.Steps.FirstOrDefault(step => step.StepNo == _selectedPowerMeterStepNo);
+        bool MatchStep56(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo == _selectedPowerMeterStepNo;
+        }
+
+        var selectedStep = table.Steps.FirstOrDefault(MatchStep56);
 
         if (selectedStep is null)
         {
@@ -2968,9 +3276,19 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
 
         var editedStep = CreatePowerMeterStepFromSettingRows(selectedStep);
+        ST_POWER_METER_STEP_DATA SelectStep57(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo == editedStep.StepNo ? editedStep : step;
+        }
+
+        int GetStepSortKey58(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo;
+        }
+
         var steps = table.Steps
-            .Select(step => step.StepNo == editedStep.StepNo ? editedStep : step)
-            .OrderBy(step => step.StepNo)
+            .Select(SelectStep57)
+            .OrderBy(GetStepSortKey58)
             .ToArray();
 
         await _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
@@ -2985,8 +3303,18 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private async Task<ST_DEVICE_COMMAND_RESULT> AddPowerMeterStep(bool copySelectedStep)
     {
         var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
-        var nextStepNo = table.Steps.Count == 0 ? 1 : table.Steps.Max(step => step.StepNo) + 1;
-        var source = table.Steps.FirstOrDefault(step => step.StepNo == _selectedPowerMeterStepNo) ??
+        int HandleNextStepNo59(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo;
+        }
+
+        var nextStepNo = table.Steps.Count == 0 ? 1 : table.Steps.Max(HandleNextStepNo59) + 1;
+        bool MatchStep60(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo == _selectedPowerMeterStepNo;
+        }
+
+        var source = table.Steps.FirstOrDefault(MatchStep60) ??
             table.Steps.LastOrDefault();
 
         if (copySelectedStep && source is null)
@@ -3009,10 +3337,14 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             MeasurePower = null,
             State = "WAIT"
         };
+        int GetStepSortKey61(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo;
+        }
 
         var steps = table.Steps
             .Append(newStep)
-            .OrderBy(step => step.StepNo)
+            .OrderBy(GetStepSortKey61)
             .ToArray();
 
         await _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
@@ -3025,14 +3357,22 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private async Task<ST_DEVICE_COMMAND_RESULT> DeleteSelectedPowerMeterStep()
     {
         var table = await _interfaceManager.LoadPowerMeterData(_selectedPowerMeterProcessName);
+        bool CheckStep62(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo != _selectedPowerMeterStepNo;
+        }
 
-        if (table.Steps.All(step => step.StepNo != _selectedPowerMeterStepNo))
+        if (table.Steps.All(CheckStep62))
         {
             return new ST_DEVICE_COMMAND_RESULT(false, "PowerMeter step delete skipped. No step is selected.");
         }
+        bool FilterStep63(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo != _selectedPowerMeterStepNo;
+        }
 
         var steps = RenumberPowerMeterSteps(table.Steps
-            .Where(step => step.StepNo != _selectedPowerMeterStepNo)
+            .Where(FilterStep63)
             .ToArray());
         await _interfaceManager.SavePowerMeterData(table.SelectedFileName, steps);
         _selectedPowerMeterStepNo = Math.Clamp(_selectedPowerMeterStepNo, 1, Math.Max(1, steps.Count));
@@ -3097,14 +3437,23 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             {
                 return new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter wavelength set failed. {waveLengthResult.Message}");
             }
+            int GetStepSortKey64(ST_POWER_METER_STEP_DATA step)
+            {
+                return step.StepNo;
+            }
 
-            var steps = table.Steps
-                .OrderBy(step => step.StepNo)
-                .Select((step, index) => step with
+            ST_POWER_METER_STEP_DATA SelectStep65(ST_POWER_METER_STEP_DATA step, int index)
+            {
+                return step with
                 {
                     State = index == 0 ? "READY" : "WAIT",
                     MeasurePower = null
-                })
+                };
+            }
+
+            var steps = table.Steps
+                .OrderBy(GetStepSortKey64)
+                .Select(SelectStep65)
                 .ToList();
             var measuredCount = 0;
             var lastPower = 0.0;
@@ -3192,8 +3541,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private double ReadOperationField(string parameter, double defaultValue)
     {
+        bool MatchField66(ST_MONITOR_PARAMETER_ROW field)
+        {
+            return field.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase);
+        }
+
         var value = OperationFields
-            .FirstOrDefault(field => field.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(MatchField66)
             ?.Value;
 
         return double.TryParse(
@@ -3207,8 +3561,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private double ReadPwmSetting(string parameter, double defaultValue)
     {
+        bool MatchRow67(ST_PWM_SETTING_ROW row)
+        {
+            return row.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase);
+        }
+
         var value = PwmSettingRows
-            .FirstOrDefault(row => row.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(MatchRow67)
             ?.Value;
 
         return double.TryParse(
@@ -3260,8 +3619,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private string ReadPwmText(string parameter, string defaultValue)
     {
+        bool MatchRow68(ST_PWM_SETTING_ROW row)
+        {
+            return row.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase);
+        }
+
         return PwmSettingRows
-            .FirstOrDefault(row => row.Parameter.Equals(parameter, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(MatchRow68)
             ?.Value
             .Trim() is { Length: > 0 } value
             ? value
@@ -3301,9 +3665,19 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private static IReadOnlyList<ST_POWER_METER_STEP_DATA> RenumberPowerMeterSteps(
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps)
     {
+        int GetStepSortKey69(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo;
+        }
+
+        ST_POWER_METER_STEP_DATA SelectStep70(ST_POWER_METER_STEP_DATA step, int index)
+        {
+            return step with { StepNo = index + 1 };
+        }
+
         return steps
-            .OrderBy(step => step.StepNo)
-            .Select((step, index) => step with { StepNo = index + 1 })
+            .OrderBy(GetStepSortKey69)
+            .Select(SelectStep70)
             .ToArray();
     }
 
@@ -3360,9 +3734,14 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static Window? GetActiveWindow()
     {
+        bool MatchWindow71(Window window)
+        {
+            return window.IsActive;
+        }
+
         return Application.Current?.Windows
             .OfType<Window>()
-            .FirstOrDefault(window => window.IsActive);
+            .FirstOrDefault(MatchWindow71);
     }
 
     private static string NormalizePowerMeterFileName(string value)
@@ -3395,8 +3774,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
 
         var fileName = NormalizePowerMeterFileName(normalized);
+        bool CheckFile72(string file)
+        {
+            return file.Equals(fileName, StringComparison.OrdinalIgnoreCase);
+        }
+
         if (!fileName.Equals(currentFile, StringComparison.OrdinalIgnoreCase) &&
-            existingFiles.Any(file => file.Equals(fileName, StringComparison.OrdinalIgnoreCase)))
+            existingFiles.Any(CheckFile72))
         {
             return "PowerMeter process file already exists.";
         }
@@ -3588,8 +3972,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static IReadOnlyList<ST_SCREEN_SECTION> CreateTabSections(IReadOnlyList<ST_MONITOR_TAB> tabs)
     {
+        ST_SCREEN_SECTION SelectTab73(ST_MONITOR_TAB tab)
+        {
+            return new ST_SCREEN_SECTION(tab.Name, Array.Empty<ST_DISPLAY_ITEM>());
+        }
+
         return tabs
-            .Select(tab => new ST_SCREEN_SECTION(tab.Name, Array.Empty<ST_DISPLAY_ITEM>()))
+            .Select(SelectTab73)
             .ToArray();
     }
 
@@ -3815,32 +4204,52 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static IReadOnlyList<ST_MONITOR_IO_ROW> CreateInputRows(ST_DEVICE_STATUS snapshot)
     {
+        bool FilterChannel74(ST_IO_STATUS channel)
+        {
+            return !channel.IsOutput;
+        }
+
+        ST_MONITOR_IO_ROW SelectChannel75(ST_IO_STATUS channel)
+        {
+            return new ST_MONITOR_IO_ROW(
+                            channel.Id,
+                            channel.Address,
+                            channel.Name,
+                            OnOffText(channel.IsOn),
+                            "",
+                            "",
+                            "");
+        }
+
         return snapshot.Io
-            .Where(channel => !channel.IsOutput)
-            .Select(channel => new ST_MONITOR_IO_ROW(
-                channel.Id,
-                channel.Address,
-                channel.Name,
-                OnOffText(channel.IsOn),
-                "",
-                "",
-                ""))
+            .Where(FilterChannel74)
+            .Select(SelectChannel75)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_MONITOR_IO_ROW> CreateOutputRows(ST_DEVICE_STATUS snapshot)
     {
+        bool FilterChannel76(ST_IO_STATUS channel)
+        {
+            return channel.IsOutput;
+        }
+
+        ST_MONITOR_IO_ROW SelectChannel77(ST_IO_STATUS channel, int index)
+        {
+            return new ST_MONITOR_IO_ROW(
+                            channel.Id,
+                            channel.Address,
+                            channel.Name,
+                            OnOffText(channel.IsOn),
+                            "",
+                            "",
+                            "",
+                            index == 0);
+        }
+
         return snapshot.Io
-            .Where(channel => channel.IsOutput)
-            .Select((channel, index) => new ST_MONITOR_IO_ROW(
-                channel.Id,
-                channel.Address,
-                channel.Name,
-                OnOffText(channel.IsOn),
-                "",
-                "",
-                "",
-                index == 0))
+            .Where(FilterChannel76)
+            .Select(SelectChannel77)
             .ToArray();
     }
 
@@ -3848,20 +4257,25 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         ST_DEVICE_STATUS snapshot,
         string selectedAxisId)
     {
+        ST_MONITOR_AXIS_ROW SelectAxis78(ST_MOTOR_AXIS_STATUS axis)
+        {
+            return new ST_MONITOR_AXIS_ROW(
+                            axis.AxisId,
+                            axis.Name,
+                            FormatAxisPosition(axis.AxisId, axis.CurrentPosition),
+                            FormatAxisPosition(axis.AxisId, axis.TargetPosition),
+                            FormatAxisPosition(axis.AxisId, axis.CommandPosition),
+                            OnOffText(axis.ServoOn),
+                            axis.HomeCompleted ? "YES" : "NO",
+                            axis.LimitPlusOn ? "ON" : "OK",
+                            axis.LimitMinusOn ? "ON" : "OK",
+                            axis.AlarmOn ? "ALARM" : "-",
+                            axis.AlarmOn ? "ALARM" : "READY",
+                            axis.AxisId.Equals(selectedAxisId, StringComparison.OrdinalIgnoreCase));
+        }
+
         return snapshot.Motors
-            .Select(axis => new ST_MONITOR_AXIS_ROW(
-                axis.AxisId,
-                axis.Name,
-                FormatAxisPosition(axis.AxisId, axis.CurrentPosition),
-                FormatAxisPosition(axis.AxisId, axis.TargetPosition),
-                FormatAxisPosition(axis.AxisId, axis.CommandPosition),
-                OnOffText(axis.ServoOn),
-                axis.HomeCompleted ? "YES" : "NO",
-                axis.LimitPlusOn ? "ON" : "OK",
-                axis.LimitMinusOn ? "ON" : "OK",
-                axis.AlarmOn ? "ALARM" : "-",
-                axis.AlarmOn ? "ALARM" : "READY",
-                axis.AxisId.Equals(selectedAxisId, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectAxis78)
             .ToArray();
     }
 
@@ -4003,7 +4417,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         IReadOnlyList<ST_DEVICE_COMM_STATUS> communication,
         EN_EQP_MODULE module)
     {
-        return communication.FirstOrDefault(status => status.Module == module)?.ConnectionState
+        bool MatchStatus79(ST_DEVICE_COMM_STATUS status)
+        {
+            return status.Module == module;
+        }
+
+        return communication.FirstOrDefault(MatchStatus79)?.ConnectionState
             ?? EN_COMM_STATE.Offline;
     }
 
@@ -4406,9 +4825,14 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
 
         var number = GetSelectedHeadNumber(tab);
+        bool MatchItem80(ST_INTERFACE_COMM_STATUS item)
+        {
+            return item.Number == number;
+        }
+
         var status = _interfaceManager
             .GetInterfaceCommunicationList(module.Value)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem80);
 
         return status is null
             ? "OFFLINE"
@@ -4465,32 +4889,41 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        int HandleCommunicationMap81(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
+
+        ST_INTERFACE_COMM_STATUS HandleCommunicationMap82(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status;
+        }
 
         var communicationMap = _interfaceManager
             .GetInterfaceCommunicationList(module.Value)
             .ToDictionary(
-            status => status.Number,
-            status => status);
+HandleCommunicationMap81,
+HandleCommunicationMap82);
+        ST_MONITOR_HEAD_SELECT_ROW SelectNumber83(int number)
+        {
+            var registered = communicationMap.TryGetValue(number, out var status);
+            var state = registered
+                ? ToCommunicationText(status!.ConnectionState)
+                : "OFFLINE";
+            var nickName = registered && !string.IsNullOrWhiteSpace(status!.NickName)
+                ? status.NickName
+                : $"{nickPrefix}_{number}";
 
+            return new ST_MONITOR_HEAD_SELECT_ROW(
+                number,
+                $"H{number + 1:00}",
+                nickName,
+                state,
+                registered,
+                number == selectedHeadNumber);
+        }
         return Enumerable.Range(0, LaserHeadCount)
-            .Select(number =>
-            {
-                var registered = communicationMap.TryGetValue(number, out var status);
-                var state = registered
-                    ? ToCommunicationText(status!.ConnectionState)
-                    : "OFFLINE";
-                var nickName = registered && !string.IsNullOrWhiteSpace(status!.NickName)
-                    ? status.NickName
-                    : $"{nickPrefix}_{number}";
-
-                return new ST_MONITOR_HEAD_SELECT_ROW(
-                    number,
-                    $"H{number + 1:00}",
-                    nickName,
-                    state,
-                    registered,
-                    number == selectedHeadNumber);
-            })
+            .Select(SelectNumber83)
             .ToArray();
     }
 
@@ -4504,9 +4937,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        string HandleFields84(ST_MONITOR_PARAMETER_ROW field)
+        {
+            return field.Parameter;
+        }
 
         var fields = operationFields.ToDictionary(
-            field => field.Parameter,
+HandleFields84,
             StringComparer.OrdinalIgnoreCase);
 
         ST_MONITOR_PARAMETER_ROW Field(string parameter)
@@ -4595,35 +5032,50 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        int GetRowSortKey85(ST_BET_TABLE_DATA row)
+        {
+            return row.Index;
+        }
 
+        ST_MONITOR_BET_TABLE_ROW SelectRow86(ST_BET_TABLE_DATA row)
+        {
+            var active = IsInPosition(row.Magnification, snapshot.Bet.CurrentMagnification) &&
+                IsInPosition(row.Divergence, snapshot.Bet.CurrentDivergence);
+
+            return new ST_MONITOR_BET_TABLE_ROW(
+                row.Index.ToString(CultureInfo.InvariantCulture),
+                row.Description,
+                row.Magnification.ToString("F3"),
+                row.Divergence.ToString("F3"),
+                active ? "ACTIVE" : "",
+                active);
+        }
         return table
-            .OrderBy(row => row.Index)
-            .Select(row =>
-            {
-                var active = IsInPosition(row.Magnification, snapshot.Bet.CurrentMagnification) &&
-                    IsInPosition(row.Divergence, snapshot.Bet.CurrentDivergence);
-
-                return new ST_MONITOR_BET_TABLE_ROW(
-                    row.Index.ToString(CultureInfo.InvariantCulture),
-                    row.Description,
-                    row.Magnification.ToString("F3"),
-                    row.Divergence.ToString("F3"),
-                    active ? "ACTIVE" : "",
-                    active);
-            })
+            .OrderBy(GetRowSortKey85)
+            .Select(SelectRow86)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_BET_TABLE_DATA> CreateBETTableData(
         IReadOnlyList<ST_MONITOR_BET_TABLE_ROW> rows)
     {
+        ST_BET_TABLE_DATA SelectRow87(ST_MONITOR_BET_TABLE_ROW row, int order)
+        {
+            return new ST_BET_TABLE_DATA(
+                            ReadBETInt(row.No, order),
+                            ReadBETDouble(row.Mag, 0.0),
+                            ReadBETDouble(row.Div, 0.0),
+                            row.Description?.Trim() ?? "");
+        }
+
+        int GetRowSortKey88(ST_BET_TABLE_DATA row)
+        {
+            return row.Index;
+        }
+
         return rows
-            .Select((row, order) => new ST_BET_TABLE_DATA(
-                ReadBETInt(row.No, order),
-                ReadBETDouble(row.Mag, 0.0),
-                ReadBETDouble(row.Div, 0.0),
-                row.Description?.Trim() ?? ""))
-            .OrderBy(row => row.Index)
+            .Select(SelectRow87)
+            .OrderBy(GetRowSortKey88)
             .ToArray();
     }
 
@@ -4649,17 +5101,32 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         string tab,
         IReadOnlyList<ST_INTERFACE_HISTORY> interfaceHistory)
     {
+        bool FilterItem89(ST_INTERFACE_HISTORY item)
+        {
+            return IsCommandHistoryVisible(tab, item);
+        }
+
+        DateTimeOffset GetItemSortKey90(ST_INTERFACE_HISTORY item)
+        {
+            return item.OccurredAt;
+        }
+
+        ST_MONITOR_COMMAND_HISTORY_ROW SelectItem91(ST_INTERFACE_HISTORY item)
+        {
+            return new ST_MONITOR_COMMAND_HISTORY_ROW(
+                            item.OccurredAt.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
+                            "LOG",
+                            item.NickName,
+                            FormatInterfaceHistoryCommand(item),
+                            FormatInterfaceHistoryTarget(item),
+                            FormatInterfaceHistoryResult(item));
+        }
+
         var rows = interfaceHistory
-            .Where(item => IsCommandHistoryVisible(tab, item))
-            .OrderByDescending(item => item.OccurredAt)
+            .Where(FilterItem89)
+            .OrderByDescending(GetItemSortKey90)
             .Take(12)
-            .Select(item => new ST_MONITOR_COMMAND_HISTORY_ROW(
-                item.OccurredAt.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
-                "LOG",
-                item.NickName,
-                FormatInterfaceHistoryCommand(item),
-                FormatInterfaceHistoryTarget(item),
-                FormatInterfaceHistoryResult(item)))
+            .Select(SelectItem91)
             .ToArray();
 
         if (rows.Length > 0)
@@ -5018,12 +5485,26 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        string SelectData92(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Group;
+        }
+
+        bool FilterGroup93(string group)
+        {
+            return !string.IsNullOrWhiteSpace(group);
+        }
+
+        string GetGroupSortKey94(string group)
+        {
+            return group;
+        }
 
         var mapGroups = _interfaceManager.Melsec.Map
-            .Select(data => data.Group)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Select(SelectData92)
+            .Where(FilterGroup93)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(group => group, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetGroupSortKey94, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         if (!_selectedMelsecGroup.Equals("ALL", StringComparison.OrdinalIgnoreCase) &&
@@ -5031,15 +5512,19 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             _selectedMelsecGroup = "ALL";
         }
+        ST_MONITOR_MELSEC_GROUP SelectGroup95(string group)
+        {
+            return new ST_MONITOR_MELSEC_GROUP(
+                            group,
+                            group.Equals(_selectedMelsecGroup, StringComparison.OrdinalIgnoreCase),
+                            group.Equals("ALL", StringComparison.OrdinalIgnoreCase)
+                                ? _interfaceManager.Melsec.Map.Count
+                                : _interfaceManager.Melsec.GetMapList(group).Count);
+        }
 
         return new[] { "ALL" }
             .Concat(mapGroups)
-            .Select(group => new ST_MONITOR_MELSEC_GROUP(
-                group,
-                group.Equals(_selectedMelsecGroup, StringComparison.OrdinalIgnoreCase),
-                group.Equals("ALL", StringComparison.OrdinalIgnoreCase)
-                    ? _interfaceManager.Melsec.Map.Count
-                    : _interfaceManager.Melsec.GetMapList(group).Count))
+            .Select(SelectGroup95)
             .ToArray();
     }
 
@@ -5053,51 +5538,81 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
 
         var rows = _interfaceManager.Melsec.Map;
+        string GetDataSortKey96(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Group;
+        }
 
+        int GetDataSortKey97(ST_MELSEC_MAP_DATA data)
+        {
+            return data.DeviceNo;
+        }
+
+        string GetDataSortKey98(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Id;
+        }
+
+        ST_MONITOR_MELSEC_ROW SelectData99(ST_MELSEC_MAP_DATA data)
+        {
+            values.TryGetValue(data.Id, out var value);
+
+            return new ST_MONITOR_MELSEC_ROW(
+                data.Id,
+                data.Group,
+                data.Name,
+                data.DeviceNo.ToString(CultureInfo.InvariantCulture),
+                data.Address,
+                data.DataType.ToString().ToUpperInvariant(),
+                data.Direction.ToString().ToUpperInvariant(),
+                MelsecAccessText(data.Access),
+                data.Scale.ToString("G", CultureInfo.InvariantCulture),
+                data.Length.ToString(CultureInfo.InvariantCulture),
+                data.PollMs <= 0 ? "-" : data.PollMs.ToString(CultureInfo.InvariantCulture),
+                value?.Value ?? "-",
+                MelsecWriteValue(data),
+                value?.State ?? MelsecRowState(data),
+                value?.Message ?? data.Description);
+        }
         return rows
-            .OrderBy(data => data.Group, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(data => data.DeviceNo)
-            .ThenBy(data => data.Id, StringComparer.OrdinalIgnoreCase)
-            .Select(data =>
-            {
-                values.TryGetValue(data.Id, out var value);
-
-                return new ST_MONITOR_MELSEC_ROW(
-                    data.Id,
-                    data.Group,
-                    data.Name,
-                    data.DeviceNo.ToString(CultureInfo.InvariantCulture),
-                    data.Address,
-                    data.DataType.ToString().ToUpperInvariant(),
-                    data.Direction.ToString().ToUpperInvariant(),
-                    MelsecAccessText(data.Access),
-                    data.Scale.ToString("G", CultureInfo.InvariantCulture),
-                    data.Length.ToString(CultureInfo.InvariantCulture),
-                    data.PollMs <= 0 ? "-" : data.PollMs.ToString(CultureInfo.InvariantCulture),
-                    value?.Value ?? "-",
-                    MelsecWriteValue(data),
-                    value?.State ?? MelsecRowState(data),
-                    value?.Message ?? data.Description);
-            })
+            .OrderBy(GetDataSortKey96, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(GetDataSortKey97)
+            .ThenBy(GetDataSortKey98, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectData99)
             .ToArray();
     }
 
     private void SetMelsecRows(IReadOnlyList<ST_MONITOR_MELSEC_ROW> rows)
     {
         MelsecRows = rows;
+        bool FilterRow100(ST_MONITOR_MELSEC_ROW row)
+        {
+            return row.CanRead;
+        }
+
         MelsecReadRows = rows
-            .Where(row => row.CanRead)
+            .Where(FilterRow100)
             .ToArray();
+        bool FilterRow101(ST_MONITOR_MELSEC_ROW row)
+        {
+            return row.CanWrite;
+        }
+
         MelsecWriteRows = rows
-            .Where(row => row.CanWrite)
+            .Where(FilterRow101)
             .ToArray();
     }
 
     private void SaveMelsecWriteValues()
     {
+        bool FilterRow102(ST_MONITOR_MELSEC_ROW row)
+        {
+            return row.CanWrite;
+        }
+
         foreach (var row in MelsecWriteRows.Count > 0
                      ? MelsecWriteRows
-                     : MelsecRows.Where(row => row.CanWrite))
+                     : MelsecRows.Where(FilterRow102))
         {
             _melsecWriteValues[row.Id] = row.WriteValue;
         }
@@ -5140,9 +5655,18 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Result", "-", "Normal")
             ];
         }
+        bool HandleCompletedHeads103(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.Result == EN_PRODUCT_RESULT.OK;
+        }
 
-        var completedHeads = product.Heads.Count(head => head.Result == EN_PRODUCT_RESULT.OK);
-        var ngHeads = product.Heads.Count(head => head.Result == EN_PRODUCT_RESULT.NG);
+        var completedHeads = product.Heads.Count(HandleCompletedHeads103);
+        bool HandleNgHeads104(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.Result == EN_PRODUCT_RESULT.NG;
+        }
+
+        var ngHeads = product.Heads.Count(HandleNgHeads104);
 
         return
         [
@@ -5167,17 +5691,26 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        int GetHeadSortKey105(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo;
+        }
+
+        ST_MONITOR_PRODUCT_HEAD_ROW SelectHead106(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return new ST_MONITOR_PRODUCT_HEAD_ROW(
+                            $"H{head.HeadNo:00}",
+                            head.State.ToString().ToUpperInvariant(),
+                            head.TotalPoints.ToString("N0", CultureInfo.InvariantCulture),
+                            head.CompletedPoints.ToString("N0", CultureInfo.InvariantCulture),
+                            head.Result.ToString().ToUpperInvariant(),
+                            string.IsNullOrWhiteSpace(head.ErrorCode) ? "-" : head.ErrorCode,
+                            string.IsNullOrWhiteSpace(head.Message) ? "-" : head.Message);
+        }
 
         return product.Heads
-            .OrderBy(head => head.HeadNo)
-            .Select(head => new ST_MONITOR_PRODUCT_HEAD_ROW(
-                $"H{head.HeadNo:00}",
-                head.State.ToString().ToUpperInvariant(),
-                head.TotalPoints.ToString("N0", CultureInfo.InvariantCulture),
-                head.CompletedPoints.ToString("N0", CultureInfo.InvariantCulture),
-                head.Result.ToString().ToUpperInvariant(),
-                string.IsNullOrWhiteSpace(head.ErrorCode) ? "-" : head.ErrorCode,
-                string.IsNullOrWhiteSpace(head.Message) ? "-" : head.Message))
+            .OrderBy(GetHeadSortKey105)
+            .Select(SelectHead106)
             .ToArray();
     }
 
@@ -5189,19 +5722,23 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        ST_PWM_PROCESS_ROW SelectProcess107(ST_POWER_METER_PROCESS_DATA process, int index)
+        {
+            return new ST_PWM_PROCESS_ROW(
+                            (index + 1).ToString("00", CultureInfo.InvariantCulture),
+                            process.FileName,
+                            process.IsSelected
+                                ? "ON"
+                                : "",
+                            process.IsSelected
+                                ? "LOADED"
+                                : "",
+                            "",
+                            process.IsSelected);
+        }
 
         return table.Processes
-            .Select((process, index) => new ST_PWM_PROCESS_ROW(
-                (index + 1).ToString("00", CultureInfo.InvariantCulture),
-                process.FileName,
-                process.IsSelected
-                    ? "ON"
-                    : "",
-                process.IsSelected
-                    ? "LOADED"
-                    : "",
-                "",
-                process.IsSelected))
+            .Select(SelectProcess107)
             .ToArray();
     }
 
@@ -5219,32 +5756,32 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         var measured = snapshot.PowerMeter.MeasuredPower <= 0
             ? 1.2040
             : snapshot.PowerMeter.MeasuredPower;
+        ST_PWM_STEP_ROW SelectStep108(ST_POWER_METER_STEP_DATA step, int index)
+        {
+            var measurePower = index == 0 && measured > 0
+                ? measured.ToString("F4", CultureInfo.InvariantCulture)
+                : step.MeasurePower?.ToString("F4", CultureInfo.InvariantCulture) ?? "-";
 
+            return new ST_PWM_STEP_ROW(
+                step.StepNo.ToString("000", CultureInfo.InvariantCulture),
+                step.OptionName,
+                step.PowerOut ? "ON" : "OFF",
+                step.PowerUnit,
+                step.SettingAtt.ToString("F2", CultureInfo.InvariantCulture),
+                step.SettingPower.ToString("F3", CultureInfo.InvariantCulture),
+                step.SettingFreq.ToString("F1", CultureInfo.InvariantCulture),
+                step.MeasureCycle.ToString(CultureInfo.InvariantCulture),
+                step.MeasureTimeMs.ToString(CultureInfo.InvariantCulture),
+                step.MeasureIntervalMs.ToString(CultureInfo.InvariantCulture),
+                step.StartDelayMs.ToString(CultureInfo.InvariantCulture),
+                step.CoolingTimeMs.ToString(CultureInfo.InvariantCulture),
+                step.Rotator.ToString("F4", CultureInfo.InvariantCulture),
+                measurePower,
+                step.State,
+                step.StepNo == selectedStepNo);
+        }
         return table.Steps
-            .Select((step, index) =>
-            {
-                var measurePower = index == 0 && measured > 0
-                    ? measured.ToString("F4", CultureInfo.InvariantCulture)
-                    : step.MeasurePower?.ToString("F4", CultureInfo.InvariantCulture) ?? "-";
-
-                return new ST_PWM_STEP_ROW(
-                    step.StepNo.ToString("000", CultureInfo.InvariantCulture),
-                    step.OptionName,
-                    step.PowerOut ? "ON" : "OFF",
-                    step.PowerUnit,
-                    step.SettingAtt.ToString("F2", CultureInfo.InvariantCulture),
-                    step.SettingPower.ToString("F3", CultureInfo.InvariantCulture),
-                    step.SettingFreq.ToString("F1", CultureInfo.InvariantCulture),
-                    step.MeasureCycle.ToString(CultureInfo.InvariantCulture),
-                    step.MeasureTimeMs.ToString(CultureInfo.InvariantCulture),
-                    step.MeasureIntervalMs.ToString(CultureInfo.InvariantCulture),
-                    step.StartDelayMs.ToString(CultureInfo.InvariantCulture),
-                    step.CoolingTimeMs.ToString(CultureInfo.InvariantCulture),
-                    step.Rotator.ToString("F4", CultureInfo.InvariantCulture),
-                    measurePower,
-                    step.State,
-                    step.StepNo == selectedStepNo);
-            })
+            .Select(SelectStep108)
             .ToArray();
     }
 
@@ -5257,8 +5794,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return [];
         }
+        bool MatchStep109(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo == selectedStepNo;
+        }
 
-        var selectedStep = table.Steps.FirstOrDefault(step => step.StepNo == selectedStepNo) ??
+        var selectedStep = table.Steps.FirstOrDefault(MatchStep109) ??
             table.Steps.FirstOrDefault() ??
             CreateDefaultPowerMeterStep(Math.Max(1, selectedStepNo));
 
@@ -5343,16 +5884,26 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private static IReadOnlyList<ST_MONITOR_PRODUCT_HISTORY_ROW> CreateProductHistoryRows(
         IReadOnlyList<ST_PRODUCT_HISTORY> history)
     {
+        DateTimeOffset GetItemSortKey110(ST_PRODUCT_HISTORY item)
+        {
+            return item.OccurredAt;
+        }
+
+        ST_MONITOR_PRODUCT_HISTORY_ROW SelectItem111(ST_PRODUCT_HISTORY item)
+        {
+            return new ST_MONITOR_PRODUCT_HISTORY_ROW(
+                            item.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
+                            item.ProductId,
+                            item.RecipeId,
+                            item.Action,
+                            item.State,
+                            item.Result,
+                            item.Detail);
+        }
+
         return history
-            .OrderByDescending(item => item.OccurredAt)
-            .Select(item => new ST_MONITOR_PRODUCT_HISTORY_ROW(
-                item.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture),
-                item.ProductId,
-                item.RecipeId,
-                item.Action,
-                item.State,
-                item.Result,
-                item.Detail))
+            .OrderByDescending(GetItemSortKey110)
+            .Select(SelectItem111)
             .ToArray();
     }
 

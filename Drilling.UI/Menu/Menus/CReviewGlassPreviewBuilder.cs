@@ -31,29 +31,74 @@ internal static class CReviewGlassPreviewBuilder
         var glassHeight = ReadDouble(recipe, 300.0, "GLASS_SIZE_Y");
         var akMarginX = ReadDouble(recipe, 55.0, "AK_MARGIN_X");
         var akMarginY = ReadDouble(recipe, 45.0, "AK_MARGIN_Y");
+        double? HandleDistortionKeys1(string key)
+        {
+            return ReadNullableDouble(recipe, key);
+        }
+
         var distortionKeys = CCellPreviewDrawing.CreateDistortionKeyPreviews(
             glassWidth,
             glassHeight,
             akMarginX,
             akMarginY,
-            key => ReadNullableDouble(recipe, key));
+HandleDistortionKeys1);
         var cellCount = Math.Clamp(
             ReadInt(recipe, Math.Max(1, defaultCellCount), "CELL_COUNT"),
             1,
             1000);
         var reviewPointList = reviewPoints ?? [];
+        (int CellNo, int HoleNo) HandleHoleStates2(ST_REVIEW_PLAN_POINT point)
+        {
+            return (point.CellNo, point.HoleNo);
+        }
+
+        (int CellNo, int HoleNo) HandleHoleStates3(IGrouping<(int CellNo, int HoleNo), ST_REVIEW_PLAN_POINT> group)
+        {
+            return group.Key;
+        }
+
+        EN_REVIEW_POINT_STATE HandleHoleStates4(IGrouping<(int CellNo, int HoleNo), ST_REVIEW_PLAN_POINT> group)
+        {
+            return group.Last().State;
+        }
+
         var holeStates = reviewPointList
-            .GroupBy(point => (point.CellNo, point.HoleNo))
-            .ToDictionary(group => group.Key, group => group.Last().State);
+            .GroupBy(HandleHoleStates2)
+            .ToDictionary(HandleHoleStates3, HandleHoleStates4);
+        (int CellNo, int HoleNo) HandleHoleLocations5(ST_REVIEW_PLAN_POINT point)
+        {
+            return (point.CellNo, point.HoleNo);
+        }
+
+        (int CellNo, int HoleNo) HandleHoleLocations6(IGrouping<(int CellNo, int HoleNo), ST_REVIEW_PLAN_POINT> group)
+        {
+            return group.Key;
+        }
+
+        ST_REVIEW_PLAN_POINT HandleHoleLocations7(IGrouping<(int CellNo, int HoleNo), ST_REVIEW_PLAN_POINT> group)
+        {
+            return group.Last();
+        }
+
         var holeLocations = reviewPointList
-            .GroupBy(point => (point.CellNo, point.HoleNo))
-            .ToDictionary(group => group.Key, group => group.Last());
+            .GroupBy(HandleHoleLocations5)
+            .ToDictionary(HandleHoleLocations6, HandleHoleLocations7);
+        bool FilterCellNo8(int cellNo)
+        {
+            return cellNo >= 1 && cellNo <= cellCount;
+        }
+
+        int GetCellNoSortKey9(int cellNo)
+        {
+            return cellNo;
+        }
+
         var displayedCellNos = visibleCellNos is null
             ? Enumerable.Range(1, cellCount).ToArray()
             : visibleCellNos
-                .Where(cellNo => cellNo >= 1 && cellNo <= cellCount)
+                .Where(FilterCellNo8)
                 .Distinct()
-                .OrderBy(cellNo => cellNo)
+                .OrderBy(GetCellNoSortKey9)
                 .ToArray();
 
         if (glassWidth <= 0.0 || glassHeight <= 0.0)
@@ -190,8 +235,12 @@ internal static class CReviewGlassPreviewBuilder
                             state));
                     }
                 }
+                EN_REVIEW_POINT_STATE GroupByHoleCallback10((double X, double Y, double Size, EN_REVIEW_POINT_STATE State) hole)
+                {
+                    return hole.State;
+                }
 
-                foreach (var stateGroup in holeVisuals.GroupBy(hole => hole.State))
+                foreach (var stateGroup in holeVisuals.GroupBy(GroupByHoleCallback10))
                 {
                     var geometry = new StreamGeometry();
                     using (var geometryContext = geometry.Open())
@@ -261,14 +310,19 @@ internal static class CReviewGlassPreviewBuilder
             frameWidth + (paddingX * 2.0),
             frameHeight + (paddingY * 2.0));
         var glassRect = new Rect(paddingX, paddingY, frameWidth, frameHeight);
-        var translatedLabels = labels
-            .Select(label => label with
+        ST_CELL_PREVIEW_LABEL SelectLabel11(ST_CELL_PREVIEW_LABEL label)
+        {
+            return label with
             {
                 CanvasCenterX = label.CanvasCenterX - frameLeft + paddingX,
                 CanvasCenterY = label.CanvasCenterY - frameTop + paddingY,
                 DesignWidth = previewRect.Width,
                 DesignHeight = previewRect.Height
-            })
+            };
+        }
+
+        var translatedLabels = labels
+            .Select(SelectLabel11)
             .ToArray();
         var translatedCurrentHoleMarker = currentHoleMarker is null
             ? null
@@ -593,9 +647,13 @@ internal static class CReviewGlassPreviewBuilder
     {
         foreach (var key in keys)
         {
-            var parameter = recipe.Parameters.FirstOrDefault(item =>
-                item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
-                item.Name.Equals(key, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem12(ST_RECIPE_PARAM item)
+            {
+                return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                                item.Name.Equals(key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var parameter = recipe.Parameters.FirstOrDefault(MatchItem12);
             if (parameter is not null && !string.IsNullOrWhiteSpace(parameter.Value))
             {
                 return parameter.Value.Trim();

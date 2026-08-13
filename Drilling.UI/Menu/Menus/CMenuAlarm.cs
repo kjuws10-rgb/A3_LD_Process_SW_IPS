@@ -30,7 +30,12 @@ public sealed class CMenuAlarm(
     {
         get
         {
-            return new(async _ => await ResetAlarm());
+            async void HandleValueCallback1(object? _)
+            {
+                await ResetAlarm();
+            }
+
+            return new(HandleValueCallback1);
         }
     }
 
@@ -38,7 +43,12 @@ public sealed class CMenuAlarm(
     {
         get
         {
-            return new(_ => setStatusMessage("Buzzer off command sent."));
+            void HandleValueCallback2(object? _)
+            {
+                setStatusMessage("Buzzer off command sent.");
+            }
+
+            return new(HandleValueCallback2);
         }
     }
 
@@ -65,8 +75,12 @@ public sealed class CMenuAlarm(
     public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var alarms = await GetCurrentAlarms(cancellationToken);
-        var currentAlarms = alarms.Select(item =>
-            new ST_DISPLAY_ITEM(item.Code.ToString(), item.Message, item.Severity.ToString())).DefaultIfEmpty(
+        ST_DISPLAY_ITEM SelectItem3(ST_ALARM_DATA item)
+        {
+            return new ST_DISPLAY_ITEM(item.Code.ToString(), item.Message, item.Severity.ToString());
+        }
+
+        var currentAlarms = alarms.Select(SelectItem3).DefaultIfEmpty(
             new ST_DISPLAY_ITEM("No Alarm", "Normal")).ToArray();
         var firstAlarm = alarms.FirstOrDefault();
         Apply(
@@ -178,15 +192,20 @@ public sealed class CMenuAlarm(
 
     private static IReadOnlyList<ST_ALARM_CURRENT_ROW> BuildCurrentAlarmRows(IReadOnlyList<ST_ALARM_DATA> alarms)
     {
+        ST_ALARM_CURRENT_ROW SelectAlarm4(ST_ALARM_DATA alarm)
+        {
+            return new ST_ALARM_CURRENT_ROW(
+                            alarm.Code.ToString(),
+                            FormatSeverity(alarm.Severity),
+                            alarm.Device,
+                            alarm.Message,
+                            "Check device state",
+                            alarm.RecoveryAction,
+                            alarm.OccurredAt.ToString("HH:mm:ss"));
+        }
+
         return alarms
-            .Select(alarm => new ST_ALARM_CURRENT_ROW(
-                alarm.Code.ToString(),
-                FormatSeverity(alarm.Severity),
-                alarm.Device,
-                alarm.Message,
-                "Check device state",
-                alarm.RecoveryAction,
-                alarm.OccurredAt.ToString("HH:mm:ss")))
+            .Select(SelectAlarm4)
             .ToArray();
     }
 
@@ -253,8 +272,18 @@ public sealed class CMenuAlarm(
 
     private static IReadOnlyList<ST_ALARM_SUMMARY_ITEM> BuildSummaryItems(IReadOnlyList<ST_ALARM_DATA> alarms)
     {
-        var warningCount = alarms.Count(alarm => alarm.Severity == EN_ALARM_LEVEL.Warning);
-        var criticalCount = alarms.Count(alarm => alarm.Severity == EN_ALARM_LEVEL.Critical);
+        bool HandleWarningCount5(ST_ALARM_DATA alarm)
+        {
+            return alarm.Severity == EN_ALARM_LEVEL.Warning;
+        }
+
+        var warningCount = alarms.Count(HandleWarningCount5);
+        bool HandleCriticalCount6(ST_ALARM_DATA alarm)
+        {
+            return alarm.Severity == EN_ALARM_LEVEL.Critical;
+        }
+
+        var criticalCount = alarms.Count(HandleCriticalCount6);
 
         return
         [

@@ -11,7 +11,12 @@ public partial class CPasswordInputDialog : Window
         InitializeComponent();
         PasswordInput.Password = password;
         BuildKeys();
-        Loaded += (_, _) => PasswordInput.Focus();
+        void LoadedHandler1(object unusedParameter1, RoutedEventArgs unusedParameter2)
+        {
+            PasswordInput.Focus();
+        }
+
+        Loaded += LoadedHandler1;
     }
 
     public string ResultPassword
@@ -24,7 +29,12 @@ public partial class CPasswordInputDialog : Window
 
     private void BuildKeys()
     {
-        foreach (var key in "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(value => value.ToString()))
+        string SelectValue2(char value)
+        {
+            return value.ToString();
+        }
+
+        foreach (var key in "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(SelectValue2))
         {
             var button = new Button
             {

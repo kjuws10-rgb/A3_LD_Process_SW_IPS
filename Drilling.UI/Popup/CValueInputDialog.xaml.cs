@@ -30,11 +30,12 @@ public partial class CValueInputDialog : Window
             : dataType == EN_RECIPE_DATA_TYPE.String ? "String input" : "Numeric input";
         DataObject.AddPastingHandler(ValueTextBox, ValueTextBoxPasting);
         BuildKeys();
-        Loaded += (_, _) =>
+        void LoadedHandler1(object unusedParameter1, RoutedEventArgs unusedParameter2)
         {
             ValueTextBox.Focus();
             ValueTextBox.CaretIndex = ValueTextBox.Text.Length;
-        };
+        }
+        Loaded += LoadedHandler1;
     }
 
     public string ResultValue
@@ -57,7 +58,12 @@ public partial class CValueInputDialog : Window
                 case EN_RECIPE_DATA_TYPE.Double:
                     return ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "-"];
                 default:
-                    return "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(value => value.ToString()).ToArray();
+                    string SelectValue2(char value)
+                    {
+                        return value.ToString();
+                    }
+
+                    return "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(SelectValue2).ToArray();
             }
         }
 

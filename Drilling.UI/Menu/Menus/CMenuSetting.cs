@@ -57,13 +57,64 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         _refreshShellStatus = refreshShellStatus;
         _refreshCurrentScreen = refreshCurrentScreen;
 
-        SelectTabCommand = new CButtonCommand(async parameter => await SelectTab(parameter));
-        SelectGroupCommand = new CButtonCommand(async parameter => await SelectGroup(parameter));
-        ConnectInterfaceCommand = new CButtonCommand(async _ => await ConnectInterface(), _ => CanOperateSelectedInterface);
-        DisconnectInterfaceCommand = new CButtonCommand(async _ => await DisconnectInterface(), _ => CanOperateSelectedInterface);
-        SaveCommand = new CButtonCommand(async _ => await Save());
-        CancelCommand = new CButtonCommand(async _ => await Cancel());
-        ReloadCommand = new CButtonCommand(async _ => await Reload());
+        async void HandleSelectTabCommand1(object? parameter)
+        {
+            await SelectTab(parameter);
+        }
+
+        SelectTabCommand = new CButtonCommand(HandleSelectTabCommand1);
+
+        async void HandleSelectGroupCommand2(object? parameter)
+        {
+            await SelectGroup(parameter);
+        }
+
+        SelectGroupCommand = new CButtonCommand(HandleSelectGroupCommand2);
+
+        async void HandleConnectInterfaceCommand3(object? _)
+        {
+            await ConnectInterface();
+        }
+
+        bool HandleConnectInterfaceCommand4(object? _)
+        {
+            return CanOperateSelectedInterface;
+        }
+
+        ConnectInterfaceCommand = new CButtonCommand(HandleConnectInterfaceCommand3, HandleConnectInterfaceCommand4);
+
+        async void HandleDisconnectInterfaceCommand5(object? _)
+        {
+            await DisconnectInterface();
+        }
+
+        bool HandleDisconnectInterfaceCommand6(object? _)
+        {
+            return CanOperateSelectedInterface;
+        }
+
+        DisconnectInterfaceCommand = new CButtonCommand(HandleDisconnectInterfaceCommand5, HandleDisconnectInterfaceCommand6);
+
+        async void HandleSaveCommand7(object? _)
+        {
+            await Save();
+        }
+
+        SaveCommand = new CButtonCommand(HandleSaveCommand7);
+
+        async void HandleCancelCommand8(object? _)
+        {
+            await Cancel();
+        }
+
+        CancelCommand = new CButtonCommand(HandleCancelCommand8);
+
+        async void HandleReloadCommand9(object? _)
+        {
+            await Reload();
+        }
+
+        ReloadCommand = new CButtonCommand(HandleReloadCommand9);
     }
 
     public EN_MENU Menu
@@ -178,12 +229,17 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         foreach (var section in Sections)
         {
             var sectionParameters = await _settingManager.LoadSection(section, cancellationToken);
+            ST_DISPLAY_ITEM SelectItem10(ST_SYSTEM_PARAMETER item)
+            {
+                return new ST_DISPLAY_ITEM(
+                                    item.Name,
+                                    $"{item.Value} {item.Unit}".Trim(),
+                                    item.Description);
+            }
+
             displaySections.Add(new ST_SCREEN_SECTION(
                 ToTabText(section),
-                sectionParameters.Select(item => new ST_DISPLAY_ITEM(
-                    item.Name,
-                    $"{item.Value} {item.Unit}".Trim(),
-                    item.Description)).ToArray()));
+                sectionParameters.Select(SelectItem10).ToArray()));
         }
 
         var selectedTab = NormalizeTab(_selectedTabProvider());
@@ -202,13 +258,27 @@ public sealed class CMenuSetting : CBindingBase, IMenu
             ? BuildInterfaceGroups(allInterfaceRows)
             : BuildGroups(allRows);
         var selectedGroup = NormalizeGroup(_selectedGroupProvider(), groups);
+        bool FilterRow11(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return row.Group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase);
+        }
+
         var filteredRows = selectedGroup == "ALL"
             ? allRows
-            : allRows.Where(row => row.Group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase)).ToArray();
+            : allRows.Where(FilterRow11).ToArray();
+        bool FilterRow12(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.Type.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase);
+        }
+
         var filteredInterfaceRows = selectedGroup == "ALL"
             ? allInterfaceRows
-            : allInterfaceRows.Where(row => row.Type.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase)).ToArray();
+            : allInterfaceRows.Where(FilterRow12).ToArray();
         var history = await _settingManager.LoadHistory(selectedSection, cancellationToken);
+        ST_SETTING_GROUP SelectGroup13(string group)
+        {
+            return new ST_SETTING_GROUP(group, group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase));
+        }
 
         Apply(
             displaySections,
@@ -216,7 +286,7 @@ public sealed class CMenuSetting : CBindingBase, IMenu
             selectedTab,
             selectedGroup,
             BuildTabs(selectedTab),
-            groups.Select(group => new ST_SETTING_GROUP(group, group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase))).ToArray(),
+            groups.Select(SelectGroup13).ToArray(),
             allRows,
             filteredRows,
             allInterfaceRows,
@@ -368,19 +438,24 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         }
 
         var section = ToSection(SelectedTab);
+        ST_SYSTEM_PARAMETER SelectRow14(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return new ST_SYSTEM_PARAMETER(
+                            section,
+                            row.Parameter,
+                            row.Value,
+                            NormalizeSettingUnit(row.Unit),
+                            row.Description,
+                            row.Group,
+                            row.Key,
+                            row.DefaultValue,
+                            row.DataType,
+                            row.Min,
+                            row.Max);
+        }
+
         var parameters = AllParameterRows
-            .Select(row => new ST_SYSTEM_PARAMETER(
-                section,
-                row.Parameter,
-                row.Value,
-                NormalizeSettingUnit(row.Unit),
-                row.Description,
-                row.Group,
-                row.Key,
-                row.DefaultValue,
-                row.DataType,
-                row.Min,
-                row.Max))
+            .Select(SelectRow14)
             .ToArray();
 
         try
@@ -486,9 +561,18 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         {
             return rows[0];
         }
+        bool MatchRow15(ST_SETTING_INTERFACE_ROW row)
+        {
+            return IsSameInterfaceKey(row, current);
+        }
 
-        return rows.FirstOrDefault(row => IsSameInterfaceKey(row, current))
-            ?? rows.FirstOrDefault(row => row.NickName.Equals(current.NickName, StringComparison.OrdinalIgnoreCase))
+        bool MatchRow16(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.NickName.Equals(current.NickName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return rows.FirstOrDefault(MatchRow15)
+            ?? rows.FirstOrDefault(MatchRow16)
             ?? rows[0];
     }
 
@@ -519,38 +603,68 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static IReadOnlyList<ST_SETTING_TAB> BuildTabs(string selectedTab)
     {
+        string SelectSection17(EN_SETTING_TAB section)
+        {
+            return ToTabText(section);
+        }
+
+        ST_SETTING_TAB SelectTab18(string tab)
+        {
+            return new ST_SETTING_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase));
+        }
+
         return Sections
-            .Select(section => ToTabText(section))
-            .Select(tab => new ST_SETTING_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectSection17)
+            .Select(SelectTab18)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_SYSTEM_PARAMETER_ROW> BuildParameterRows(
         IReadOnlyList<ST_SYSTEM_PARAMETER> parameters)
     {
+        bool FilterParameter19(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Show && parameter.Use;
+        }
+
+        ST_SYSTEM_PARAMETER_ROW SelectParameter20(ST_SYSTEM_PARAMETER parameter)
+        {
+            return new ST_SYSTEM_PARAMETER_ROW(
+                            NormalizeSettingText(parameter.Group, "COMMON"),
+                            parameter.Name,
+                            parameter.Value,
+                            NormalizeUnit(parameter.Unit),
+                            parameter.Description,
+                            false,
+                            GetValueState(parameter.Value),
+                            parameter.Key,
+                            parameter.DefaultValue,
+                            parameter.DataType,
+                            parameter.Min,
+                            parameter.Max);
+        }
+
         return parameters
-            .Where(parameter => parameter.Show && parameter.Use)
-            .Select(parameter => new ST_SYSTEM_PARAMETER_ROW(
-                NormalizeSettingText(parameter.Group, "COMMON"),
-                parameter.Name,
-                parameter.Value,
-                NormalizeUnit(parameter.Unit),
-                parameter.Description,
-                false,
-                GetValueState(parameter.Value),
-                parameter.Key,
-                parameter.DefaultValue,
-                parameter.DataType,
-                parameter.Min,
-                parameter.Max))
+            .Where(FilterParameter19)
+            .Select(SelectParameter20)
             .ToArray();
     }
 
     private static IReadOnlyList<string> BuildGroups(IReadOnlyList<ST_SYSTEM_PARAMETER_ROW> rows)
     {
+        string SelectRow21(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return row.Group;
+        }
+
+        bool FilterGroup22(string group)
+        {
+            return !string.IsNullOrWhiteSpace(group);
+        }
+
         var groups = rows
-            .Select(row => row.Group)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Select(SelectRow21)
+            .Where(FilterGroup22)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -559,9 +673,19 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static IReadOnlyList<string> BuildInterfaceGroups(IReadOnlyList<ST_SETTING_INTERFACE_ROW> rows)
     {
+        string SelectRow23(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.Type;
+        }
+
+        bool FilterGroup24(string group)
+        {
+            return !string.IsNullOrWhiteSpace(group);
+        }
+
         var groups = rows
-            .Select(row => row.Type)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Select(SelectRow23)
+            .Where(FilterGroup24)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -571,27 +695,42 @@ public sealed class CMenuSetting : CBindingBase, IMenu
     private static IReadOnlyList<ST_DISPLAY_ITEM> BuildHistoryItems(
         IReadOnlyList<ST_SETTING_HISTORY> history)
     {
+        ST_DISPLAY_ITEM SelectItem25(ST_SETTING_HISTORY item)
+        {
+            return new ST_DISPLAY_ITEM(
+                            item.ChangedAt.ToString("HH:mm:ss"),
+                            $"{item.Action} / {item.ParameterName}",
+                            $"{item.OldValue} -> {item.NewValue}");
+        }
+
         return history
-            .Select(item => new ST_DISPLAY_ITEM(
-                item.ChangedAt.ToString("HH:mm:ss"),
-                $"{item.Action} / {item.ParameterName}",
-                $"{item.OldValue} -> {item.NewValue}"))
+            .Select(SelectItem25)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_SETTING_HISTORY_ROW> BuildHistoryRows(
         IReadOnlyList<ST_SETTING_HISTORY> history)
     {
+        bool FilterItem26(ST_SETTING_HISTORY item)
+        {
+            return !item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase);
+        }
+
+        ST_SETTING_HISTORY_ROW SelectItem27(ST_SETTING_HISTORY item)
+        {
+            return new ST_SETTING_HISTORY_ROW(
+                            item.ChangedAt.ToString("HH:mm:ss"),
+                            item.OperatorId,
+                            ToTabText(item.Section),
+                            item.ParameterName,
+                            item.OldValue,
+                            item.NewValue,
+                            "Warn");
+        }
+
         return history
-            .Where(item => !item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase))
-            .Select(item => new ST_SETTING_HISTORY_ROW(
-                item.ChangedAt.ToString("HH:mm:ss"),
-                item.OperatorId,
-                ToTabText(item.Section),
-                item.ParameterName,
-                item.OldValue,
-                item.NewValue,
-                "Warn"))
+            .Where(FilterItem26)
+            .Select(SelectItem27)
             .ToArray();
     }
 
@@ -601,10 +740,25 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         IReadOnlyList<ST_SETTING_INTERFACE_ROW> interfaceRows,
         IReadOnlyList<ST_SETTING_HISTORY> history)
     {
+        bool HandleModifiedCount28(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.IsModified;
+        }
+
+        bool HandleModifiedCount29(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return row.IsModified;
+        }
+
         var modifiedCount = selectedTab == "INTERFACE"
-            ? interfaceRows.Count(row => row.IsModified)
-            : rows.Count(row => row.IsModified);
-        var lastSavedTime = history.FirstOrDefault(item => item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase))?.ChangedAt;
+            ? interfaceRows.Count(HandleModifiedCount28)
+            : rows.Count(HandleModifiedCount29);
+        bool MatchItem30(ST_SETTING_HISTORY item)
+        {
+            return item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var lastSavedTime = history.FirstOrDefault(MatchItem30)?.ChangedAt;
 
         return
         [
@@ -616,50 +770,71 @@ public sealed class CMenuSetting : CBindingBase, IMenu
     private static IReadOnlyList<ST_SETTING_INTERFACE_ROW> BuildInterfaceRows(
         IReadOnlyList<ST_INTERFACE_DATA> interfaces)
     {
-        return interfaces
-            .OrderBy(item => item.Device)
-            .ThenBy(item => item.Number)
-            .ThenBy(item => item.NickName, StringComparer.OrdinalIgnoreCase)
-            .Select((item, index) =>
-            {
-                var arguments = item.Arguments
-                    .Concat(Enumerable.Repeat("", 5))
-                    .Take(5)
-                    .ToArray();
+        EN_EQP_MODULE GetItemSortKey31(ST_INTERFACE_DATA item)
+        {
+            return item.Device;
+        }
 
-                return new ST_SETTING_INTERFACE_ROW(
-                    (index + 1).ToString("D2", CultureInfo.InvariantCulture),
-                    InterfaceTypeText(item.InterfaceType),
-                    DeviceText(item.Device),
-                    item.Number.ToString(CultureInfo.InvariantCulture),
-                    item.NickName,
-                    item.SystemSection,
-                    item.AutoConnection ? "ON" : "OFF",
-                    item.IsSimulation ? "ON" : "OFF",
-                    arguments[0],
-                    arguments[1],
-                    arguments[2],
-                    arguments[3],
-                    arguments[4],
-                    item.Extra);
-            })
+        int GetItemSortKey32(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
+        string GetItemSortKey33(ST_INTERFACE_DATA item)
+        {
+            return item.NickName;
+        }
+
+        ST_SETTING_INTERFACE_ROW SelectItem34(ST_INTERFACE_DATA item, int index)
+        {
+            var arguments = item.Arguments
+                .Concat(Enumerable.Repeat("", 5))
+                .Take(5)
+                .ToArray();
+
+            return new ST_SETTING_INTERFACE_ROW(
+                (index + 1).ToString("D2", CultureInfo.InvariantCulture),
+                InterfaceTypeText(item.InterfaceType),
+                DeviceText(item.Device),
+                item.Number.ToString(CultureInfo.InvariantCulture),
+                item.NickName,
+                item.SystemSection,
+                item.AutoConnection ? "ON" : "OFF",
+                item.IsSimulation ? "ON" : "OFF",
+                arguments[0],
+                arguments[1],
+                arguments[2],
+                arguments[3],
+                arguments[4],
+                item.Extra);
+        }
+        return interfaces
+            .OrderBy(GetItemSortKey31)
+            .ThenBy(GetItemSortKey32)
+            .ThenBy(GetItemSortKey33, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectItem34)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_INTERFACE_DATA> ToInterfaceData(
         IReadOnlyList<ST_SETTING_INTERFACE_ROW> rows)
     {
+        ST_INTERFACE_DATA SelectRow35(ST_SETTING_INTERFACE_ROW row)
+        {
+            return new ST_INTERFACE_DATA(
+                            ParseInterfaceType(row.Type),
+                            ParseDevice(row.Device),
+                            ReadInt(row.Number, row.NickName, "NUMBER"),
+                            RequireText(row.NickName, "NICKNAME"),
+                            RequireText(row.SystemSection, "SYSTEM_SECTION"),
+                            ReadBool(row.AutoConnection, row.NickName, "AUTOCONNECTION"),
+                            ReadBool(row.Simul, row.NickName, "SIMUL"),
+                            [row.Arg1.Trim(), row.Arg2.Trim(), row.Arg3.Trim(), row.Arg4.Trim(), row.Arg5.Trim()],
+                            row.Extra);
+        }
+
         return rows
-            .Select(row => new ST_INTERFACE_DATA(
-                ParseInterfaceType(row.Type),
-                ParseDevice(row.Device),
-                ReadInt(row.Number, row.NickName, "NUMBER"),
-                RequireText(row.NickName, "NICKNAME"),
-                RequireText(row.SystemSection, "SYSTEM_SECTION"),
-                ReadBool(row.AutoConnection, row.NickName, "AUTOCONNECTION"),
-                ReadBool(row.Simul, row.NickName, "SIMUL"),
-                [row.Arg1.Trim(), row.Arg2.Trim(), row.Arg3.Trim(), row.Arg4.Trim(), row.Arg5.Trim()],
-                row.Extra))
+            .Select(SelectRow35)
             .ToArray();
     }
 
@@ -877,7 +1052,12 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         IReadOnlyList<string> groups)
     {
         var normalized = NormalizeSettingText(group, "ALL");
-        return groups.Any(item => item.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+        bool CheckItem36(string item)
+        {
+            return item.Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return groups.Any(CheckItem36)
             ? normalized
             : "ALL";
     }

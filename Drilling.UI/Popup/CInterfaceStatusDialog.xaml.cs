@@ -12,11 +12,25 @@ public partial class CInterfaceStatusDialog : Window
         IReadOnlyList<ST_INTERFACE_COMM_STATUS> statuses)
     {
         InitializeComponent();
+        int GetStatusSortKey1(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
+
+        string GetStatusSortKey2(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.NickName;
+        }
+
+        CInterfaceStatusRow SelectStatus3(ST_INTERFACE_COMM_STATUS status)
+        {
+            return new CInterfaceStatusRow(status);
+        }
 
         var rows = statuses
-            .OrderBy(status => status.Number)
-            .ThenBy(status => status.NickName, StringComparer.OrdinalIgnoreCase)
-            .Select(status => new CInterfaceStatusRow(status))
+            .OrderBy(GetStatusSortKey1)
+            .ThenBy(GetStatusSortKey2, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectStatus3)
             .ToArray();
 
         Title = $"{title} Status";

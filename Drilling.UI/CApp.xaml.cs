@@ -53,23 +53,24 @@ public partial class CApp : Application
 
     private void RegisterExceptionHandlers()
     {
-        DispatcherUnhandledException += (_, args) =>
+        void DispatcherUnhandledExceptionHandler1(object _, DispatcherUnhandledExceptionEventArgs args)
         {
             CProgramOpenLog.Write("DISPATCHER_UNHANDLED", args.Exception);
-        };
-
-        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        }
+        DispatcherUnhandledException += DispatcherUnhandledExceptionHandler1;
+        void UnhandledExceptionHandler2(object _, UnhandledExceptionEventArgs args)
         {
             var exception = args.ExceptionObject as Exception;
             CProgramOpenLog.Write(
                 "APPDOMAIN_UNHANDLED",
                 exception?.ToString() ?? args.ExceptionObject?.ToString() ?? "Unknown unhandled exception.");
-        };
-
-        TaskScheduler.UnobservedTaskException += (_, args) =>
+        }
+        AppDomain.CurrentDomain.UnhandledException += UnhandledExceptionHandler2;
+        void UnobservedTaskExceptionHandler3(object? _, UnobservedTaskExceptionEventArgs args)
         {
             CProgramOpenLog.Write("TASK_UNOBSERVED", args.Exception);
-        };
+        }
+        TaskScheduler.UnobservedTaskException += UnobservedTaskExceptionHandler3;
     }
 
     private void ConfigureMainWindowBounds(Window window)
@@ -77,8 +78,7 @@ public partial class CApp : Application
         window.ResizeMode = ResizeMode.CanMinimize;
         window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         window.WindowState = WindowState.Maximized;
-
-        _monitorFitTimer.Tick += (_, _) =>
+        void TickHandler4(object? unusedParameter1, EventArgs unusedParameter2)
         {
             _monitorFitTimer.Stop();
 
@@ -89,11 +89,26 @@ public partial class CApp : Application
             }
 
             FitMainWindowToCurrentMonitor(window);
-        };
+        }
+        _monitorFitTimer.Tick += TickHandler4;
+        void SourceInitializedHandler5(object? unusedParameter1, EventArgs unusedParameter2)
+        {
+            FitMainWindowToCurrentMonitor(window);
+        }
 
-        window.SourceInitialized += (_, _) => FitMainWindowToCurrentMonitor(window);
-        window.LocationChanged += (_, _) => ScheduleMainWindowFit(window);
-        window.StateChanged += (_, _) => ScheduleMainWindowFit(window);
+        window.SourceInitialized += SourceInitializedHandler5;
+        void LocationChangedHandler6(object? unusedParameter1, EventArgs unusedParameter2)
+        {
+            ScheduleMainWindowFit(window);
+        }
+
+        window.LocationChanged += LocationChangedHandler6;
+        void StateChangedHandler7(object? unusedParameter1, EventArgs unusedParameter2)
+        {
+            ScheduleMainWindowFit(window);
+        }
+
+        window.StateChanged += StateChangedHandler7;
     }
 
     private void ScheduleMainWindowFit(Window window)

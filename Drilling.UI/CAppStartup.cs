@@ -39,7 +39,7 @@ public static class CAppStartup
             "MANAGER_STARTUP_SEQUENCE",
             0);
 
-        _ = Task.Run(async () =>
+        async Task? RunTask1()
         {
             try
             {
@@ -57,7 +57,8 @@ public static class CAppStartup
                     "MANAGER_INITIALIZE_SEQUENCE",
                     lastLoggedStartupOrder);
             }
-        });
+        }
+        _ = Task.Run(RunTask1);
 
         return new CRootView(
             manager,
@@ -81,9 +82,19 @@ public static class CAppStartup
         int afterOrder)
     {
         var status = manager.ConfigStatus();
+        bool FilterStep2(ST_MANAGER_STARTUP_STEP step)
+        {
+            return step.Order > afterOrder;
+        }
+
+        int GetStepSortKey3(ST_MANAGER_STARTUP_STEP step)
+        {
+            return step.Order;
+        }
+
         var steps = status.StartupSteps
-            .Where(step => step.Order > afterOrder)
-            .OrderBy(step => step.Order)
+            .Where(FilterStep2)
+            .OrderBy(GetStepSortKey3)
             .ToArray();
 
         var builder = new StringBuilder();
@@ -117,10 +128,14 @@ public static class CAppStartup
         }
 
         CProgramOpenLog.Write(title, builder.ToString().TrimEnd());
+        int MaxStepCallback4(ST_MANAGER_STARTUP_STEP step)
+        {
+            return step.Order;
+        }
 
         return status.StartupSteps.Count == 0
             ? afterOrder
-            : status.StartupSteps.Max(step => step.Order);
+            : status.StartupSteps.Max(MaxStepCallback4);
     }
 
     private static string GetConfigRoot()
@@ -145,13 +160,17 @@ public static class CAppStartup
         CSettingFile settingFile)
     {
         var projectRoot = Directory.GetParent(configRoot)?.FullName ?? configRoot;
+        bool MatchParameter5(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Key.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase) ||
+                            parameter.Name.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase);
+        }
+
         var scriptPath = settingFile
             .Load(EN_SETTING_TAB.Option)
             .GetAwaiter()
             .GetResult()
-            .FirstOrDefault(parameter =>
-                parameter.Key.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase) ||
-                parameter.Name.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(MatchParameter5)
             ?.Value;
 
         if (string.IsNullOrWhiteSpace(scriptPath))

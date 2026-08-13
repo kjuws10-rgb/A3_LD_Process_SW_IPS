@@ -53,7 +53,13 @@ public sealed class CMenuCorrection : IMenu
         _refreshCurrentScreen = refreshCurrentScreen;
 
         SelectTabCommand = new CButtonCommand(SelectTab);
-        ExecuteCommand = new CButtonCommand(async parameter => await Execute(parameter));
+
+        async void HandleExecuteCommand1(object? parameter)
+        {
+            await Execute(parameter);
+        }
+
+        ExecuteCommand = new CButtonCommand(HandleExecuteCommand1);
     }
 
     public EN_MENU Menu
@@ -202,9 +208,12 @@ public sealed class CMenuCorrection : IMenu
         {
             return;
         }
+        bool MatchTab2(string tab)
+        {
+            return tab.Equals(tabName, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var normalizedTab = CorrectionTabs.FirstOrDefault(tab =>
-            tab.Equals(tabName, StringComparison.OrdinalIgnoreCase));
+        var normalizedTab = CorrectionTabs.FirstOrDefault(MatchTab2);
 
         if (normalizedTab is null)
         {
@@ -253,8 +262,13 @@ public sealed class CMenuCorrection : IMenu
 
     private void ApplyTabData(string selectedTab)
     {
+        ST_CORRECTION_TAB SelectTab3(string tab)
+        {
+            return new ST_CORRECTION_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase));
+        }
+
         Tabs = CorrectionTabs
-            .Select(tab => new ST_CORRECTION_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectTab3)
             .ToArray();
         (IReadOnlyList<ST_DISPLAY_ITEM> Summary, IReadOnlyList<ST_CORRECTION_SOURCE_ROW> Source, IReadOnlyList<ST_CORRECTION_VALUE_ROW> Candidate, IReadOnlyList<ST_CORRECTION_VALUE_ROW> Apply, IReadOnlyList<ST_DISPLAY_ITEM> Detail, IReadOnlyList<ST_CORRECTION_HISTORY_ROW> History) EvaluateSelectedTabSwitch1()
         {
@@ -308,14 +322,19 @@ public sealed class CMenuCorrection : IMenu
                 GetReviewResultIdentity(result));
             _currentSettingState = await LoadCurrentSettingState();
             _currentReviewOffsetRecipeName = "Recipe: -";
+            ST_CORRECTION_REVIEW_RESULT_ROW SelectRow4(ST_REVIEW_RESULT_FILE_ROW row)
+            {
+                return new ST_CORRECTION_REVIEW_RESULT_ROW(
+                                    row.HoleKey,
+                                    $"H{row.HeadNo:00}",
+                                    row.CellNo,
+                                    row.ErrorX,
+                                    row.ErrorY,
+                                    row.Judge);
+            }
+
             ReviewResultRows = result.Rows
-                .Select(row => new ST_CORRECTION_REVIEW_RESULT_ROW(
-                    row.HoleKey,
-                    $"H{row.HeadNo:00}",
-                    row.CellNo,
-                    row.ErrorX,
-                    row.ErrorY,
-                    row.Judge))
+                .Select(SelectRow4)
                 .ToArray();
 
             string? offsetLoadWarning = null;
@@ -495,11 +514,20 @@ public sealed class CMenuCorrection : IMenu
                 "NG");
             return;
         }
+        string SelectRow5(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.HoleKey;
+        }
 
         var currentKeys = CurrentOffsetRows
-            .Select(row => row.HoleKey)
+            .Select(SelectRow5)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (CalculatedOffsetRows.Any(row => !currentKeys.Contains(row.HoleKey)))
+        bool CheckRow6(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return !currentKeys.Contains(row.HoleKey);
+        }
+
+        if (CalculatedOffsetRows.Any(CheckRow6))
         {
             await ReportReviewDataCommand(
                 "Apply",
@@ -507,30 +535,49 @@ public sealed class CMenuCorrection : IMenu
                 "NG");
             return;
         }
+        string HandleCurrentOffsets7(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.HoleKey;
+        }
+
+        string HandleCurrentOffsets8(IGrouping<string, ST_CORRECTION_REVIEW_OFFSET_ROW> group)
+        {
+            return group.Key;
+        }
+
+        ST_CORRECTION_REVIEW_OFFSET_ROW HandleCurrentOffsets9(IGrouping<string, ST_CORRECTION_REVIEW_OFFSET_ROW> group)
+        {
+            return group.Last();
+        }
 
         var currentOffsets = CurrentOffsetRows
-            .GroupBy(row => row.HoleKey, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(HandleCurrentOffsets7, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last(),
+HandleCurrentOffsets8,
+HandleCurrentOffsets9,
                 StringComparer.OrdinalIgnoreCase);
-        ApplyPreviewRows = CalculatedOffsetRows
-            .Select(row =>
+        ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow10(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            var current = currentOffsets[row.HoleKey];
+            var preview = row with
             {
-                var current = currentOffsets[row.HoleKey];
-                var preview = row with
-                {
-                    OffsetXValue = current.OffsetXValue + row.OffsetXValue,
-                    OffsetYValue = current.OffsetYValue + row.OffsetYValue
-                };
-                return preview with
-                {
-                    State = HasOffsetChanged(current, preview) ? "PENDING" : "CURRENT"
-                };
-            })
+                OffsetXValue = current.OffsetXValue + row.OffsetXValue,
+                OffsetYValue = current.OffsetYValue + row.OffsetYValue
+            };
+            return preview with
+            {
+                State = HasOffsetChanged(current, preview) ? "PENDING" : "CURRENT"
+            };
+        }
+        ApplyPreviewRows = CalculatedOffsetRows
+            .Select(SelectRow10)
             .ToArray();
-        _hasPendingReviewOffsetApply = ApplyPreviewRows.Any(row =>
-            row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase));
+        bool CheckRow11(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        }
+
+        _hasPendingReviewOffsetApply = ApplyPreviewRows.Any(CheckRow11);
 
         if (!_hasPendingReviewOffsetApply)
         {
@@ -541,12 +588,21 @@ public sealed class CMenuCorrection : IMenu
                 "0 Rows / No Change");
             return;
         }
+        bool CountRowCallback12(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        }
+
+        bool CountRowCallback13(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        }
 
         await ReportReviewDataCommand(
             "Apply",
-            $"{ApplyPreviewRows.Count(row => row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase))} calculated values are shown in Apply Preview. Save is required.",
+            $"{ApplyPreviewRows.Count(CountRowCallback12)} calculated values are shown in Apply Preview. Save is required.",
             "WARN",
-            $"{ApplyPreviewRows.Count(row => row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase))} Rows / Pending Save");
+            $"{ApplyPreviewRows.Count(CountRowCallback13)} Rows / Pending Save");
     }
 
     private async Task SaveAppliedReviewOffsets()
@@ -567,18 +623,24 @@ public sealed class CMenuCorrection : IMenu
             {
                 selectedRecipeId = NormalizeRecipeId(_loadedReviewResult.RecipeId);
             }
+            bool MatchItem14(ST_RECIPE_DATA item)
+            {
+                return NormalizeRecipeId(item.Id).Equals(
+                                        selectedRecipeId,
+                                        StringComparison.OrdinalIgnoreCase);
+            }
 
             var recipe = (await _recipeManager.LoadRecipes())
-                .FirstOrDefault(item =>
-                    NormalizeRecipeId(item.Id).Equals(
-                        selectedRecipeId,
-                        StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(MatchItem14)
                 ?? throw new InvalidOperationException(
                     $"Selected recipe could not be loaded: {selectedRecipeId}.");
             var parameters = recipe.Parameters.ToList();
+            bool HandleSavedCount15(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+            {
+                return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+            }
 
-            var savedCount = ApplyPreviewRows.Count(row =>
-                row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase));
+            var savedCount = ApplyPreviewRows.Count(HandleSavedCount15);
             foreach (var row in ApplyPreviewRows)
             {
                 UpsertReviewOffsetParameter(parameters, row, "X", row.OffsetXValue);
@@ -586,17 +648,26 @@ public sealed class CMenuCorrection : IMenu
             }
 
             await _recipeManager.SaveRecipe(recipe with { Parameters = parameters });
-
-            ApplyPreviewRows = ApplyPreviewRows
-                .Select(row => row with
+            ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow16(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+            {
+                return row with
                 {
                     State = row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase)
-                        ? "SAVED"
-                        : row.State
-                })
+                                        ? "SAVED"
+                                        : row.State
+                };
+            }
+
+            ApplyPreviewRows = ApplyPreviewRows
+                .Select(SelectRow16)
                 .ToArray();
+            ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow17(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+            {
+                return row with { State = "CURRENT" };
+            }
+
             CurrentOffsetRows = ApplyPreviewRows
-                .Select(row => row with { State = "CURRENT" })
+                .Select(SelectRow17)
                 .ToArray();
             _hasPendingReviewOffsetApply = false;
             _isLoadedReviewResultApplied = true;
@@ -627,8 +698,12 @@ public sealed class CMenuCorrection : IMenu
         var normalizedAxis = axis.Equals("Y", StringComparison.OrdinalIgnoreCase) ? "Y" : "X";
         var key = $"{row.HoleKey}_REVIEW_OFFSET_{normalizedAxis}";
         var valueText = value.ToString("0.000000", CultureInfo.InvariantCulture);
-        var parameterIndex = parameters.FindIndex(parameter =>
-            parameter.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        bool HandleParameterIndex18(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var parameterIndex = parameters.FindIndex(HandleParameterIndex18);
 
         if (parameterIndex >= 0)
         {
@@ -705,10 +780,13 @@ public sealed class CMenuCorrection : IMenu
         {
             selectedRecipeId = NormalizeRecipeId(result.RecipeId);
         }
+        bool MatchItem19(ST_RECIPE_DATA item)
+        {
+            return NormalizeRecipeId(item.Id).Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+        }
 
         var recipe = (await _recipeManager.LoadRecipes())
-            .FirstOrDefault(item =>
-                NormalizeRecipeId(item.Id).Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(MatchItem19);
         if (recipe is null)
         {
             throw new InvalidOperationException(
@@ -716,26 +794,27 @@ public sealed class CMenuCorrection : IMenu
         }
 
         _currentReviewOffsetRecipeName = $"Recipe: {recipe.Id}.csv";
-        return result.Rows
-            .Select(row =>
-            {
-                var holeKey = NormalizeReviewHoleKey(row.HoleKey, row.CellNo);
-                var offsetX = ReadRecipeDouble(
-                    recipe,
-                    0.0,
-                    $"{holeKey}_REVIEW_OFFSET_X");
-                var offsetY = ReadRecipeDouble(
-                    recipe,
-                    0.0,
-                    $"{holeKey}_REVIEW_OFFSET_Y");
+        ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow20(ST_REVIEW_RESULT_FILE_ROW row)
+        {
+            var holeKey = NormalizeReviewHoleKey(row.HoleKey, row.CellNo);
+            var offsetX = ReadRecipeDouble(
+                recipe,
+                0.0,
+                $"{holeKey}_REVIEW_OFFSET_X");
+            var offsetY = ReadRecipeDouble(
+                recipe,
+                0.0,
+                $"{holeKey}_REVIEW_OFFSET_Y");
 
-                return new ST_CORRECTION_REVIEW_OFFSET_ROW(
-                    holeKey,
-                    $"H{row.HeadNo:00}",
-                    offsetX,
-                    offsetY,
-                    "CURRENT");
-            })
+            return new ST_CORRECTION_REVIEW_OFFSET_ROW(
+                holeKey,
+                $"H{row.HeadNo:00}",
+                offsetX,
+                offsetY,
+                "CURRENT");
+        }
+        return result.Rows
+            .Select(SelectRow20)
             .ToArray();
     }
 
@@ -792,8 +871,12 @@ public sealed class CMenuCorrection : IMenu
         IReadOnlyList<ST_CORRECTION_HISTORY_ROW> History) CreateReviewData()
     {
         var result = _loadedReviewResult;
-        var ngCount = result?.Rows.Count(row =>
-            row.Judge.Equals("NG", StringComparison.OrdinalIgnoreCase)) ?? 0;
+        bool HandleNgCount21(ST_REVIEW_RESULT_FILE_ROW row)
+        {
+            return row.Judge.Equals("NG", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var ngCount = result?.Rows.Count(HandleNgCount21) ?? 0;
 
         return (
             [
@@ -834,9 +917,13 @@ public sealed class CMenuCorrection : IMenu
     {
         foreach (var parameter in recipe.Parameters)
         {
-            if (!keys.Any(key =>
-                    key.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase) ||
-                    key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase)))
+            bool CheckKey22(string key)
+            {
+                return key.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase) ||
+                                    key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!keys.Any(CheckKey22))
             {
                 continue;
             }

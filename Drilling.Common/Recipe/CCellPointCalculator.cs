@@ -24,7 +24,13 @@ public sealed record ST_CELL_POINT_RESULT(
     IReadOnlyList<ST_CELL_DRILL_POINT> Points,
     string ValidationMessage)
 {
-    public bool IsValid => string.IsNullOrWhiteSpace(ValidationMessage);
+    public bool IsValid
+    {
+        get
+        {
+            return string.IsNullOrWhiteSpace(ValidationMessage);
+        }
+    }
 }
 
 public static class CCellPointCalculator

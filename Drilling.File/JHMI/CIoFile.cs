@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CIoFile(string configRoot) : IIoFile
+public sealed class CIoFile(string configRoot) : CIoFileBase
 {
     private static readonly IReadOnlyList<string> Headers =
     [
@@ -31,17 +31,36 @@ public sealed class CIoFile(string configRoot) : IIoFile
         ["DEV NO", "DEVICE NO"]
     ];
 
-    public Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
         CCsvParser.ValidateRequiredHeaders(GetIoPath(), "JHMI_IO", RequiredHeaderGroups);
+        ST_IO_DATA SelectRow1(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return Parse(row, index + 2);
+        }
+
+        bool FilterIo2(ST_IO_DATA io)
+        {
+            return !string.IsNullOrWhiteSpace(io.Id);
+        }
+
+        int GetIoSortKey3(ST_IO_DATA io)
+        {
+            return io.DisplayOrder;
+        }
+
+        string GetIoSortKey4(ST_IO_DATA io)
+        {
+            return io.Id;
+        }
 
         var rows = CCsvParser.Read(GetIoPath())
-            .Select((row, index) => Parse(row, index + 2))
-            .Where(io => !string.IsNullOrWhiteSpace(io.Id))
-            .OrderBy(io => io.DisplayOrder)
-            .ThenBy(io => io.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectRow1)
+            .Where(FilterIo2)
+            .OrderBy(GetIoSortKey3)
+            .ThenBy(GetIoSortKey4, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         Validate(rows);
@@ -89,8 +108,12 @@ public sealed class CIoFile(string configRoot) : IIoFile
     {
         var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var usedAddresses = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool FilterRow5(ST_IO_DATA row)
+        {
+            return row.Use;
+        }
 
-        foreach (var row in rows.Where(row => row.Use))
+        foreach (var row in rows.Where(FilterRow5))
         {
             if (string.IsNullOrWhiteSpace(row.Id))
             {
@@ -187,13 +210,22 @@ public sealed class CIoFile(string configRoot) : IIoFile
         string value,
         int rowNo)
     {
-        return NormalizeText(value) switch
+        bool EvaluateValueSwitch1()
         {
-            "OUT" or "OUTPUT" or "Y" => true,
-            "IN" or "INPUT" or "X" => false,
-            _ => throw new InvalidDataException(
-                $"JHMI_IO validation failed. Row {rowNo} / DIRECTION must be IN or OUT: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "OUT" or "OUTPUT" or "Y":
+                    return true;
+                case "IN" or "INPUT" or "X":
+                    return false;
+                default:
+                    throw new InvalidDataException(
+                        $"JHMI_IO validation failed. Row {rowNo} / DIRECTION must be IN or OUT: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string RequireText(

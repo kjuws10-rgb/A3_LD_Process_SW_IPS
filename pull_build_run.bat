@@ -16,6 +16,12 @@ if errorlevel 1 (
     goto :fail
 )
 
+git rev-parse --is-inside-work-tree >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] This BAT file is not inside a Git working tree.
+    goto :fail
+)
+
 set "STATUS_FILE=%TEMP%\A3_LD_Process_SW_git_status_%RANDOM%_%RANDOM%.txt"
 git status --porcelain > "%STATUS_FILE%"
 if errorlevel 1 goto :status_fail
@@ -35,12 +41,13 @@ if not defined CURRENT_BRANCH (
     goto :fail
 )
 
+echo Current branch: %CURRENT_BRANCH%
 echo [1/4] Pull origin/%CURRENT_BRANCH% --ff-only
 git pull --ff-only origin "%CURRENT_BRANCH%"
 if errorlevel 1 goto :fail
 
 echo [2/4] Restore Drilling.sln
-dotnet restore Drilling.sln --ignore-failed-sources
+dotnet restore Drilling.sln
 if errorlevel 1 goto :fail
 
 echo [3/4] Build Drilling.sln Release

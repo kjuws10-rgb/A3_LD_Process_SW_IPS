@@ -10,7 +10,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
+public sealed class CJhmiRecipeFile(string configRoot) : CRecipeFileBase
 {
     private static readonly HashSet<string> CellScopedTemplateNames = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -50,7 +50,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
     private readonly string _recipeDirectory = Path.Combine(configRoot, "RECIPE");
     private readonly CLogManager _logManager = new(configRoot);
 
-    public Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_RECIPE_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -60,17 +60,32 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         }
 
         var formItems = LoadFormItems();
+        ST_RECIPE_DATA? SelectPath1(string path)
+        {
+            return LoadRecipe(path, formItems);
+        }
+
+        bool FilterRecipe2(ST_RECIPE_DATA? recipe)
+        {
+            return recipe is not null;
+        }
+
+        string GetRecipeSortKey3(ST_RECIPE_DATA recipe)
+        {
+            return recipe.Name;
+        }
+
         var recipes = Directory.EnumerateFiles(_recipeDirectory, "*.csv")
-            .Select(path => LoadRecipe(path, formItems))
-            .Where(recipe => recipe is not null)
+            .Select(SelectPath1)
+            .Where(FilterRecipe2)
             .Cast<ST_RECIPE_DATA>()
-            .OrderBy(recipe => recipe.Name)
+            .OrderBy(GetRecipeSortKey3)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<ST_RECIPE_DATA>>(recipes);
     }
 
-    public Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default)
+    public override Task<ST_RECIPE_DATA?> Find(string recipeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -83,7 +98,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         return Task.FromResult(recipe);
     }
 
-    public Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
+    public override Task Save(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -92,33 +107,73 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         var formItems = LoadFormItems();
         var recipePath = GetRecipePath(recipe.Id);
         var recipeExists = System.IO.File.Exists(recipePath);
+        string HandleOldValues4(ST_RECIPE_VALUE item)
+        {
+            return CreateKey(item.Tab, item.Name);
+        }
+
+        string HandleOldValues5(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Key;
+        }
+
+        string HandleOldValues6(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Last().Value;
+        }
+
         var oldValues = recipeExists
             ? ReadRecipeValues(recipePath)
-                .GroupBy(item => CreateKey(item.Tab, item.Name), StringComparer.OrdinalIgnoreCase)
+                .GroupBy(HandleOldValues4, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
-                    group => group.Key,
-                    group => group.Last().Value,
+HandleOldValues5,
+HandleOldValues6,
                     StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var valuesByKey = recipe.Parameters
-            .Where(parameter => !IsCellScopedKey(parameter.Key))
-            .Select(parameter => new
+        bool FilterParameter7(ST_RECIPE_PARAM parameter)
+        {
+            return !IsCellScopedKey(parameter.Key);
+        }
+
+        Dictionary<string, string> valuesByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (ST_RECIPE_PARAM parameter in recipe.Parameters)
+        {
+            if (!FilterParameter7(parameter))
             {
-                Parameter = parameter,
-                FormItem = FindFormItem(formItems, parameter)
-            })
-            .Where(item => item.FormItem is not null)
-            .ToDictionary(
-                item => CreateKey(item.FormItem!.Tab, item.FormItem.Name),
-                item => item.Parameter.Value,
-                StringComparer.OrdinalIgnoreCase);
+                continue;
+            }
+
+            ST_RECIPE_FORM_ITEM? formItem = FindFormItem(formItems, parameter);
+            if (formItem is null)
+            {
+                continue;
+            }
+
+            string key = CreateKey(formItem.Tab, formItem.Name);
+            valuesByKey.Add(key, parameter.Value);
+        }
         var activeCellCount = GetActiveCellCount(recipe.Parameters);
+        bool FilterParameter8(ST_RECIPE_PARAM parameter)
+        {
+            return IsCellScopedKey(parameter.Key) &&
+                            GetCellNo(parameter.Key) <= activeCellCount &&
+                            IsHoleOverrideWithinActivePattern(parameter, recipe.Parameters);
+        }
+
+        int GetParameterSortKey9(ST_RECIPE_PARAM parameter)
+        {
+            return GetCellNo(parameter.Key);
+        }
+
+        string GetParameterSortKey10(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Key;
+        }
+
         var cellScopedParameters = recipe.Parameters
-            .Where(parameter => IsCellScopedKey(parameter.Key) &&
-                GetCellNo(parameter.Key) <= activeCellCount &&
-                IsHoleOverrideWithinActivePattern(parameter, recipe.Parameters))
-            .OrderBy(parameter => GetCellNo(parameter.Key))
-            .ThenBy(parameter => parameter.Key, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterParameter8)
+            .OrderBy(GetParameterSortKey9)
+            .ThenBy(GetParameterSortKey10, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         var lines = new List<string>
@@ -133,10 +188,19 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         };
 
         var changedItems = new List<(string Tab, string Group, string ItemName, string OldValue, string NewValue)>();
+        bool FilterItem11(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.Use && !IsCellScopedTemplate(item);
+        }
+
+        int GetItemSortKey12(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.DisplayOrder;
+        }
 
         foreach (var item in formItems
-            .Where(item => item.Use && !IsCellScopedTemplate(item))
-            .OrderBy(item => item.DisplayOrder))
+            .Where(FilterItem11)
+            .OrderBy(GetItemSortKey12))
         {
             var key = CreateKey(item.Tab, item.Name);
             var value = valuesByKey.TryGetValue(key, out var editedValue)
@@ -207,7 +271,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         return Task.CompletedTask;
     }
 
-    public Task Rename(
+    public override Task Rename(
         string oldRecipeId,
         string newRecipeId,
         CancellationToken cancellationToken = default)
@@ -230,11 +294,26 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         }
 
         var formItems = LoadFormItems();
+        string HandleOldValues13(ST_RECIPE_VALUE item)
+        {
+            return CreateKey(item.Tab, item.Name);
+        }
+
+        string HandleOldValues14(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Key;
+        }
+
+        string HandleOldValues15(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Last().Value;
+        }
+
         var oldValues = ReadRecipeValues(oldPath)
-            .GroupBy(item => CreateKey(item.Tab, item.Name), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(HandleOldValues13, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last().Value,
+HandleOldValues14,
+HandleOldValues15,
                 StringComparer.OrdinalIgnoreCase);
         var oldRecipeName = GetValue(oldValues, "DEFAULT", "RECIPE_NAME", oldRecipeId);
         var activeCellCount = GetActiveCellCount(oldValues);
@@ -248,10 +327,19 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
             FormatRecipeLine("DEFAULT", "RECIPE_NAME", newRecipeId),
             FormatRecipeLine("DEFAULT", "RECIPE_ID", newRecipeId)
         };
+        bool FilterItem16(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.Use && !IsCellScopedTemplate(item);
+        }
+
+        int GetItemSortKey17(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.DisplayOrder;
+        }
 
         foreach (var item in formItems
-            .Where(item => item.Use && !IsCellScopedTemplate(item))
-            .OrderBy(item => item.DisplayOrder))
+            .Where(FilterItem16)
+            .OrderBy(GetItemSortKey17))
         {
             var value = item.Name.Equals("RECIPE_NAME", StringComparison.OrdinalIgnoreCase)
                 ? newRecipeId
@@ -260,13 +348,27 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
             expectedValues[CreateKey(item.Tab, item.Name)] = value;
             lines.Add(FormatRecipeLine(item.Tab, item.Name, value));
         }
+        bool FilterItem18(ST_RECIPE_VALUE item)
+        {
+            return item.Tab.Equals("CELL", StringComparison.OrdinalIgnoreCase) &&
+                            IsCellScopedKey(item.Name) &&
+                            GetCellNo(item.Name) <= activeCellCount;
+        }
+
+        int GetItemSortKey19(ST_RECIPE_VALUE item)
+        {
+            return GetCellNo(item.Name);
+        }
+
+        string GetItemSortKey20(ST_RECIPE_VALUE item)
+        {
+            return item.Name;
+        }
 
         foreach (var cellValue in ReadRecipeValues(oldPath)
-            .Where(item => item.Tab.Equals("CELL", StringComparison.OrdinalIgnoreCase) &&
-                IsCellScopedKey(item.Name) &&
-                GetCellNo(item.Name) <= activeCellCount)
-            .OrderBy(item => GetCellNo(item.Name))
-            .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+            .Where(FilterItem18)
+            .OrderBy(GetItemSortKey19)
+            .ThenBy(GetItemSortKey20, StringComparer.OrdinalIgnoreCase))
         {
             var parameterName = NormalizeCellScopedParameterName(GetCellParameterName(cellValue.Name));
             var scopedKey = $"CELL{GetCellNo(cellValue.Name)}_{parameterName}";
@@ -283,7 +385,7 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         return Task.CompletedTask;
     }
 
-    public Task Delete(string recipeId, CancellationToken cancellationToken = default)
+    public override Task Delete(string recipeId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -293,11 +395,26 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
 
         if (recipeExists)
         {
+            string HandleValues21(ST_RECIPE_VALUE item)
+            {
+                return CreateKey(item.Tab, item.Name);
+            }
+
+            string HandleValues22(IGrouping<string, ST_RECIPE_VALUE> group)
+            {
+                return group.Key;
+            }
+
+            string HandleValues23(IGrouping<string, ST_RECIPE_VALUE> group)
+            {
+                return group.Last().Value;
+            }
+
             var values = ReadRecipeValues(path)
-                .GroupBy(item => CreateKey(item.Tab, item.Name), StringComparer.OrdinalIgnoreCase)
+                .GroupBy(HandleValues21, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(
-                    group => group.Key,
-                    group => group.Last().Value,
+HandleValues22,
+HandleValues23,
                     StringComparer.OrdinalIgnoreCase);
 
             recipeName = GetValue(values, "DEFAULT", "RECIPE_NAME", recipeId);
@@ -321,52 +438,114 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         {
             return null;
         }
+        string HandleValues24(ST_RECIPE_VALUE item)
+        {
+            return CreateKey(item.Tab, item.Name);
+        }
+
+        string HandleValues25(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Key;
+        }
+
+        string HandleValues26(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Last().Value;
+        }
 
         var values = ReadRecipeValues(path)
-            .GroupBy(item => CreateKey(item.Tab, item.Name), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(HandleValues24, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last().Value,
+HandleValues25,
+HandleValues26,
                 StringComparer.OrdinalIgnoreCase);
 
         var recipeName = GetValue(values, "DEFAULT", "RECIPE_NAME", recipeId);
+        bool FilterItem27(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.Use;
+        }
+
+        int GetItemSortKey28(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.DisplayOrder;
+        }
+
+        ST_RECIPE_PARAM SelectItem29(ST_RECIPE_FORM_ITEM item)
+        {
+            return new ST_RECIPE_PARAM(
+                            item.DisplayName,
+                            GetValue(values, item.Tab, item.Name, item.DefaultValue),
+                            item.Unit,
+                            $"{item.Min.ToString("0.###", CultureInfo.InvariantCulture)} - {item.Max.ToString("0.###", CultureInfo.InvariantCulture)}",
+                            item.DefaultValue,
+                            item.Tab,
+                            item.Group,
+                            item.Name,
+                            item.Description,
+                            item.Show,
+                            item.Use,
+                            item.DisplayOrder,
+                            item.DataType,
+                            item.ChangeLimit,
+                            item.Min,
+                            item.Max,
+                            item.Extra);
+        }
+
         var parameters = formItems
-            .Where(item => item.Use)
-            .OrderBy(item => item.DisplayOrder)
-            .Select(item => new ST_RECIPE_PARAM(
-                item.DisplayName,
-                GetValue(values, item.Tab, item.Name, item.DefaultValue),
-                item.Unit,
-                $"{item.Min.ToString("0.###", CultureInfo.InvariantCulture)} - {item.Max.ToString("0.###", CultureInfo.InvariantCulture)}",
-                item.DefaultValue,
-                item.Tab,
-                item.Group,
-                item.Name,
-                item.Description,
-                item.Show,
-                item.Use,
-                item.DisplayOrder,
-                item.DataType,
-                item.ChangeLimit,
-                item.Min,
-                item.Max,
-                item.Extra))
+            .Where(FilterItem27)
+            .OrderBy(GetItemSortKey28)
+            .Select(SelectItem29)
             .ToList();
+        string HandleFormItemsByName30(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.Name;
+        }
+
+        string HandleFormItemsByName31(IGrouping<string, ST_RECIPE_FORM_ITEM> group)
+        {
+            return group.Key;
+        }
+
+        ST_RECIPE_FORM_ITEM HandleFormItemsByName32(IGrouping<string, ST_RECIPE_FORM_ITEM> group)
+        {
+            return group.First();
+        }
 
         var formItemsByName = formItems
-            .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            .GroupBy(HandleFormItemsByName30, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(HandleFormItemsByName31, HandleFormItemsByName32, StringComparer.OrdinalIgnoreCase);
+        bool FilterItem33(ST_RECIPE_VALUE item)
+        {
+            return item.Tab.Equals("CELL", StringComparison.OrdinalIgnoreCase) && IsCellScopedKey(item.Name);
+        }
+
+        int GetItemSortKey34(ST_RECIPE_VALUE item)
+        {
+            return GetCellNo(item.Name);
+        }
+
+        string GetItemSortKey35(ST_RECIPE_VALUE item)
+        {
+            return item.Name;
+        }
 
         foreach (var cellValue in ReadRecipeValues(path)
-            .Where(item => item.Tab.Equals("CELL", StringComparison.OrdinalIgnoreCase) && IsCellScopedKey(item.Name))
-            .OrderBy(item => GetCellNo(item.Name))
-            .ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase))
+            .Where(FilterItem33)
+            .OrderBy(GetItemSortKey34)
+            .ThenBy(GetItemSortKey35, StringComparer.OrdinalIgnoreCase))
         {
             var parameterName = NormalizeCellScopedParameterName(GetCellParameterName(cellValue.Name));
             var hasTemplate = formItemsByName.TryGetValue(parameterName, out var template) ||
                 formItemsByName.TryGetValue($"CELL_{parameterName}", out template);
             var normalizedScopedKey = $"CELL{GetCellNo(cellValue.Name)}_{parameterName}";
-            if (parameters.Any(parameter => parameter.Key.Equals(normalizedScopedKey, StringComparison.OrdinalIgnoreCase)))
+            bool CheckParameter36(ST_RECIPE_PARAM parameter)
+            {
+                return parameter.Key.Equals(normalizedScopedKey, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (parameters.Any(CheckParameter36))
             {
                 continue;
             }
@@ -423,8 +602,12 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
 
     private static int GetActiveCellCount(IEnumerable<ST_RECIPE_PARAM> parameters)
     {
-        var countValue = parameters.FirstOrDefault(parameter =>
-            parameter.Key.Equals("CELL_COUNT", StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchParameter37(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Key.Equals("CELL_COUNT", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var countValue = parameters.FirstOrDefault(MatchParameter37)?.Value;
 
         int.TryParse(countValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count);
 
@@ -437,10 +620,18 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
     {
         var parameterName = NormalizeCellScopedParameterName(GetCellParameterName(parameter.Key));
         var cellNo = GetCellNo(parameter.Key);
-        var countXValue = parameters.FirstOrDefault(item =>
-            item.Key.Equals($"CELL{cellNo}_NUM_OF_PIXEL_X", StringComparison.OrdinalIgnoreCase))?.Value;
-        var countYValue = parameters.FirstOrDefault(item =>
-            item.Key.Equals($"CELL{cellNo}_NUM_OF_PIXEL_Y", StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem38(ST_RECIPE_PARAM item)
+        {
+            return item.Key.Equals($"CELL{cellNo}_NUM_OF_PIXEL_X", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var countXValue = parameters.FirstOrDefault(MatchItem38)?.Value;
+        bool MatchItem39(ST_RECIPE_PARAM item)
+        {
+            return item.Key.Equals($"CELL{cellNo}_NUM_OF_PIXEL_Y", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var countYValue = parameters.FirstOrDefault(MatchItem39)?.Value;
         if (!int.TryParse(countXValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countX) ||
             !int.TryParse(countYValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var countY) ||
             countX <= 0 ||
@@ -549,14 +740,23 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         {
             return $"Cell{cellNo} {holeName} {namedDisplayName}";
         }
-
-        var itemName = parameterName.ToUpperInvariant() switch
+        string EvaluateValueSwitch1()
         {
-            "PIXEL_SIZE" => "Hole Size",
-            "NUM_OF_PIXEL_X" => "Hole Count X",
-            "NUM_OF_PIXEL_Y" => "Hole Count Y",
-            _ => parameter.Name
-        };
+            var switchValue = parameterName.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "PIXEL_SIZE":
+                    return "Hole Size";
+                case "NUM_OF_PIXEL_X":
+                    return "Hole Count X";
+                case "NUM_OF_PIXEL_Y":
+                    return "Hole Count Y";
+                default:
+                    return parameter.Name;
+            }
+        }
+
+        var itemName = EvaluateValueSwitch1();
         return $"Cell{cellNo} {itemName}";
     }
 
@@ -629,8 +829,12 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
             (Suffix: "_REVIEW_OFFSET_X", DisplayName: "Review Offset X"),
             (Suffix: "_REVIEW_OFFSET_Y", DisplayName: "Review Offset Y")
         };
-        var field = fields.FirstOrDefault(candidate =>
-            normalized.EndsWith(candidate.Suffix, StringComparison.Ordinal));
+        bool MatchCandidate40((string Suffix, string DisplayName) candidate)
+        {
+            return normalized.EndsWith(candidate.Suffix, StringComparison.Ordinal);
+        }
+
+        var field = fields.FirstOrDefault(MatchCandidate40);
         if (string.IsNullOrWhiteSpace(field.Suffix))
         {
             return false;
@@ -670,31 +874,45 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
 
     private IReadOnlyList<ST_RECIPE_FORM_ITEM> LoadFormItems()
     {
+        string[] SelectHeader41(string header)
+        {
+            return new[] { header };
+        }
+
         CCsvParser.ValidateRequiredHeaders(
             GetFormPath(),
             "JHMI_RCP",
-            FormHeaders.Select(header => new[] { header }));
+            FormHeaders.Select(SelectHeader41));
+        ST_RECIPE_FORM_ITEM SelectRow42(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return new ST_RECIPE_FORM_ITEM(
+                            CCsvParser.Get(row, "TAB"),
+                            CCsvParser.Get(row, "GROUP"),
+                            CCsvParser.Get(row, "NAME"),
+                            GetOrDefault(CCsvParser.Get(row, "DISPLAY NAME"), CCsvParser.Get(row, "NAME")),
+                            GetOrDefault(CCsvParser.Get(row, "CIM NAME"), CCsvParser.Get(row, "NAME")),
+                            ReadDataType(CCsvParser.Get(row, "DATA TYPE")),
+                            CCsvParser.Get(row, "UNIT"),
+                            ReadBool(CCsvParser.Get(row, "SHOW"), true),
+                            ReadBool(CCsvParser.Get(row, "USE"), true),
+                            CCsvParser.Get(row, "VALUE"),
+                            ReadDouble(CCsvParser.Get(row, "SCALE"), 1.0),
+                            ReadDouble(CCsvParser.Get(row, "CHANGE LIMIT"), 0.0),
+                            ReadDouble(CCsvParser.Get(row, "MIN"), 0.0),
+                            ReadDouble(CCsvParser.Get(row, "MAX"), 0.0),
+                            CCsvParser.Get(row, "DESCRIPTION"),
+                            ReadInt(CCsvParser.Get(row, "ORDER"), index + 1),
+                            CCsvParser.GetExtra(row, FormHeaders));
+        }
+
+        bool FilterItem43(ST_RECIPE_FORM_ITEM item)
+        {
+            return !string.IsNullOrWhiteSpace(item.Tab) && !string.IsNullOrWhiteSpace(item.Name);
+        }
 
         return CCsvParser.Read(GetFormPath())
-            .Select((row, index) => new ST_RECIPE_FORM_ITEM(
-                CCsvParser.Get(row, "TAB"),
-                CCsvParser.Get(row, "GROUP"),
-                CCsvParser.Get(row, "NAME"),
-                GetOrDefault(CCsvParser.Get(row, "DISPLAY NAME"), CCsvParser.Get(row, "NAME")),
-                GetOrDefault(CCsvParser.Get(row, "CIM NAME"), CCsvParser.Get(row, "NAME")),
-                ReadDataType(CCsvParser.Get(row, "DATA TYPE")),
-                CCsvParser.Get(row, "UNIT"),
-                ReadBool(CCsvParser.Get(row, "SHOW"), true),
-                ReadBool(CCsvParser.Get(row, "USE"), true),
-                CCsvParser.Get(row, "VALUE"),
-                ReadDouble(CCsvParser.Get(row, "SCALE"), 1.0),
-                ReadDouble(CCsvParser.Get(row, "CHANGE LIMIT"), 0.0),
-                ReadDouble(CCsvParser.Get(row, "MIN"), 0.0),
-                ReadDouble(CCsvParser.Get(row, "MAX"), 0.0),
-                CCsvParser.Get(row, "DESCRIPTION"),
-                ReadInt(CCsvParser.Get(row, "ORDER"), index + 1),
-                CCsvParser.GetExtra(row, FormHeaders)))
-            .Where(item => !string.IsNullOrWhiteSpace(item.Tab) && !string.IsNullOrWhiteSpace(item.Name))
+            .Select(SelectRow42)
+            .Where(FilterItem43)
             .ToArray();
     }
 
@@ -704,11 +922,20 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         {
             return [];
         }
+        bool FilterLine44(string line)
+        {
+            return !string.IsNullOrWhiteSpace(line);
+        }
+
+        bool FilterItem45(ST_RECIPE_VALUE? item)
+        {
+            return item is not null;
+        }
 
         return System.IO.File.ReadAllLines(path)
-            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Where(FilterLine44)
             .Select(ParseRecipeLine)
-            .Where(item => item is not null)
+            .Where(FilterItem45)
             .Cast<ST_RECIPE_VALUE>()
             .ToArray();
     }
@@ -778,9 +1005,13 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
     {
         if (!string.IsNullOrWhiteSpace(parameter.Tab) && !string.IsNullOrWhiteSpace(parameter.Key))
         {
-            var formItem = formItems.FirstOrDefault(item =>
-                item.Tab.Equals(parameter.Tab, StringComparison.OrdinalIgnoreCase) &&
-                item.Name.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem46(ST_RECIPE_FORM_ITEM item)
+            {
+                return item.Tab.Equals(parameter.Tab, StringComparison.OrdinalIgnoreCase) &&
+                                item.Name.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var formItem = formItems.FirstOrDefault(MatchItem46);
 
             if (formItem is not null)
             {
@@ -790,30 +1021,51 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
 
         if (!string.IsNullOrWhiteSpace(parameter.Key))
         {
-            var formItem = formItems.FirstOrDefault(item =>
-                item.Name.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem47(ST_RECIPE_FORM_ITEM item)
+            {
+                return item.Name.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var formItem = formItems.FirstOrDefault(MatchItem47);
 
             if (formItem is not null)
             {
                 return formItem;
             }
         }
+        bool MatchItem48(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.Name.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase);
+        }
 
-        return formItems.FirstOrDefault(item =>
-                item.Name.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase))
-            ?? formItems.FirstOrDefault(item =>
-                item.DisplayName.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem49(ST_RECIPE_FORM_ITEM item)
+        {
+            return item.DisplayName.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return formItems.FirstOrDefault(MatchItem48)
+            ?? formItems.FirstOrDefault(MatchItem49);
     }
 
     private static EN_RECIPE_DATA_TYPE ReadDataType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_RECIPE_DATA_TYPE EvaluateValueSwitch2()
         {
-            "INT" => EN_RECIPE_DATA_TYPE.Int,
-            "DOUBLE" => EN_RECIPE_DATA_TYPE.Double,
-            "BOOL" => EN_RECIPE_DATA_TYPE.Bool,
-            _ => EN_RECIPE_DATA_TYPE.String
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INT":
+                    return EN_RECIPE_DATA_TYPE.Int;
+                case "DOUBLE":
+                    return EN_RECIPE_DATA_TYPE.Double;
+                case "BOOL":
+                    return EN_RECIPE_DATA_TYPE.Bool;
+                default:
+                    return EN_RECIPE_DATA_TYPE.String;
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static bool ReadBool(string value, bool defaultValue)
@@ -878,11 +1130,26 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
         string path,
         IReadOnlyDictionary<string, string> expectedValues)
     {
+        string HandleActualValues50(ST_RECIPE_VALUE item)
+        {
+            return CreateKey(item.Tab, item.Name);
+        }
+
+        string HandleActualValues51(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Key;
+        }
+
+        string HandleActualValues52(IGrouping<string, ST_RECIPE_VALUE> group)
+        {
+            return group.Last().Value;
+        }
+
         var actualValues = ReadRecipeValues(path)
-            .GroupBy(item => CreateKey(item.Tab, item.Name), StringComparer.OrdinalIgnoreCase)
+            .GroupBy(HandleActualValues50, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last().Value,
+HandleActualValues51,
+HandleActualValues52,
                 StringComparer.OrdinalIgnoreCase);
 
         foreach (var expectedValue in expectedValues)
@@ -916,7 +1183,12 @@ public sealed class CJhmiRecipeFile(string configRoot) : IRecipeFile
     private static string GetSafeFileName(string recipeId)
     {
         var invalid = Path.GetInvalidFileNameChars();
-        return new string(recipeId.Select(character => invalid.Contains(character) ? '_' : character).ToArray());
+        char SelectCharacter53(char character)
+        {
+            return invalid.Contains(character) ? '_' : character;
+        }
+
+        return new string(recipeId.Select(SelectCharacter53).ToArray());
     }
 
     private static void DeleteIfExists(string path)

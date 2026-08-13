@@ -9,13 +9,13 @@ using Drilling.UI.Popup;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuManual : CBindingBase, IMenu
+public sealed class CMenuManual : CMenuBase
 {
     private const int ManualTaskIndex = 1;
 
     private readonly CManager _manager;
-    private readonly IManualScanFile _scanFile;
-    private readonly IAutomationScriptFile _scriptFile;
+    private readonly CManualScanFileBase _scanFile;
+    private readonly CAutomationScriptFileBase _scriptFile;
     private readonly Func<int> _selectedHeadNoProvider;
     private readonly Func<string> _selectedSettingNameProvider;
     private readonly Action<string> _selectedSettingNameSetter;
@@ -50,8 +50,8 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public CMenuManual(
         CManager manager,
-        IManualScanFile scanFile,
-        IAutomationScriptFile scriptFile,
+        CManualScanFileBase scanFile,
+        CAutomationScriptFileBase scriptFile,
         Func<int> selectedHeadNoProvider,
         Func<string> selectedSettingNameProvider,
         Action<string> selectedSettingNameSetter,
@@ -71,24 +71,118 @@ public sealed class CMenuManual : CBindingBase, IMenu
         _refreshCurrentScreen = refreshCurrentScreen;
 
         SelectHeadCommand = selectHeadCommand;
-        SelectSettingCommand = new CButtonCommand(async parameter => await SelectSetting(parameter));
-        CreateCommand = new CButtonCommand(async _ => await Create());
-        DeleteCommand = new CButtonCommand(async _ => await Delete());
-        RenameCommand = new CButtonCommand(async _ => await Rename());
-        SaveCommand = new CButtonCommand(async _ => await Save());
-        CenterMoveCommand = new CButtonCommand(async _ => await CenterMove());
-        PositionMoveCommand = new CButtonCommand(async _ => await PositionMove());
-        MoveStopCommand = new CButtonCommand(async _ => await MoveStop());
-        SelectShapeCommand = new CButtonCommand(async parameter => await SelectShape(parameter));
-        ShapeStartCommand = new CButtonCommand(async _ => await ShapeStart());
-        ShapeStopCommand = new CButtonCommand(async _ => await ShapeStop());
-        LaserOnCommand = new CButtonCommand(async _ => await LaserOn());
-        LaserOffCommand = new CButtonCommand(async _ => await LaserOff());
-        CenterOnCommand = new CButtonCommand(async _ => await CenterOn());
+
+        async void HandleSelectSettingCommand1(object? parameter)
+        {
+            await SelectSetting(parameter);
+        }
+
+        SelectSettingCommand = new CButtonCommand(HandleSelectSettingCommand1);
+
+        async void HandleCreateCommand2(object? _)
+        {
+            await Create();
+        }
+
+        CreateCommand = new CButtonCommand(HandleCreateCommand2);
+
+        async void HandleDeleteCommand3(object? _)
+        {
+            await Delete();
+        }
+
+        DeleteCommand = new CButtonCommand(HandleDeleteCommand3);
+
+        async void HandleRenameCommand4(object? _)
+        {
+            await Rename();
+        }
+
+        RenameCommand = new CButtonCommand(HandleRenameCommand4);
+
+        async void HandleSaveCommand5(object? _)
+        {
+            await Save();
+        }
+
+        SaveCommand = new CButtonCommand(HandleSaveCommand5);
+
+        async void HandleCenterMoveCommand6(object? _)
+        {
+            await CenterMove();
+        }
+
+        CenterMoveCommand = new CButtonCommand(HandleCenterMoveCommand6);
+
+        async void HandlePositionMoveCommand7(object? _)
+        {
+            await PositionMove();
+        }
+
+        PositionMoveCommand = new CButtonCommand(HandlePositionMoveCommand7);
+
+        async void HandleMoveStopCommand8(object? _)
+        {
+            await MoveStop();
+        }
+
+        MoveStopCommand = new CButtonCommand(HandleMoveStopCommand8);
+
+        async void HandleSelectShapeCommand9(object? parameter)
+        {
+            await SelectShape(parameter);
+        }
+
+        SelectShapeCommand = new CButtonCommand(HandleSelectShapeCommand9);
+
+        async void HandleShapeStartCommand10(object? _)
+        {
+            await ShapeStart();
+        }
+
+        ShapeStartCommand = new CButtonCommand(HandleShapeStartCommand10);
+
+        async void HandleShapeStopCommand11(object? _)
+        {
+            await ShapeStop();
+        }
+
+        ShapeStopCommand = new CButtonCommand(HandleShapeStopCommand11);
+
+        async void HandleLaserOnCommand12(object? _)
+        {
+            await LaserOn();
+        }
+
+        LaserOnCommand = new CButtonCommand(HandleLaserOnCommand12);
+
+        async void HandleLaserOffCommand13(object? _)
+        {
+            await LaserOff();
+        }
+
+        LaserOffCommand = new CButtonCommand(HandleLaserOffCommand13);
+
+        async void HandleCenterOnCommand14(object? _)
+        {
+            await CenterOn();
+        }
+
+        CenterOnCommand = new CButtonCommand(HandleCenterOnCommand14);
         SelectManualWorkspaceCommand = new CButtonCommand(SelectManualWorkspace);
         StageMoveCommand = new CButtonCommand(StageMove);
-        StageHomeCommand = new CButtonCommand(_ => StageHome());
-        StageStopCommand = new CButtonCommand(_ => StageStop());
+        void HandleStageHomeCommand15(object? _)
+        {
+            StageHome();
+        }
+
+        StageHomeCommand = new CButtonCommand(HandleStageHomeCommand15);
+        void HandleStageStopCommand16(object? _)
+        {
+            StageStop();
+        }
+
+        StageStopCommand = new CButtonCommand(HandleStageStopCommand16);
         VisionShotCommand = new CButtonCommand(VisionShot);
 
         StageAxes =
@@ -97,7 +191,13 @@ public sealed class CMenuManual : CBindingBase, IMenu
         ];
     }
 
-    public EN_MENU Menu => EN_MENU.Manual;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Manual;
+        }
+    }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> ManualSettings { get; private set; } = [];
 
@@ -117,61 +217,128 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public string TargetGx
     {
-        get => _targetGx;
-        set => SetProperty(ref _targetGx, value);
+        get
+        {
+            return _targetGx;
+        }
+
+        set
+        {
+            SetProperty(ref _targetGx, value);
+        }
     }
 
     public string TargetGy
     {
-        get => _targetGy;
-        set => SetProperty(ref _targetGy, value);
+        get
+        {
+            return _targetGy;
+        }
+
+        set
+        {
+            SetProperty(ref _targetGy, value);
+        }
     }
 
     public string ShapeSize
     {
-        get => _shapeSize;
-        set => SetProperty(ref _shapeSize, value);
+        get
+        {
+            return _shapeSize;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeSize, value);
+        }
     }
 
     public string ShapeOffsetX
     {
-        get => _shapeOffsetX;
-        set => SetProperty(ref _shapeOffsetX, value);
+        get
+        {
+            return _shapeOffsetX;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeOffsetX, value);
+        }
     }
 
     public string ShapeOffsetY
     {
-        get => _shapeOffsetY;
-        set => SetProperty(ref _shapeOffsetY, value);
+        get
+        {
+            return _shapeOffsetY;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeOffsetY, value);
+        }
     }
 
     public string ShapeDirection
     {
-        get => _shapeDirection;
-        set => SetProperty(ref _shapeDirection, value);
+        get
+        {
+            return _shapeDirection;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeDirection, value);
+        }
     }
 
     public string ShapeName
     {
-        get => _shapeName;
-        set => SetProperty(ref _shapeName, NormalizeShapeName(value));
+        get
+        {
+            return _shapeName;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeName, NormalizeShapeName(value));
+        }
     }
 
     public string GridRowLines
     {
-        get => _gridRowLines;
-        set => SetProperty(ref _gridRowLines, value);
+        get
+        {
+            return _gridRowLines;
+        }
+
+        set
+        {
+            SetProperty(ref _gridRowLines, value);
+        }
     }
 
     public string GridColLines
     {
-        get => _gridColLines;
-        set => SetProperty(ref _gridColLines, value);
+        get
+        {
+            return _gridColLines;
+        }
+
+        set
+        {
+            SetProperty(ref _gridColLines, value);
+        }
     }
 
     public string LaserOnMode
     {
-        get => _laserOnMode;
+        get
+        {
+            return _laserOnMode;
+        }
+
         set
         {
             var normalizedValue = NormalizeLaserOnMode(value);
@@ -184,20 +351,46 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
     }
 
-    public bool IsLaserTimeMode => IsLaserTimeModeValue(LaserOnMode);
+    public bool IsLaserTimeMode
+    {
+        get
+        {
+            return IsLaserTimeModeValue(LaserOnMode);
+        }
+    }
 
-    public bool IsLaserCountMode => !IsLaserTimeMode;
+    public bool IsLaserCountMode
+    {
+        get
+        {
+            return !IsLaserTimeMode;
+        }
+    }
 
     public string LaserOnTimeMsec
     {
-        get => _laserOnTimeMsec;
-        set => SetProperty(ref _laserOnTimeMsec, value);
+        get
+        {
+            return _laserOnTimeMsec;
+        }
+
+        set
+        {
+            SetProperty(ref _laserOnTimeMsec, value);
+        }
     }
 
     public string LaserShotCount
     {
-        get => _laserShotCount;
-        set => SetProperty(ref _laserShotCount, value);
+        get
+        {
+            return _laserShotCount;
+        }
+
+        set
+        {
+            SetProperty(ref _laserShotCount, value);
+        }
     }
 
     public IReadOnlyList<ST_MANUAL_HEAD_CARD> HeadCards { get; private set; } = [];
@@ -212,7 +405,11 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public bool IsScannerWorkspace
     {
-        get => _isScannerWorkspace;
+        get
+        {
+            return _isScannerWorkspace;
+        }
+
         private set
         {
             if (SetProperty(ref _isScannerWorkspace, value))
@@ -222,11 +419,21 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
     }
 
-    public bool IsStageVisionWorkspace => !IsScannerWorkspace;
+    public bool IsStageVisionWorkspace
+    {
+        get
+        {
+            return !IsScannerWorkspace;
+        }
+    }
 
     public ImageSource? VisionImage
     {
-        get => _visionImage;
+        get
+        {
+            return _visionImage;
+        }
+
         private set
         {
             if (SetProperty(ref _visionImage, value))
@@ -236,18 +443,38 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
     }
 
-    public bool HasVisionImage => VisionImage is not null;
+    public bool HasVisionImage
+    {
+        get
+        {
+            return VisionImage is not null;
+        }
+    }
 
     public string VisionCaptureStatus
     {
-        get => _visionCaptureStatus;
-        private set => SetProperty(ref _visionCaptureStatus, value);
+        get
+        {
+            return _visionCaptureStatus;
+        }
+
+        private set
+        {
+            SetProperty(ref _visionCaptureStatus, value);
+        }
     }
 
     public string VisionCaptureTime
     {
-        get => _visionCaptureTime;
-        private set => SetProperty(ref _visionCaptureTime, value);
+        get
+        {
+            return _visionCaptureTime;
+        }
+
+        private set
+        {
+            SetProperty(ref _visionCaptureTime, value);
+        }
     }
 
     public CButtonCommand SelectHeadCommand { get; }
@@ -290,7 +517,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public CButtonCommand VisionShotCommand { get; }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var settingNames = await _scanFile.List(cancellationToken);
         var formItems = await _scanFile.LoadForm(cancellationToken);
@@ -298,7 +525,12 @@ public sealed class CMenuManual : CBindingBase, IMenu
         var settings = await _scanFile.Load(selectedSettingName, cancellationToken);
         var selectedHeadNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
         var headCards = BuildHeadCards(selectedHeadNo);
-        var selectedHead = headCards.First(head => head.IsSelected);
+        bool MatchHead17(ST_MANUAL_HEAD_CARD head)
+        {
+            return head.IsSelected;
+        }
+
+        var selectedHead = headCards.First(MatchHead17);
 
         if (_lastBuiltHeadNo != selectedHeadNo ||
             string.IsNullOrWhiteSpace(TargetGx) ||
@@ -455,11 +687,16 @@ public sealed class CMenuManual : CBindingBase, IMenu
     private async Task Create()
     {
         var settingNames = await _scanFile.List();
+        string HandleNewSettingName18(string value)
+        {
+            return ValidateManualSettingName(NormalizeManualSettingNameInput(value), settingNames);
+        }
+
         var newSettingName = ShowManualSettingNameDialog(
             "Create Manual Setting",
             "Enter the new manual scan setting name.",
             "",
-            value => ValidateManualSettingName(NormalizeManualSettingNameInput(value), settingNames));
+HandleNewSettingName18);
 
         if (newSettingName is null)
         {
@@ -530,11 +767,16 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
 
         var settingNames = await _scanFile.List();
+        string HandleNewSettingName19(string value)
+        {
+            return ValidateManualSettingName(NormalizeManualSettingNameInput(value), settingNames, oldSettingName);
+        }
+
         var newSettingName = ShowManualSettingNameDialog(
             "Rename Manual Setting",
             "Enter the new manual scan setting name.",
             Path.GetFileNameWithoutExtension(oldSettingName),
-            value => ValidateManualSettingName(NormalizeManualSettingNameInput(value), settingNames, oldSettingName));
+HandleNewSettingName19);
 
         if (newSettingName is null)
         {
@@ -633,26 +875,28 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private async Task CenterMove()
     {
+        void RunManualScriptScriptCallback20(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
+        {
+            script.Jump(0.0, 0.0);
+            script.WaitMoveDone();
+        }
         await RunManualScript(
             "CENTER_MOVE",
-            (script, _) =>
-            {
-                script.Jump(0.0, 0.0);
-                script.WaitMoveDone();
-            });
+RunManualScriptScriptCallback20);
     }
 
     private async Task PositionMove()
     {
+        void RunManualScriptScriptCallback21(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
+        {
+            var gx = ReadRequiredDouble(TargetGx, "GX Target");
+            var gy = ReadRequiredDouble(TargetGy, "GY Target");
+            script.Jump(gx, gy);
+            script.WaitMoveDone();
+        }
         await RunManualScript(
             "POSITION_MOVE",
-            (script, _) =>
-            {
-                var gx = ReadRequiredDouble(TargetGx, "GX Target");
-                var gy = ReadRequiredDouble(TargetGy, "GY Target");
-                script.Jump(gx, gy);
-                script.WaitMoveDone();
-            });
+RunManualScriptScriptCallback21);
     }
 
     private async Task MoveStop()
@@ -674,14 +918,14 @@ public sealed class CMenuManual : CBindingBase, IMenu
     {
         var headNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
         var scriptName = BuildShapeScanScriptName(headNo, ShapeName);
-
+        void RunManualScriptScriptCallback22(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
+        {
+            AppendShape(script, settings);
+            script.GCodeMove(0.0, 0.0);
+        }
         await RunManualScript(
             scriptName,
-            (script, settings) =>
-            {
-                AppendShape(script, settings);
-                script.GCodeMove(0.0, 0.0);
-            },
+RunManualScriptScriptCallback22,
             ApplyManualFigureScanSetup,
             scriptName);
     }
@@ -693,16 +937,17 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private async Task LaserOn()
     {
+        void RunManualScriptScriptCallback23(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
+        {
+            var laserActionSettings = ReadLaserActionSettings(settings);
+            var moveDelaySeconds = ReadLaserMoveDelaySeconds(laserActionSettings);
+            script.LaserOn();
+            script.SetMoveDelay(moveDelaySeconds);
+            script.LaserOff();
+        }
         await RunManualScript(
             "LASER_ON",
-            (script, settings) =>
-            {
-                var laserActionSettings = ReadLaserActionSettings(settings);
-                var moveDelaySeconds = ReadLaserMoveDelaySeconds(laserActionSettings);
-                script.LaserOn();
-                script.SetMoveDelay(moveDelaySeconds);
-                script.LaserOff();
-            },
+RunManualScriptScriptCallback23,
             ApplyLaserActionScriptSetup);
 
         if (!_lastResult.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
@@ -713,9 +958,14 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private async Task LaserOff()
     {
+        void RunManualScriptScriptCallback24(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM _)
+        {
+            script.LaserOff();
+        }
+
         await RunManualScript(
             "LASER_OFF",
-            (script, _) => script.LaserOff(),
+RunManualScriptScriptCallback24,
             ApplyManualLaserOffScriptSetup);
 
         if (!_lastResult.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
@@ -727,18 +977,19 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private async Task CenterOn()
     {
+        void RunManualScriptScriptCallback25(CAutomation1ScriptBase script, ST_MANUAL_SCAN_PARAM settings)
+        {
+            var laserActionSettings = ReadLaserActionSettings(settings);
+            var moveDelaySeconds = ReadLaserMoveDelaySeconds(laserActionSettings);
+            script.Jump(0.0, 0.0);
+            script.WaitMoveDone();
+            script.LaserOn();
+            script.SetMoveDelay(moveDelaySeconds);
+            script.LaserOff();
+        }
         await RunManualScript(
             "CENTER_ON",
-            (script, settings) =>
-            {
-                var laserActionSettings = ReadLaserActionSettings(settings);
-                var moveDelaySeconds = ReadLaserMoveDelaySeconds(laserActionSettings);
-                script.Jump(0.0, 0.0);
-                script.WaitMoveDone();
-                script.LaserOn();
-                script.SetMoveDelay(moveDelaySeconds);
-                script.LaserOff();
-            },
+RunManualScriptScriptCallback25,
             ApplyLaserActionScriptSetup);
 
         if (!_lastResult.StartsWith("ERROR", StringComparison.OrdinalIgnoreCase))
@@ -750,8 +1001,8 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private async Task RunManualScript(
         string commandName,
-        Action<IAutomation1Script, ST_MANUAL_SCAN_PARAM> buildScript,
-        Action<IAutomation1Script, ST_MANUAL_SCAN_PARAM>? setupScript = null,
+        Action<CAutomation1ScriptBase, ST_MANUAL_SCAN_PARAM> buildScript,
+        Action<CAutomation1ScriptBase, ST_MANUAL_SCAN_PARAM>? setupScript = null,
         string? scriptFileName = null,
         CancellationToken cancellationToken = default)
     {
@@ -836,12 +1087,22 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private void RefreshCommandStateRows()
     {
-        var selectedHead = HeadCards.FirstOrDefault(head => head.IsSelected);
+        bool MatchHead26(ST_MANUAL_HEAD_CARD head)
+        {
+            return head.IsSelected;
+        }
+
+        var selectedHead = HeadCards.FirstOrDefault(MatchHead26);
 
         if (selectedHead is null)
         {
             var selectedHeadNo = Math.Clamp(_selectedHeadNoProvider(), 1, 8);
-            selectedHead = BuildHeadCards(selectedHeadNo).First(head => head.IsSelected);
+            bool MatchHead27(ST_MANUAL_HEAD_CARD head)
+            {
+                return head.IsSelected;
+            }
+
+            selectedHead = BuildHeadCards(selectedHeadNo).First(MatchHead27);
         }
 
         var settings = TryReadManualParamFromScreen(out var currentSettings, out _)
@@ -861,7 +1122,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private static void ApplyManualScriptSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         script.DefaultSetting(resetPso: false);
@@ -873,21 +1134,21 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private void ApplyLaserActionScriptSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         ApplyManualScriptSetup(script, ReadLaserActionSettings(settings));
     }
 
     private static void ApplyManualLaserOffScriptSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM _)
     {
         script.DefaultSetting(resetPso: false);
     }
 
     private static void ApplyManualFigureScanSetup(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         script.DefaultFigureScanSetting();
@@ -903,7 +1164,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private static void AppendManualSettingComment(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         script.AddLine($"// ManualSetting LaserPower={FormatDouble(settings.LaserPower, 3)} W");
@@ -915,7 +1176,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private void AppendShape(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         ST_MANUAL_SCAN_PARAM settings)
     {
         var shapeName = NormalizeShapeName(settings.ShapeName);
@@ -963,7 +1224,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private static void DrawGrid(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double cx,
         double cy,
         double half,
@@ -1005,7 +1266,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private static void DrawLine(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double startX,
         double startY,
         double endX,
@@ -1018,7 +1279,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private static void DrawRect(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double cx,
         double cy,
         double half,
@@ -1050,7 +1311,7 @@ public sealed class CMenuManual : CBindingBase, IMenu
     }
 
     private static void DrawCircle(
-        IAutomation1Script script,
+        CAutomation1ScriptBase script,
         double cx,
         double cy,
         double radius,
@@ -1204,11 +1465,18 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
 
         var normalizedSelectedName = NormalizeSettingName(selectedSettingName);
+        bool MatchName28(string name)
+        {
+            return name.Equals(normalizedSelectedName, StringComparison.OrdinalIgnoreCase);
+        }
 
-        return settingNames.FirstOrDefault(name =>
-                name.Equals(normalizedSelectedName, StringComparison.OrdinalIgnoreCase))
-            ?? settingNames.FirstOrDefault(name =>
-                name.Equals("CIRCLE_TEST.scan", StringComparison.OrdinalIgnoreCase))
+        bool MatchName29(string name)
+        {
+            return name.Equals("CIRCLE_TEST.scan", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return settingNames.FirstOrDefault(MatchName28)
+            ?? settingNames.FirstOrDefault(MatchName29)
             ?? settingNames[0];
     }
 
@@ -1216,11 +1484,21 @@ public sealed class CMenuManual : CBindingBase, IMenu
         IReadOnlyList<string> settingNames,
         string selectedSettingName)
     {
+        string GetNameSortKey30(string name)
+        {
+            return name;
+        }
+
+        ST_MANUAL_SETTING_FILE SelectName31(string name)
+        {
+            return new ST_MANUAL_SETTING_FILE(
+                            name,
+                            name.Equals(selectedSettingName, StringComparison.OrdinalIgnoreCase));
+        }
+
         return settingNames
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
-            .Select(name => new ST_MANUAL_SETTING_FILE(
-                name,
-                name.Equals(selectedSettingName, StringComparison.OrdinalIgnoreCase)))
+            .OrderBy(GetNameSortKey30, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectName31)
             .ToArray();
     }
 
@@ -1244,32 +1522,71 @@ public sealed class CMenuManual : CBindingBase, IMenu
             ["LaserOnDelay"] = FormatDouble(settings.LaserOnDelay, 3),
             ["LaserOffDelay"] = FormatDouble(settings.LaserOffDelay, 3)
         };
+        bool FilterItem32(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.Show && item.Use;
+        }
+
+        int GetItemSortKey33(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.DisplayOrder;
+        }
+
+        ST_MANUAL_PARAMETER SelectItem34(ST_MANUAL_SCAN_FORM item)
+        {
+            return new ST_MANUAL_PARAMETER(
+                            item.Name,
+                            item.DisplayName,
+                            values.TryGetValue(item.Name, out var value) ? value : item.DefaultValue,
+                            item.Unit,
+                            item.DataType,
+                            item.Min,
+                            item.Max);
+        }
 
         return formItems
-            .Where(item => item.Show && item.Use)
-            .OrderBy(item => item.DisplayOrder)
-            .Select(item => new ST_MANUAL_PARAMETER(
-                item.Name,
-                item.DisplayName,
-                values.TryGetValue(item.Name, out var value) ? value : item.DefaultValue,
-                item.Unit,
-                item.DataType,
-                item.Min,
-                item.Max))
+            .Where(FilterItem32)
+            .OrderBy(GetItemSortKey33)
+            .Select(SelectItem34)
             .ToArray();
     }
 
     private IReadOnlyList<ST_MANUAL_COMMAND_STATE> BuildCommandStateRows(
         ST_MANUAL_HEAD_CARD selectedHead)
     {
+        void HandleValueCallback35(string value)
+        {
+            _laserActionPower = value;
+        }
+
+        void HandleValueCallback36(string value)
+        {
+            _laserActionFrequency = value;
+        }
+
+        void HandleValueCallback37(string value)
+        {
+            LaserOnMode = value;
+        }
+
+        void HandleValueCallback38(string value)
+        {
+            LaserOnTimeMsec = value;
+        }
+
+        void HandleValueCallback39(string value)
+        {
+            LaserShotCount = value;
+        }
+
         return
         [
             new("Selected Head", selectedHead.HeadName),
-            new("Laser Power", _laserActionPower, "W", true, value => _laserActionPower = value),
-            new("Frequency", _laserActionFrequency, "kHz", true, value => _laserActionFrequency = value),
-            new("Laser On Mode", LaserOnMode, "-", true, value => LaserOnMode = value, NormalizeLaserOnMode),
-            new("Laser On Time", LaserOnTimeMsec, "msec", true, value => LaserOnTimeMsec = value),
-            new("Shot Count", LaserShotCount, "count", true, value => LaserShotCount = value)
+            new("Laser Power", _laserActionPower, "W", true, HandleValueCallback35),
+            new("Frequency", _laserActionFrequency, "kHz", true, HandleValueCallback36),
+            new("Laser On Mode", LaserOnMode, "-", true, HandleValueCallback37, NormalizeLaserOnMode),
+            new("Laser On Time", LaserOnTimeMsec, "msec", true, HandleValueCallback38),
+            new("Shot Count", LaserShotCount, "count", true, HandleValueCallback39)
         ];
     }
 
@@ -1380,8 +1697,12 @@ public sealed class CMenuManual : CBindingBase, IMenu
         string parameterName,
         string defaultValue = "")
     {
-        var row = SettingParameters.FirstOrDefault(parameter =>
-            parameter.Parameter.Equals(parameterName, StringComparison.OrdinalIgnoreCase));
+        bool MatchParameter40(ST_MANUAL_PARAMETER parameter)
+        {
+            return parameter.Parameter.Equals(parameterName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var row = SettingParameters.FirstOrDefault(MatchParameter40);
 
         if (row is null)
         {
@@ -1398,9 +1719,13 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private ST_MANUAL_PARAMETER FindManualParameter(string parameterName)
     {
-        return SettingParameters.FirstOrDefault(parameter =>
-                parameter.Key.Equals(parameterName, StringComparison.OrdinalIgnoreCase) ||
-                parameter.Parameter.Equals(parameterName, StringComparison.OrdinalIgnoreCase))
+        bool MatchParameter41(ST_MANUAL_PARAMETER parameter)
+        {
+            return parameter.Key.Equals(parameterName, StringComparison.OrdinalIgnoreCase) ||
+                            parameter.Parameter.Equals(parameterName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return SettingParameters.FirstOrDefault(MatchParameter41)
             ?? throw new InvalidDataException($"{parameterName} parameter does not exist in Manual Setting.");
     }
 
@@ -1479,12 +1804,21 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private static string GetManualSettingNameFromParameter(object? parameter)
     {
-        var value = parameter switch
+        string EvaluateParameterSwitch1()
         {
-            ST_MANUAL_SETTING_FILE settingFile => settingFile.Name,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_MANUAL_SETTING_FILE settingFile:
+                    return settingFile.Name;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        var value = EvaluateParameterSwitch1();
 
         return NormalizeManualSettingNameInput(value);
     }
@@ -1530,9 +1864,14 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private static Window? GetActiveWindow()
     {
+        bool MatchWindow42(Window window)
+        {
+            return window.IsActive;
+        }
+
         return Application.Current?.Windows
             .OfType<Window>()
-            .FirstOrDefault(window => window.IsActive);
+            .FirstOrDefault(MatchWindow42);
     }
 
     private static string NormalizeManualSettingNameInput(string value)
@@ -1587,10 +1926,13 @@ public sealed class CMenuManual : CBindingBase, IMenu
         {
             return "Manual setting name is reserved by Windows.";
         }
+        bool CheckName43(string name)
+        {
+            return name.Equals(settingName, StringComparison.OrdinalIgnoreCase) &&
+                        !name.Equals(currentSettingName, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var exists = settingNames.Any(name =>
-            name.Equals(settingName, StringComparison.OrdinalIgnoreCase) &&
-            !name.Equals(currentSettingName, StringComparison.OrdinalIgnoreCase));
+        var exists = settingNames.Any(CheckName43);
 
         return exists
             ? $"Manual setting {settingName} already exists."
@@ -1613,8 +1955,13 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private static string NormalizeScriptName(string commandName)
     {
+        bool FilterCharacter44(char character)
+        {
+            return char.IsLetterOrDigit(character) || character == '_' || character == '-';
+        }
+
         var normalized = new string(commandName
-            .Where(character => char.IsLetterOrDigit(character) || character == '_' || character == '-')
+            .Where(FilterCharacter44)
             .ToArray());
 
         return string.IsNullOrWhiteSpace(normalized)
@@ -1636,17 +1983,29 @@ public sealed class CMenuManual : CBindingBase, IMenu
     private static string NormalizeShapeName(string shapeName)
     {
         var normalized = shapeName.Trim();
-
-        return normalized.ToUpperInvariant() switch
+        string EvaluateValueSwitch2()
         {
-            "DOT" => "Dot",
-            "CROSS" => "Cross",
-            "RECT" or "RECTANGLE" => "Rect",
-            "GRID" => "Grid",
-            "H-LINE" or "HLINE" or "H_LINE" => "H-Line",
-            "V-LINE" or "VLINE" or "V_LINE" => "V-Line",
-            _ => "Circle"
-        };
+            var switchValue = normalized.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "DOT":
+                    return "Dot";
+                case "CROSS":
+                    return "Cross";
+                case "RECT" or "RECTANGLE":
+                    return "Rect";
+                case "GRID":
+                    return "Grid";
+                case "H-LINE" or "HLINE" or "H_LINE":
+                    return "H-Line";
+                case "V-LINE" or "VLINE" or "V_LINE":
+                    return "V-Line";
+                default:
+                    return "Circle";
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static string FormatDouble(
@@ -1669,7 +2028,13 @@ public sealed record ST_MANUAL_HEAD_CARD(
     string State,
     bool IsSelected)
 {
-    public Brush StateBrush => CStatusBrush.ForHeadStatus(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForHeadStatus(State);
+        }
+    }
 }
 
 public sealed record ST_MANUAL_SETTING_FILE(
@@ -1692,12 +2057,25 @@ public sealed class ST_MANUAL_STAGE_AXIS : CBindingBase
 
     public string Unit { get; }
 
-    public string CurrentPosition => "-";
+    public string CurrentPosition
+    {
+        get
+        {
+            return "-";
+        }
+    }
 
     public string TargetPosition
     {
-        get => _targetPosition;
-        set => SetProperty(ref _targetPosition, value);
+        get
+        {
+            return _targetPosition;
+        }
+
+        set
+        {
+            SetProperty(ref _targetPosition, value);
+        }
     }
 }
 
@@ -1729,19 +2107,38 @@ public sealed class ST_MANUAL_PARAMETER : CBindingBase
 
     public string Value
     {
-        get => _value;
-        set => SetProperty(ref _value, value);
+        get
+        {
+            return _value;
+        }
+
+        set
+        {
+            SetProperty(ref _value, value);
+        }
     }
 
     public string Unit { get; }
 
     public EN_RECIPE_DATA_TYPE DataType { get; }
 
-    public bool UsesSelectionEditor => DataType == EN_RECIPE_DATA_TYPE.Bool;
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return DataType == EN_RECIPE_DATA_TYPE.Bool;
+        }
+    }
 
-    public IReadOnlyList<string> ValueOptions => Value.Trim() is "0" or "1"
+    public IReadOnlyList<string> ValueOptions
+    {
+        get
+        {
+            return Value.Trim() is "0" or "1"
         ? ["0", "1"]
         : ["OFF", "ON"];
+        }
+    }
 
     public double Min { get; }
 
@@ -1774,7 +2171,11 @@ public sealed class ST_MANUAL_COMMAND_STATE : CBindingBase
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             var nextValue = _normalizeValue?.Invoke(value) ?? value;
@@ -1789,9 +2190,21 @@ public sealed class ST_MANUAL_COMMAND_STATE : CBindingBase
 
     public bool IsEditable { get; }
 
-    public bool IsReadOnly => !IsEditable;
+    public bool IsReadOnly
+    {
+        get
+        {
+            return !IsEditable;
+        }
+    }
 
-    public bool UsesSelectionEditor => Name.Equals("Laser On Mode", StringComparison.OrdinalIgnoreCase);
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return Name.Equals("Laser On Mode", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public IReadOnlyList<string> ValueOptions { get; } = ["TIME", "COUNT"];
 }

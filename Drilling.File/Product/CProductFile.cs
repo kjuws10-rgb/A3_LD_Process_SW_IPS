@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.Product;
 
-public sealed class CProductFile(string configRoot) : IProductFile
+public sealed class CProductFile(string configRoot) : CProductFileBase
 {
     private static readonly IReadOnlyList<string> ActiveHeaders =
     [
@@ -59,13 +59,17 @@ public sealed class CProductFile(string configRoot) : IProductFile
         "Data",
         "Product");
 
-    public Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
+    public override Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var rows = CCsvParser.Read(GetActiveProductPath());
-        var productRow = rows.FirstOrDefault(row =>
-            CCsvParser.Get(row, "ROW_TYPE").Equals("PRODUCT", StringComparison.OrdinalIgnoreCase));
+        bool MatchRow1(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "ROW_TYPE").Equals("PRODUCT", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var productRow = rows.FirstOrDefault(MatchRow1);
 
         if (productRow is null)
         {
@@ -77,19 +81,53 @@ public sealed class CProductFile(string configRoot) : IProductFile
         {
             return Task.FromResult<ST_PRODUCT_DATA?>(null);
         }
+        bool FilterRow2(IReadOnlyDictionary<string, string> row)
+        {
+            return IsProductRow(row, productId, "PARAM");
+        }
+
+        string GroupByRowCallback3(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "NAME");
+        }
+
+        bool FilterGroup4(IGrouping<string, IReadOnlyDictionary<string, string>> group)
+        {
+            return !string.IsNullOrWhiteSpace(group.Key);
+        }
+
+        string HandleParameters5(IGrouping<string, IReadOnlyDictionary<string, string>> group)
+        {
+            return group.Key;
+        }
+
+        string HandleParameters6(IGrouping<string, IReadOnlyDictionary<string, string>> group)
+        {
+            return CCsvParser.Get(group.Last(), "VALUE");
+        }
 
         var parameters = rows
-            .Where(row => IsProductRow(row, productId, "PARAM"))
-            .GroupBy(row => CCsvParser.Get(row, "NAME"), StringComparer.OrdinalIgnoreCase)
-            .Where(group => !string.IsNullOrWhiteSpace(group.Key))
+            .Where(FilterRow2)
+            .GroupBy(GroupByRowCallback3, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterGroup4)
             .ToDictionary(
-                group => group.Key,
-                group => CCsvParser.Get(group.Last(), "VALUE"),
+HandleParameters5,
+HandleParameters6,
                 StringComparer.OrdinalIgnoreCase);
+        bool FilterRow7(IReadOnlyDictionary<string, string> row)
+        {
+            return IsProductRow(row, productId, "HEAD");
+        }
+
+        int GetHeadSortKey8(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo;
+        }
+
         var heads = rows
-            .Where(row => IsProductRow(row, productId, "HEAD"))
+            .Where(FilterRow7)
             .Select(ParseHead)
-            .OrderBy(head => head.HeadNo)
+            .OrderBy(GetHeadSortKey8)
             .ToArray();
 
         var product = new ST_PRODUCT_DATA(
@@ -109,7 +147,7 @@ public sealed class CProductFile(string configRoot) : IProductFile
         return Task.FromResult<ST_PRODUCT_DATA?>(product);
     }
 
-    public Task SaveActive(
+    public override Task SaveActive(
         ST_PRODUCT_DATA product,
         CancellationToken cancellationToken = default)
     {
@@ -119,26 +157,45 @@ public sealed class CProductFile(string configRoot) : IProductFile
         {
             ToProductRow(product)
         };
+        string GetItemSortKey9(KeyValuePair<string, string> item)
+        {
+            return item.Key;
+        }
+
+        IReadOnlyDictionary<string, string> SelectItem10(KeyValuePair<string, string> item)
+        {
+            return ToParameterRow(product.ProductId, item.Key, item.Value);
+        }
 
         rows.AddRange(product.Parameters
-            .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(item => ToParameterRow(product.ProductId, item.Key, item.Value)));
+            .OrderBy(GetItemSortKey9, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectItem10));
+        int GetHeadSortKey11(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo;
+        }
+
+        IReadOnlyDictionary<string, string> SelectHead12(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return ToHeadRow(product.ProductId, head);
+        }
+
         rows.AddRange(product.Heads
-            .OrderBy(head => head.HeadNo)
-            .Select(head => ToHeadRow(product.ProductId, head)));
+            .OrderBy(GetHeadSortKey11)
+            .Select(SelectHead12));
 
         CCsvParser.Write(GetActiveProductPath(), ActiveHeaders, rows);
         return Task.CompletedTask;
     }
 
-    public Task ClearActive(CancellationToken cancellationToken = default)
+    public override Task ClearActive(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         DeleteIfExists(GetActiveProductPath());
         return Task.CompletedTask;
     }
 
-    public Task AppendHistory(
+    public override Task AppendHistory(
         ST_PRODUCT_HISTORY history,
         CancellationToken cancellationToken = default)
     {
@@ -147,14 +204,19 @@ public sealed class CProductFile(string configRoot) : IProductFile
         return Task.CompletedTask;
     }
 
-    public Task AppendHeadResults(
+    public override Task AppendHeadResults(
         ST_PRODUCT_DATA product,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var path = GetHistoryPath(DateTimeOffset.Now);
-        foreach (var head in product.Heads.OrderBy(head => head.HeadNo))
+        int GetHeadSortKey13(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo;
+        }
+
+        foreach (var head in product.Heads.OrderBy(GetHeadSortKey13))
         {
             AppendRow(path, HistoryHeaders, ToHeadResultRow(product, head));
         }
@@ -162,7 +224,7 @@ public sealed class CProductFile(string configRoot) : IProductFile
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+    public override Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
         int maxRows = 100,
         int days = 14,
         CancellationToken cancellationToken = default)
@@ -170,13 +232,28 @@ public sealed class CProductFile(string configRoot) : IProductFile
         cancellationToken.ThrowIfCancellationRequested();
 
         var today = DateTime.Today;
+        DateTime SelectOffset14(int offset)
+        {
+            return today.AddDays(-offset);
+        }
+
+        string SelectDate15(DateTime date)
+        {
+            return GetHistoryPath(new DateTimeOffset(date));
+        }
+
+        DateTimeOffset GetHistorySortKey16(ST_PRODUCT_HISTORY history)
+        {
+            return history.OccurredAt;
+        }
+
         var histories = Enumerable.Range(0, Math.Max(1, days))
-            .Select(offset => today.AddDays(-offset))
-            .Select(date => GetHistoryPath(new DateTimeOffset(date)))
+            .Select(SelectOffset14)
+            .Select(SelectDate15)
             .Where(System.IO.File.Exists)
             .SelectMany(CCsvParser.Read)
             .Select(ParseHistory)
-            .OrderByDescending(history => history.OccurredAt)
+            .OrderByDescending(GetHistorySortKey16)
             .Take(Math.Max(1, maxRows))
             .ToArray();
 

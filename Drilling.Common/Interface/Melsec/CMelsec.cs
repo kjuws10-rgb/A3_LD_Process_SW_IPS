@@ -45,39 +45,12 @@ public sealed record ST_MELSEC_MAP_DATA(
     int PollMs,
     string Description);
 
-public interface IMelsecMapFile
+public abstract class CMelsecMapFileBase
 {
-    Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
 
-public interface IMelsec
-{
-    IReadOnlyList<ST_MELSEC_MAP_DATA> Map { get; }
-
-    void ReloadMap(IReadOnlyList<ST_MELSEC_MAP_DATA> map);
-
-    IReadOnlyList<ST_MELSEC_MAP_DATA> GetMapList(string group = "");
-
-    ST_MELSEC_MAP_DATA GetMapData(string id);
-
-    Task<bool> ReadBit(string id, CancellationToken cancellationToken = default);
-
-    Task WriteBit(string id, bool value, CancellationToken cancellationToken = default);
-
-    Task<int> ReadWord(string id, CancellationToken cancellationToken = default);
-
-    Task WriteWord(string id, int value, CancellationToken cancellationToken = default);
-
-    Task<double> ReadDouble(string id, CancellationToken cancellationToken = default);
-
-    Task WriteDouble(string id, double value, CancellationToken cancellationToken = default);
-
-    Task<string> ReadString(string id, CancellationToken cancellationToken = default);
-
-    Task WriteString(string id, string value, CancellationToken cancellationToken = default);
-}
-
-public sealed class CMelsec : IMelsec, IDisposable
+public sealed class CMelsec
 {
     private const ushort McCommandBatchRead = 0x0401;
     private const ushort McCommandBatchWrite = 0x1401;
@@ -85,8 +58,8 @@ public sealed class CMelsec : IMelsec, IDisposable
     private const ushort DefaultMonitoringTimer = 0x0010;
     private const int DefaultConnectTimeoutMs = 700;
 
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly ILogManager? _logManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CLogManager? _logManager;
     private readonly SemaphoreSlim _ioLock = new(1, 1);
     private readonly Dictionary<string, ushort> _simulationWords = new(StringComparer.OrdinalIgnoreCase);
 
@@ -96,8 +69,8 @@ public sealed class CMelsec : IMelsec, IDisposable
     private string _connectedEndpoint = "";
 
     public CMelsec(
-        IInterfaceManager interfaceManager,
-        ILogManager? logManager = null,
+        CInterfaceManager interfaceManager,
+        CLogManager? logManager = null,
         IReadOnlyList<ST_MELSEC_MAP_DATA>? map = null)
     {
         _interfaceManager = interfaceManager;
@@ -105,26 +78,61 @@ public sealed class CMelsec : IMelsec, IDisposable
         ReloadMap(map ?? []);
     }
 
-    public IReadOnlyList<ST_MELSEC_MAP_DATA> Map => _map.Values
-        .OrderBy(data => data.Group, StringComparer.OrdinalIgnoreCase)
-        .ThenBy(data => data.DeviceNo)
-        .ThenBy(data => data.Id, StringComparer.OrdinalIgnoreCase)
+    public IReadOnlyList<ST_MELSEC_MAP_DATA> Map
+    {
+        get
+        {
+            string GetDataSortKey1(ST_MELSEC_MAP_DATA data)
+            {
+                return data.Group;
+            }
+
+            int GetDataSortKey2(ST_MELSEC_MAP_DATA data)
+            {
+                return data.DeviceNo;
+            }
+
+            string GetDataSortKey3(ST_MELSEC_MAP_DATA data)
+            {
+                return data.Id;
+            }
+
+            return _map.Values
+        .OrderBy(GetDataSortKey1, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(GetDataSortKey2)
+        .ThenBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
         .ToArray();
+        }
+    }
 
     public void ReloadMap(IReadOnlyList<ST_MELSEC_MAP_DATA> map)
     {
+        bool FilterData4(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Use;
+        }
+
+        string HandleMap5(ST_MELSEC_MAP_DATA data)
+        {
+            return NormalizeId(data.Id);
+        }
+
         _map = map
-            .Where(data => data.Use)
-            .ToDictionary(data => NormalizeId(data.Id), StringComparer.OrdinalIgnoreCase);
+            .Where(FilterData4)
+            .ToDictionary(HandleMap5, StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<ST_MELSEC_MAP_DATA> GetMapList(string group = "")
     {
         var normalizedGroup = group.Trim();
+        bool FilterData6(ST_MELSEC_MAP_DATA data)
+        {
+            return string.IsNullOrWhiteSpace(normalizedGroup) ||
+                            data.Group.Equals(normalizedGroup, StringComparison.OrdinalIgnoreCase);
+        }
 
         return Map
-            .Where(data => string.IsNullOrWhiteSpace(normalizedGroup) ||
-                data.Group.Equals(normalizedGroup, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterData6)
             .ToArray();
     }
 
@@ -136,9 +144,13 @@ public sealed class CMelsec : IMelsec, IDisposable
         {
             return data;
         }
+        string GetKeySortKey7(string key)
+        {
+            return key;
+        }
 
         throw new InvalidOperationException(
-            $"MELSEC map was not registered: {id}. Available={string.Join(", ", _map.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase))}");
+            $"MELSEC map was not registered: {id}. Available={string.Join(", ", _map.Keys.OrderBy(GetKeySortKey7, StringComparer.OrdinalIgnoreCase))}");
     }
 
     public async Task<bool> ReadBit(string id, CancellationToken cancellationToken = default)
@@ -676,25 +688,47 @@ public sealed class CMelsec : IMelsec, IDisposable
 
     private static byte GetDeviceCode(string device)
     {
-        return device switch
+        byte EvaluateDeviceSwitch1()
         {
-            "M" => 0x90,
-            "SM" => 0x91,
-            "L" => 0x92,
-            "F" => 0x93,
-            "V" => 0x94,
-            "X" => 0x9C,
-            "Y" => 0x9D,
-            "B" => 0xA0,
-            "SB" => 0xA1,
-            "D" => 0xA8,
-            "SD" => 0xA9,
-            "R" => 0xAF,
-            "ZR" => 0xB0,
-            "W" => 0xB4,
-            "SW" => 0xB5,
-            _ => throw new NotSupportedException($"MELSEC device is not supported: {device}")
-        };
+            var switchValue = device;
+            switch (switchValue)
+            {
+                case "M":
+                    return 0x90;
+                case "SM":
+                    return 0x91;
+                case "L":
+                    return 0x92;
+                case "F":
+                    return 0x93;
+                case "V":
+                    return 0x94;
+                case "X":
+                    return 0x9C;
+                case "Y":
+                    return 0x9D;
+                case "B":
+                    return 0xA0;
+                case "SB":
+                    return 0xA1;
+                case "D":
+                    return 0xA8;
+                case "SD":
+                    return 0xA9;
+                case "R":
+                    return 0xAF;
+                case "ZR":
+                    return 0xB0;
+                case "W":
+                    return 0xB4;
+                case "SW":
+                    return 0xB5;
+                default:
+                    throw new NotSupportedException($"MELSEC device is not supported: {device}");
+            }
+        }
+
+        return EvaluateDeviceSwitch1();
     }
 
     private static int RequireWordBit(
@@ -903,7 +937,12 @@ public sealed class CMelsec : IMelsec, IDisposable
 
     private static string WordsToHexText(IReadOnlyList<ushort> words)
     {
-        return string.Join(" ", words.Select(word => word.ToString("X4", CultureInfo.InvariantCulture)));
+        string SelectWord8(ushort word)
+        {
+            return word.ToString("X4", CultureInfo.InvariantCulture);
+        }
+
+        return string.Join(" ", words.Select(SelectWord8));
     }
 
     private static string FormatMap(ST_MELSEC_MAP_DATA data)

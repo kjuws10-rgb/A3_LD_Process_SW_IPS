@@ -90,7 +90,13 @@ public sealed record ST_INTERFACE_COMM_STATUS(
     string LastError,
     DateTimeOffset? LastChangedAt)
 {
-    public string InstanceKey => $"{Module}[{Number}]";
+    public string InstanceKey
+    {
+        get
+        {
+            return $"{Module}[{Number}]";
+        }
+    }
 }
 
 public sealed record ST_INTERFACE_RECEIVED_MESSAGE(
@@ -112,307 +118,32 @@ public sealed record ST_INTERFACE_DATA(
     IReadOnlyList<string> Arguments,
     IReadOnlyDictionary<string, string>? Extra = null)
 {
-    public string InstanceKey => $"{Device}[{Number}]";
+    public string InstanceKey
+    {
+        get
+        {
+            return $"{Device}[{Number}]";
+        }
+    }
 }
 
 public sealed record ST_DEVICE_COMMAND_RESULT(
     bool IsSuccess,
     string Message);
 
-public interface IInterfaceDevice
+public abstract class CBETFileBase
 {
-    ST_INTERFACE_DATA Data { get; }
-
-    ST_INTERFACE_CONNECT_OPTION ConnectOption { get; }
-
-    EN_COMM_STATE ConnectionState { get; }
-
-    bool IsSimulation { get; }
-
-    ST_INTERFACE_COMM_STATUS GetCommunicationStatus();
-
-    Task Connect(CancellationToken cancellationToken = default);
-
-    Task Disconnect(CancellationToken cancellationToken = default);
-
-    Task<string> ExecuteFunction(
-        string function,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            IReadOnlyList<ST_BET_TABLE_DATA> table,
+            CancellationToken cancellationToken = default);
 }
 
-public interface IBETFile
-{
-    Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default);
-
-    Task Save(
-        IReadOnlyList<ST_BET_TABLE_DATA> table,
-        CancellationToken cancellationToken = default);
-}
-
-public interface IInterfaceManager
-{
-    event Func<ST_INTERFACE_RECEIVED_MESSAGE, CancellationToken, Task<string>>? MessageReceived;
-
-    bool IsSimulation { get; }
-
-    IReadOnlyList<IInterfaceDevice> Devices { get; }
-
-    IMelsec Melsec { get; }
-
-    void SetSimulationMode(bool enabled);
-
-    void Register(ST_INTERFACE_DATA data);
-
-    Task Reload(
-        IReadOnlyList<ST_INTERFACE_DATA> interfaces,
-        bool reconnect = true,
-        CancellationToken cancellationToken = default);
-
-    Task Initialize(CancellationToken cancellationToken = default);
-
-    Task Destroy(CancellationToken cancellationToken = default);
-
-    Task<int> Connect(
-        bool init = false,
-        CancellationToken cancellationToken = default);
-
-    Task<int> Disconnect(CancellationToken cancellationToken = default);
-
-    Task Connect(
-        EN_EQP_MODULE module,
-        int number,
-        bool autoConnection = true,
-        CancellationToken cancellationToken = default);
-
-    Task Disconnect(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task Reconnect(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ExecuteFunction(
-        EN_EQP_MODULE module,
-        int number,
-        string function,
-        CancellationToken cancellationToken = default);
-
-    bool IsConnect(EN_EQP_MODULE module, int number);
-
-    bool IsSimul(EN_EQP_MODULE module, int number);
-
-    ST_INTERFACE_DATA? GetInterfaceData(EN_EQP_MODULE module, int number);
-
-    Task Connect(
-        string nickName,
-        bool autoConnection = true,
-        CancellationToken cancellationToken = default);
-
-    Task Disconnect(
-        string nickName,
-        CancellationToken cancellationToken = default);
-
-    Task Reconnect(
-        string nickName,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ExecuteFunction(
-        string nickName,
-        string function,
-        CancellationToken cancellationToken = default);
-
-    bool IsConnect(string nickName);
-
-    bool IsSimul(string nickName);
-
-    ST_INTERFACE_DATA? GetInterfaceData(string nickName);
-
-    IReadOnlyList<ST_INTERFACE_DATA> GetInterfaceList(EN_EQP_MODULE? module = null);
-
-    IReadOnlyList<ST_INTERFACE_COMM_STATUS> GetInterfaceCommunicationList(EN_EQP_MODULE? module = null);
-
-    Task<IReadOnlyList<ST_INTERFACE_HISTORY>> ReadInterfaceHistory(
-        EN_EQP_MODULE? module = null,
-        string nickName = "",
-        int maxRows = 100,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_DEVICE_COMM_STATUS>> GetCommunicationStatus(
-        CancellationToken cancellationToken = default);
-
-    Task<ST_LASER_STATUS> GetLaserStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_LASER_STATUS> GetLaserStatus(int number, CancellationToken cancellationToken = default);
-
-    Task SetLaser(int headNo, bool enabled, CancellationToken cancellationToken = default);
-
-    Task SetLaser(int number, int headNo, bool enabled, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteTalonLaserCommand(
-        EN_TALON_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteTalonLaserCommand(
-        int number,
-        EN_TALON_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_TALON_STATUS> RefreshTalonLaserStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_TALON_STATUS> RefreshTalonLaserStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_CHILLER_STATUS> GetChillerStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_CHILLER_STATUS> GetChillerStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
-        EN_CHILLER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
-        int number,
-        EN_CHILLER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_ORION_CHILLER_STATUS> RefreshChillerStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_ORION_CHILLER_STATUS> RefreshChillerStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> GetAttenuatorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> GetAttenuatorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorCommand(
-        EN_ATTENUATOR_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorCommand(
-        int number,
-        EN_ATTENUATOR_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> RefreshAttenuatorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> RefreshAttenuatorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> GetBETStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> GetBETStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETCommand(
-        EN_BET_COMMAND command,
-        double parameter1 = 0.0,
-        double parameter2 = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETCommand(
-        int number,
-        EN_BET_COMMAND command,
-        double parameter1 = 0.0,
-        double parameter2 = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> RefreshBETStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> RefreshBETStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_BET_TABLE_DATA>> LoadBETData(CancellationToken cancellationToken = default);
-
-    Task SaveBETData(
-        IReadOnlyList<ST_BET_TABLE_DATA> table,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_TABLE_DATA> LoadPowerMeterData(
-        string processFile = "",
-        CancellationToken cancellationToken = default);
-
-    Task CreatePowerMeterData(
-        string processFile,
-        CancellationToken cancellationToken = default);
-
-    Task DeletePowerMeterData(
-        string processFile,
-        CancellationToken cancellationToken = default);
-
-    Task RenamePowerMeterData(
-        string oldProcessFile,
-        string newProcessFile,
-        CancellationToken cancellationToken = default);
-
-    Task SavePowerMeterData(
-        string processFile,
-        IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> GetPowerMeterStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> GetPowerMeterStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterCommand(
-        EN_POWER_METER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterCommand(
-        int number,
-        EN_POWER_METER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> RefreshPowerMeterStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> RefreshPowerMeterStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
-        EN_PICO_MOTOR_COMMAND command,
-        int motorNo = 1,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
-        int number,
-        EN_PICO_MOTOR_COMMAND command,
-        int motorNo = 1,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorAllMove(
-        IReadOnlyCollection<int> motorNos,
-        double positionMm,
-        int count,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorAllMove(
-        int number,
-        IReadOnlyCollection<int> motorNos,
-        double positionMm,
-        int count,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed class CInterfaceManager : IInterfaceManager
-{
+public sealed class CInterfaceManager {
     private readonly Dictionary<string, CInterfaceDevice> _devices = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ILogManager? _logManager;
-    private readonly IBETFile? _betFile;
-    private readonly IPowerMeterFile? _powerMeterFile;
+    private readonly CLogManager? _logManager;
+    private readonly CBETFileBase? _betFile;
+    private readonly CPowerMeterFileBase? _powerMeterFile;
     private readonly CMelsec _melsec;
     private readonly CPicoMotorService _picoMotorService = new();
     private bool? _simulationMode;
@@ -421,9 +152,9 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     public CInterfaceManager(
         bool? simulationMode = null,
-        ILogManager? logManager = null,
-        IBETFile? betFile = null,
-        IPowerMeterFile? powerMeterFile = null,
+        CLogManager? logManager = null,
+        CBETFileBase? betFile = null,
+        CPowerMeterFileBase? powerMeterFile = null,
         IReadOnlyList<ST_MELSEC_MAP_DATA>? melsecMap = null)
     {
         _simulationMode = simulationMode;
@@ -433,13 +164,36 @@ public sealed class CInterfaceManager : IInterfaceManager
         _melsec = new CMelsec(this, _logManager, melsecMap);
     }
 
-    public bool IsSimulation => _devices.Count == 0
+    public bool IsSimulation
+    {
+        get
+        {
+            bool CheckDevice1(CInterfaceDevice device)
+            {
+                return device.IsSimulation;
+            }
+
+            return _devices.Count == 0
         ? _simulationMode ?? true
-        : _devices.Values.All(device => device.IsSimulation);
+        : _devices.Values.All(CheckDevice1);
+        }
+    }
 
-    public IReadOnlyList<IInterfaceDevice> Devices => _devices.Values.ToArray();
+    public IReadOnlyList<CInterfaceDevice> Devices
+    {
+        get
+        {
+            return _devices.Values.ToArray();
+        }
+    }
 
-    public IMelsec Melsec => _melsec;
+    public CMelsec Melsec
+    {
+        get
+        {
+            return _melsec;
+        }
+    }
 
     public void SetSimulationMode(bool enabled)
     {
@@ -671,23 +425,73 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     public IReadOnlyList<ST_INTERFACE_DATA> GetInterfaceList(EN_EQP_MODULE? module = null)
     {
+        bool FilterDevice2(CInterfaceDevice device)
+        {
+            return module is null || device.Data.Device == module;
+        }
+
+        ST_INTERFACE_DATA SelectDevice3(CInterfaceDevice device)
+        {
+            return device.Data;
+        }
+
+        EN_EQP_MODULE GetDataSortKey4(ST_INTERFACE_DATA data)
+        {
+            return data.Device;
+        }
+
+        int GetDataSortKey5(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey6(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return _devices.Values
-            .Where(device => module is null || device.Data.Device == module)
-            .Select(device => device.Data)
-            .OrderBy(data => data.Device)
-            .ThenBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterDevice2)
+            .Select(SelectDevice3)
+            .OrderBy(GetDataSortKey4)
+            .ThenBy(GetDataSortKey5)
+            .ThenBy(GetDataSortKey6, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     public IReadOnlyList<ST_INTERFACE_COMM_STATUS> GetInterfaceCommunicationList(EN_EQP_MODULE? module = null)
     {
+        bool FilterDevice7(CInterfaceDevice device)
+        {
+            return module is null || device.Data.Device == module;
+        }
+
+        ST_INTERFACE_COMM_STATUS SelectDevice8(CInterfaceDevice device)
+        {
+            return device.GetCommunicationStatus();
+        }
+
+        EN_EQP_MODULE GetStatusSortKey9(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Module;
+        }
+
+        int GetStatusSortKey10(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
+
+        string GetStatusSortKey11(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.NickName;
+        }
+
         return _devices.Values
-            .Where(device => module is null || device.Data.Device == module)
-            .Select(device => device.GetCommunicationStatus())
-            .OrderBy(status => status.Module)
-            .ThenBy(status => status.Number)
-            .ThenBy(status => status.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterDevice7)
+            .Select(SelectDevice8)
+            .OrderBy(GetStatusSortKey9)
+            .ThenBy(GetStatusSortKey10)
+            .ThenBy(GetStatusSortKey11, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
@@ -710,13 +514,32 @@ public sealed class CInterfaceManager : IInterfaceManager
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        EN_EQP_MODULE GroupByDeviceCallback12(CInterfaceDevice device)
+        {
+            return device.Data.Device;
+        }
+
+        ST_DEVICE_COMM_STATUS SelectGroup13(IGrouping<EN_EQP_MODULE, CInterfaceDevice> group)
+        {
+            EN_COMM_STATE SelectDevice1(CInterfaceDevice device)
+            {
+                return device.ConnectionState;
+            }
+
+            return new ST_DEVICE_COMM_STATUS(
+                            group.Key,
+                            CollapseConnectionState(group.Select(SelectDevice1)));
+        }
+
+        EN_EQP_MODULE GetStatusSortKey14(ST_DEVICE_COMM_STATUS status)
+        {
+            return status.Module;
+        }
 
         var statuses = _devices.Values
-            .GroupBy(device => device.Data.Device)
-            .Select(group => new ST_DEVICE_COMM_STATUS(
-                group.Key,
-                CollapseConnectionState(group.Select(device => device.ConnectionState))))
-            .OrderBy(status => status.Module)
+            .GroupBy(GroupByDeviceCallback12)
+            .Select(SelectGroup13)
+            .OrderBy(GetStatusSortKey14)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<ST_DEVICE_COMM_STATUS>>(statuses);
@@ -725,13 +548,21 @@ public sealed class CInterfaceManager : IInterfaceManager
     private static EN_COMM_STATE CollapseConnectionState(IEnumerable<EN_COMM_STATE> states)
     {
         var stateArray = states.ToArray();
+        bool CheckState15(EN_COMM_STATE state)
+        {
+            return state == EN_COMM_STATE.Offline;
+        }
 
-        if (stateArray.Any(state => state == EN_COMM_STATE.Offline))
+        if (stateArray.Any(CheckState15))
         {
             return EN_COMM_STATE.Offline;
         }
+        bool CheckState16(EN_COMM_STATE state)
+        {
+            return state == EN_COMM_STATE.Simulation;
+        }
 
-        if (stateArray.All(state => state == EN_COMM_STATE.Simulation))
+        if (stateArray.All(CheckState16))
         {
             return EN_COMM_STATE.Simulation;
         }
@@ -801,8 +632,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         bool throwIfAmbiguous = false)
     {
         var normalized = NormalizeNickName(nickName);
+        bool FilterItem17(CInterfaceDevice item)
+        {
+            return NormalizeNickName(item.Data.NickName).Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
+
         var matches = _devices.Values
-            .Where(item => NormalizeNickName(item.Data.NickName).Equals(normalized, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterItem17)
             .ToArray();
 
         if (matches.Length == 0)
@@ -813,7 +649,12 @@ public sealed class CInterfaceManager : IInterfaceManager
 
         if (matches.Length > 1 && throwIfAmbiguous)
         {
-            var candidates = string.Join(", ", matches.Select(item => FormatDeviceName(item.Data)));
+            string SelectItem18(CInterfaceDevice item)
+            {
+                return FormatDeviceName(item.Data);
+            }
+
+            var candidates = string.Join(", ", matches.Select(SelectItem18));
             throw new InvalidOperationException(
                 $"Interface NICKNAME is duplicated: {nickName}. Use DEVICE + NUMBER instead. Candidates: {candidates}");
         }
@@ -982,12 +823,21 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private static string FormatConnectionState(EN_COMM_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch1()
         {
-            EN_COMM_STATE.Online => "ONLINE",
-            EN_COMM_STATE.Simulation => "SIMULATION",
-            _ => "OFFLINE"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_COMM_STATE.Online:
+                    return "ONLINE";
+                case EN_COMM_STATE.Simulation:
+                    return "SIMULATION";
+                default:
+                    return "OFFLINE";
+            }
+        }
+
+        return EvaluateStateSwitch1();
     }
 
     private static string NormalizeNickName(string nickName)
@@ -1255,12 +1105,21 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private static string FormatChillerRunState(EN_CHILLER_RUN_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch2()
         {
-            EN_CHILLER_RUN_STATE.Run => "RUN",
-            EN_CHILLER_RUN_STATE.PumpOnly => "PUMP ONLY",
-            _ => "STOP"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_CHILLER_RUN_STATE.Run:
+                    return "RUN";
+                case EN_CHILLER_RUN_STATE.PumpOnly:
+                    return "PUMP ONLY";
+                default:
+                    return "STOP";
+            }
+        }
+
+        return EvaluateStateSwitch2();
     }
 
     public async Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
@@ -1608,7 +1467,12 @@ public sealed class CInterfaceManager : IInterfaceManager
         {
             var table = await LoadBETData(cancellationToken);
             var index = (int)Math.Round(parameter1);
-            var row = table.FirstOrDefault(item => item.Index == index);
+            bool MatchItem19(ST_BET_TABLE_DATA item)
+            {
+                return item.Index == index;
+            }
+
+            var row = table.FirstOrDefault(MatchItem19);
 
             if (row is null)
             {
@@ -1945,8 +1809,13 @@ public sealed class CInterfaceManager : IInterfaceManager
     public async Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(
         CancellationToken cancellationToken = default)
     {
+        int GetItemSortKey20(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey20)
             .FirstOrDefault();
         if (data is null)
         {
@@ -1965,8 +1834,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         int number,
         CancellationToken cancellationToken = default)
     {
+        bool MatchItem21(ST_INTERFACE_DATA item)
+        {
+            return item.Number == number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem21);
         if (data is null)
         {
             return ST_PICO_MOTOR_STATUS.Empty with
@@ -1996,13 +1870,17 @@ public sealed class CInterfaceManager : IInterfaceManager
     }
 
     public Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(
-        CancellationToken cancellationToken = default) =>
-        GetPicoMotorStatus(cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        return GetPicoMotorStatus(cancellationToken);
+    }
 
     public Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(
         int number,
-        CancellationToken cancellationToken = default) =>
-        GetPicoMotorStatus(number, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        return GetPicoMotorStatus(number, cancellationToken);
+    }
 
     public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
         EN_PICO_MOTOR_COMMAND command,
@@ -2010,8 +1888,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
     {
+        int GetItemSortKey22(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey22)
             .FirstOrDefault();
         if (data is null)
         {
@@ -2028,8 +1911,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         double parameter = 0.0,
         CancellationToken cancellationToken = default)
     {
+        bool MatchItem23(ST_INTERFACE_DATA item)
+        {
+            return item.Number == number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem23);
         if (data is null)
         {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PicoMotor interface {number} is not registered.");
@@ -2060,8 +1948,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         int count,
         CancellationToken cancellationToken = default)
     {
+        int GetItemSortKey24(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .OrderBy(item => item.Number)
+            .OrderBy(GetItemSortKey24)
             .FirstOrDefault();
         if (data is null)
         {
@@ -2078,8 +1971,13 @@ public sealed class CInterfaceManager : IInterfaceManager
         int count,
         CancellationToken cancellationToken = default)
     {
+        bool MatchItem25(ST_INTERFACE_DATA item)
+        {
+            return item.Number == number;
+        }
+
         var data = GetInterfaceList(EN_EQP_MODULE.PicoMotor)
-            .FirstOrDefault(item => item.Number == number);
+            .FirstOrDefault(MatchItem25);
         if (data is null)
         {
             return new ST_DEVICE_COMMAND_RESULT(false, $"PicoMotor interface {number} is not registered.");
@@ -2236,11 +2134,20 @@ public sealed class CInterfaceManager : IInterfaceManager
         Dictionary<int, T> statusMap,
         EN_EQP_MODULE module)
     {
-        var validNumbers = GetInterfaceList(module)
-            .Select(data => data.Number)
-            .ToHashSet();
+        int SelectData26(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
 
-        foreach (var number in statusMap.Keys.Where(number => !validNumbers.Contains(number)).ToArray())
+        var validNumbers = GetInterfaceList(module)
+            .Select(SelectData26)
+            .ToHashSet();
+        bool FilterNumber27(int number)
+        {
+            return !validNumbers.Contains(number);
+        }
+
+        foreach (var number in statusMap.Keys.Where(FilterNumber27).ToArray())
         {
             statusMap.Remove(number);
         }
@@ -2248,9 +2155,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetTalonInterfaceData()
     {
+        int GetDataSortKey28(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey29(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.TalonLaser)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey28)
+            .ThenBy(GetDataSortKey29, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2261,9 +2178,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetAttenuatorInterfaceData()
     {
+        int GetDataSortKey30(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey31(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.Attenuator)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey30)
+            .ThenBy(GetDataSortKey31, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2274,9 +2201,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetBETInterfaceData()
     {
+        int GetDataSortKey32(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey33(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.Bet)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey32)
+            .ThenBy(GetDataSortKey33, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2287,9 +2224,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetPowerMeterInterfaceData()
     {
+        int GetDataSortKey34(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey35(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.PowerMeter)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey34)
+            .ThenBy(GetDataSortKey35, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2300,9 +2247,19 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     private ST_INTERFACE_DATA? GetChillerInterfaceData()
     {
+        int GetDataSortKey36(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey37(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return GetInterfaceList(EN_EQP_MODULE.Chiller)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey36)
+            .ThenBy(GetDataSortKey37, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 
@@ -2372,10 +2329,10 @@ public sealed class CInterfaceManager : IInterfaceManager
     }
 }
 
-public sealed class CInterfaceDevice : IInterfaceDevice
+public sealed class CInterfaceDevice
 {
     private bool _simulationMode;
-    private readonly IComm _comm;
+    private readonly CCommBase _comm;
     private string _simulationLastSent = "";
     private string _simulationLastReceived = "";
     private string _simulationLastError = "";
@@ -2392,7 +2349,7 @@ public sealed class CInterfaceDevice : IInterfaceDevice
         _simulationMode = simulationMode;
         _comm = CComm.Create(Data, ConnectOption);
 
-        if (_comm is ICommMessageSource messageSource)
+        if (_comm is CSocketServerComm messageSource)
         {
             messageSource.MessageReceived += OnCommMessageReceived;
         }
@@ -2407,11 +2364,23 @@ public sealed class CInterfaceDevice : IInterfaceDevice
 
     public ST_INTERFACE_CONNECT_OPTION ConnectOption { get; }
 
-    public EN_COMM_STATE ConnectionState => _simulationMode
+    public EN_COMM_STATE ConnectionState
+    {
+        get
+        {
+            return _simulationMode
         ? EN_COMM_STATE.Simulation
         : _comm.ConnectionState;
+        }
+    }
 
-    public bool IsSimulation => _simulationMode;
+    public bool IsSimulation
+    {
+        get
+        {
+            return _simulationMode;
+        }
+    }
 
     public ST_INTERFACE_COMM_STATUS GetCommunicationStatus()
     {
@@ -2523,25 +2492,43 @@ internal static class CInterfaceConnectOption
 {
     public static ST_INTERFACE_CONNECT_OPTION Parse(ST_INTERFACE_DATA data)
     {
+        string SelectArgument38(string argument)
+        {
+            return argument.Trim();
+        }
+
         var args = data.Arguments
-            .Select(argument => argument.Trim())
+            .Select(SelectArgument38)
             .Concat(Enumerable.Repeat("", 5))
             .Take(5)
             .ToArray();
-
-        return data.InterfaceType switch
+        ST_INTERFACE_CONNECT_OPTION EvaluateInterfaceTypeSwitch3()
         {
-            EN_INTERFACE_TYPE.Serial or EN_INTERFACE_TYPE.ModbusSerial => CreateSerialOption(data, args),
-            EN_INTERFACE_TYPE.SocketClient or EN_INTERFACE_TYPE.SocketServer or
-                EN_INTERFACE_TYPE.SocketClientUdp or EN_INTERFACE_TYPE.SocketServerUdp or
-                EN_INTERFACE_TYPE.ModbusTcp => CreateSocketOption(data, args),
-            EN_INTERFACE_TYPE.AcsNet => CreateAcsOption(args),
-            EN_INTERFACE_TYPE.XpsNet => CreateXpsOption(args),
-            EN_INTERFACE_TYPE.Automation1Net => CreateAutomation1Option(args),
-            EN_INTERFACE_TYPE.PicoMotor => CreatePicoMotorOption(),
-            EN_INTERFACE_TYPE.OpcUa => CreateOpcUaOption(args),
-            _ => CreateSocketOption(data, args)
-        };
+            var switchValue = data.InterfaceType;
+            switch (switchValue)
+            {
+                case EN_INTERFACE_TYPE.Serial or EN_INTERFACE_TYPE.ModbusSerial:
+                    return CreateSerialOption(data, args);
+                case EN_INTERFACE_TYPE.SocketClient or EN_INTERFACE_TYPE.SocketServer or
+                        EN_INTERFACE_TYPE.SocketClientUdp or EN_INTERFACE_TYPE.SocketServerUdp or
+                        EN_INTERFACE_TYPE.ModbusTcp:
+                    return CreateSocketOption(data, args);
+                case EN_INTERFACE_TYPE.AcsNet:
+                    return CreateAcsOption(args);
+                case EN_INTERFACE_TYPE.XpsNet:
+                    return CreateXpsOption(args);
+                case EN_INTERFACE_TYPE.Automation1Net:
+                    return CreateAutomation1Option(args);
+                case EN_INTERFACE_TYPE.PicoMotor:
+                    return CreatePicoMotorOption();
+                case EN_INTERFACE_TYPE.OpcUa:
+                    return CreateOpcUaOption(args);
+                default:
+                    return CreateSocketOption(data, args);
+            }
+        }
+
+        return EvaluateInterfaceTypeSwitch3();
     }
 
     private static ST_INTERFACE_CONNECT_OPTION CreateSocketOption(

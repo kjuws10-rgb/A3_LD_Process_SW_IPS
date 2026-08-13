@@ -11,14 +11,30 @@ public partial class CPasswordInputDialog : Window
         InitializeComponent();
         PasswordInput.Password = password;
         BuildKeys();
-        Loaded += (_, _) => PasswordInput.Focus();
+        void LoadedHandler1(object unusedParameter1, RoutedEventArgs unusedParameter2)
+        {
+            PasswordInput.Focus();
+        }
+
+        Loaded += LoadedHandler1;
     }
 
-    public string ResultPassword => PasswordInput.Password;
+    public string ResultPassword
+    {
+        get
+        {
+            return PasswordInput.Password;
+        }
+    }
 
     private void BuildKeys()
     {
-        foreach (var key in "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(value => value.ToString()))
+        string SelectValue2(char value)
+        {
+            return value.ToString();
+        }
+
+        foreach (var key in "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(SelectValue2))
         {
             var button = new Button
             {
@@ -36,18 +52,30 @@ public partial class CPasswordInputDialog : Window
         if (sender is Button { Tag: string key }) PasswordInput.Password += key;
     }
 
-    private void SpaceClick(object sender, RoutedEventArgs e) => PasswordInput.Password += " ";
+    private void SpaceClick(object sender, RoutedEventArgs e)
+    {
+        PasswordInput.Password += " ";
+    }
 
     private void BackClick(object sender, RoutedEventArgs e)
     {
         if (PasswordInput.Password.Length > 0) PasswordInput.Password = PasswordInput.Password[..^1];
     }
 
-    private void ClearClick(object sender, RoutedEventArgs e) => PasswordInput.Clear();
+    private void ClearClick(object sender, RoutedEventArgs e)
+    {
+        PasswordInput.Clear();
+    }
 
-    private void CancelClick(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void CancelClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+    }
 
-    private void OkClick(object sender, RoutedEventArgs e) => DialogResult = true;
+    private void OkClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = true;
+    }
 
     private void WindowKeyDown(object sender, KeyEventArgs e)
     {

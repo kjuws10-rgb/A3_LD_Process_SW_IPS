@@ -1,6 +1,8 @@
-﻿<UserControl x:Class="Drilling.UI.Views.CMonitorView"
+<UserControl x:Class="Drilling.UI.Views.CMonitorView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menu="clr-namespace:Drilling.UI.Menu"
+             xmlns:ui="clr-namespace:Drilling.UI"
              xmlns:views="clr-namespace:Drilling.UI.Views"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -19,30 +21,15 @@
         </Style>
 
         <Style x:Key="CoordinatePreviewFillItemContainer" TargetType="ContentPresenter">
-            <Setter Property="Canvas.Left">
-                <Setter.Value>
-                    <MultiBinding Converter="{StaticResource PreviewCoordinateConverter}" ConverterParameter="CENTER_X_STRETCH">
-                        <Binding Path="CanvasCenterX" />
-                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualWidth" />
-                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualHeight" />
-                        <Binding Path="DesignWidth" />
-                        <Binding Path="DesignHeight" />
-                        <Binding Path="Width" />
-                    </MultiBinding>
-                </Setter.Value>
-            </Setter>
-            <Setter Property="Canvas.Top">
-                <Setter.Value>
-                    <MultiBinding Converter="{StaticResource PreviewCoordinateConverter}" ConverterParameter="CENTER_Y_STRETCH">
-                        <Binding Path="CanvasCenterY" />
-                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualWidth" />
-                        <Binding RelativeSource="{RelativeSource AncestorType=ItemsControl}" Path="ActualHeight" />
-                        <Binding Path="DesignWidth" />
-                        <Binding Path="DesignHeight" />
-                        <Binding Path="Height" />
-                    </MultiBinding>
-                </Setter.Value>
-            </Setter>
+            <Setter Property="ui:CPreviewCoordinateBehavior.PositionX" Value="{Binding CanvasCenterX}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.PositionY" Value="{Binding CanvasCenterY}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.ContainerWidth" Value="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=ActualWidth}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.ContainerHeight" Value="{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}, Path=ActualHeight}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.DesignWidth" Value="{Binding DesignWidth}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.DesignHeight" Value="{Binding DesignHeight}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.ElementWidth" Value="{Binding Width}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.ElementHeight" Value="{Binding Height}" />
+            <Setter Property="ui:CPreviewCoordinateBehavior.UseStretchScale" Value="True" />
         </Style>
 
         <Style x:Key="MonitorInputButton" TargetType="Button">
@@ -224,7 +211,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Button Content="{Binding Name}"
-                            Command="{Binding DataContext.CurrentScreen.Monitor.SelectTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SelectTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding Name}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource MonitorTabButton}">
@@ -345,7 +332,7 @@
                                             <Button Content="ON"
                                                     Background="{DynamicResource ButtonSuccessBrush}"
                                                     BorderBrush="{DynamicResource StatusReadyBrush}"
-                                                    Command="{Binding DataContext.CurrentScreen.Monitor.SetOutputOnCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SetOutputOnCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding Id}"
                                                     Style="{StaticResource IoCommandButton}" />
                                         </DataTemplate>
@@ -357,7 +344,7 @@
                                             <Button Content="OFF"
                                                     Background="{DynamicResource ButtonSecondaryBrush}"
                                                     BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}"
-                                                    Command="{Binding DataContext.CurrentScreen.Monitor.SetOutputOffCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SetOutputOffCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                     CommandParameter="{Binding Id}"
                                                     Style="{StaticResource IoCommandButton}" />
                                         </DataTemplate>
@@ -480,7 +467,7 @@
                                 <DataTemplate>
                                     <Button Background="{Binding BackgroundBrush}"
                                             BorderBrush="{Binding BorderBrush}"
-                                            Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
                                             Height="Auto"
                                             VerticalAlignment="Stretch"
@@ -682,7 +669,7 @@
                         <DataTemplate>
                             <Button Background="{Binding BackgroundBrush}"
                                     BorderBrush="{Binding BorderBrush}"
-                                    Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
                                     Height="Auto"
                                     Margin="4"
@@ -860,7 +847,7 @@
                         <DataTemplate>
                             <Button Background="{Binding BackgroundBrush}"
                                     BorderBrush="{Binding BorderBrush}"
-                                    Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
                                     Height="Auto"
                                     Margin="4"
@@ -914,7 +901,7 @@
                         <DataTemplate>
                             <Button Background="{Binding BackgroundBrush}"
                                     BorderBrush="{Binding BorderBrush}"
-                                    Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding}"
                                     Height="Auto"
                                     Margin="4"
@@ -971,7 +958,7 @@
                                         <Button Content="{Binding Command}"
                                                 Background="{DynamicResource MenuItemSelectedBackgroundBrush}"
                                                 BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
-                                                Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding Command}"
                                                 FontSize="10.5"
                                                 Style="{StaticResource IoCommandButton}"
@@ -1027,7 +1014,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding DataContext.CurrentScreen.Monitor.SelectHeadDeviceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SelectHeadDeviceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
                                             Background="{Binding BackgroundBrush}"
                                             BorderBrush="{Binding BorderBrush}"
@@ -1112,7 +1099,7 @@
                                 <DataTemplate>
                                     <Button Background="{Binding BackgroundBrush}"
                                             BorderBrush="{Binding BorderBrush}"
-                                            Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
                                             Height="54"
                                             Margin="6,4"
@@ -1239,7 +1226,7 @@
                                                 Height="38"
                                                 Background="{Binding BackgroundBrush}"
                                                 BorderBrush="{Binding BorderBrush}"
-                                                Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding CommandLabel}"
                                                 IsEnabled="{Binding CanCommand}"
                                                 Opacity="{Binding CommandOpacity}"
@@ -1289,7 +1276,7 @@
                                     <DataTemplate>
                                         <Button Background="{Binding BackgroundBrush}"
                                                 BorderBrush="{Binding BorderBrush}"
-                                                Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource MonitorActionButton}">
                                             <Grid HorizontalAlignment="Stretch">
@@ -1501,7 +1488,7 @@
                                 <DataTemplate>
                                         <Button Background="{Binding BackgroundBrush}"
                                                 BorderBrush="{Binding BorderBrush}"
-                                                Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Height="64"
                                                 Style="{StaticResource MonitorActionButton}">
@@ -1544,7 +1531,7 @@
                                                    VerticalAlignment="Center"
                                                    Style="{StaticResource MonitorSmallText}" />
                                         <Button Grid.Column="2"
-                                                Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="SET TEMP"
                                                 Background="{DynamicResource ButtonPrimaryBrush}"
                                                 BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -1686,7 +1673,7 @@
                                     <DataTemplate>
                                         <Button Background="{Binding BackgroundBrush}"
                                                 BorderBrush="{Binding BorderBrush}"
-                                                Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource MonitorActionButton}">
                                             <Grid HorizontalAlignment="Stretch">
@@ -1965,7 +1952,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding DataContext.CurrentScreen.Monitor.SelectHeadDeviceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SelectHeadDeviceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
                                             Background="{Binding BackgroundBrush}"
                                             BorderBrush="{Binding BorderBrush}"
@@ -2100,7 +2087,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="HOME"
                                     Background="{DynamicResource ButtonPrimaryBrush}"
                                     BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2114,7 +2101,7 @@
                                            FontWeight="SemiBold" />
                             </Button>
                             <Button Grid.Column="1"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="STOP"
                                     Background="{DynamicResource ButtonDangerBrush}"
                                     BorderBrush="{DynamicResource ButtonDangerBorderBrush}"
@@ -2128,7 +2115,7 @@
                                            FontWeight="SemiBold" />
                             </Button>
                             <Button Grid.Column="2"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="RESET ALARM"
                                     Background="{DynamicResource ButtonSecondaryBrush}"
                                     BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}"
@@ -2181,7 +2168,7 @@
                                        Style="{StaticResource MonitorSmallText}" />
                             <Button Grid.Row="0"
                                     Grid.Column="3"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="MOVE ABS"
                                     Background="{DynamicResource ButtonPrimaryBrush}"
                                     BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2215,7 +2202,7 @@
                                        Style="{StaticResource MonitorSmallText}" />
                             <Button Grid.Row="1"
                                     Grid.Column="3"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="MOVE REL"
                                     Background="{DynamicResource ButtonPrimaryBrush}"
                                     BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2308,7 +2295,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding DataContext.CurrentScreen.Monitor.SelectHeadDeviceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SelectHeadDeviceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}"
                                             Background="{Binding BackgroundBrush}"
                                             BorderBrush="{Binding BorderBrush}"
@@ -2438,7 +2425,7 @@
                                            FontSize="18"
                                            VerticalAlignment="Center" />
                                 <Button Grid.Column="1"
-                                        Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                        menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                         CommandParameter="SAVE TABLE"
                                         Background="{DynamicResource ButtonSuccessBrush}"
                                         BorderBrush="{DynamicResource StatusReadyBrush}"
@@ -2504,7 +2491,7 @@
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <Button Content="MOVE"
-                                                        Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.ExecuteOperationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
                                                         Background="{DynamicResource ButtonPrimaryBrush}"
                                                         BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2539,7 +2526,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Button Grid.Column="0"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="HOME"
                                     Background="{DynamicResource ButtonPrimaryBrush}"
                                     BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2553,7 +2540,7 @@
                                            FontWeight="SemiBold" />
                             </Button>
                             <Button Grid.Column="1"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="STOP"
                                     Background="{DynamicResource ButtonDangerBrush}"
                                     BorderBrush="{DynamicResource ButtonDangerBorderBrush}"
@@ -2567,7 +2554,7 @@
                                            FontWeight="SemiBold" />
                             </Button>
                             <Button Grid.Column="2"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="RESET ALARM"
                                     Background="{DynamicResource ButtonSecondaryBrush}"
                                     BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}"
@@ -2620,7 +2607,7 @@
                                        Style="{StaticResource MonitorSmallText}" />
                             <Button Grid.Row="0"
                                     Grid.Column="3"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="MOVE MAG"
                                     Background="{DynamicResource ButtonPrimaryBrush}"
                                     BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2654,7 +2641,7 @@
                                        Style="{StaticResource MonitorSmallText}" />
                             <Button Grid.Row="1"
                                     Grid.Column="3"
-                                    Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.ExecuteOperationCommand}"
                                     CommandParameter="MOVE DIV"
                                     Background="{DynamicResource ButtonPrimaryBrush}"
                                     BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
@@ -2931,7 +2918,7 @@
                                                         IsEnabled="{Binding CanWrite}"
                                                         Background="{DynamicResource ButtonWarningBrush}"
                                                         BorderBrush="{DynamicResource ButtonWarningBorderBrush}"
-                                                        Command="{Binding DataContext.CurrentScreen.Monitor.WriteMelsecCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.WriteMelsecCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"
                                                         Style="{StaticResource IoCommandButton}" />
                                             </DataTemplate>
@@ -3016,7 +3003,7 @@
                                             BorderBrush="{Binding BorderBrush}"
                                             Foreground="{Binding TextBrush}"
                                             BorderThickness="1"
-                                            Command="{Binding DataContext.CurrentScreen.Monitor.SelectCoordinateBasisCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SelectCoordinateBasisCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding}">
                                         <TextBlock Text="{Binding Name}"
                                                    HorizontalAlignment="Center"
@@ -3108,7 +3095,7 @@
                                             <DataTemplate>
                                                 <Button Width="{Binding Width}"
                                                         Height="{Binding Height}"
-                                                        Command="{Binding DataContext.CurrentScreen.Monitor.SelectCoordinateCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Monitor.SelectCoordinateCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding CellNo}"
                                                         Padding="0"
                                                         Cursor="Hand">
@@ -3168,7 +3155,7 @@
                                     </Grid.RowDefinitions>
 
                                     <Button Content="BACK TO GLASS"
-                                            Command="{Binding CurrentScreen.Monitor.BackToCoordinateGlassPreviewCommand}"
+                                            menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Monitor.BackToCoordinateGlassPreviewCommand}"
                                             HorizontalAlignment="Left"
                                             MinWidth="132"
                                             Height="34"
@@ -3197,7 +3184,7 @@
                                                         </ItemsControl.ItemsPanel>
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Button Command="{Binding SelectCommand}"
+                                                                <Button menu:CButtonCommandBehavior.Command="{Binding SelectCommand}"
                                                                         CommandParameter="{Binding HoleKey}"
                                                                         Width="132"
                                                                         Height="78"

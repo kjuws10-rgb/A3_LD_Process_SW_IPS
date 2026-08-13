@@ -1,12 +1,10 @@
-using System.Windows.Input;
-
 namespace Drilling.UI.Menu;
 
 public sealed class CButtonCommand(
     Action<object?> execute,
-    Predicate<object?>? canExecute = null) : ICommand
+    Predicate<object?>? canExecute = null)
 {
-    public static CButtonCommand NoOp { get; } = new(_ => { });
+    public static CButtonCommand NoOp { get; } = new(DoNothing);
 
     public event EventHandler? CanExecuteChanged;
 
@@ -23,6 +21,10 @@ public sealed class CButtonCommand(
     public void NotifyCanExecuteChanged()
     {
         CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private static void DoNothing(object? parameter)
+    {
     }
 }
 

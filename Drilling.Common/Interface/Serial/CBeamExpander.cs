@@ -44,22 +44,37 @@ internal sealed class CBeamExpander(
         double magnification = 0.0,
         double divergence = 0.0)
     {
-        return command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_BET_COMMAND.InitMotor => "#I:!",
-            EN_BET_COMMAND.MoveManual => string.Join(
-                ":",
-                "MOVE",
-                magnification.ToString("F3", CultureInfo.InvariantCulture),
-                divergence.ToString("F3", CultureInfo.InvariantCulture)),
-            EN_BET_COMMAND.MoveMagnification => $"#2:{ToMotorStep(magnification).ToString(CultureInfo.InvariantCulture)}!",
-            EN_BET_COMMAND.MoveDivergence => $"#1:{ToMotorStep(divergence).ToString(CultureInfo.InvariantCulture)}!",
-            EN_BET_COMMAND.Refresh => "#8:$8:500",
-            EN_BET_COMMAND.PollMagnificationPosition => "#8:$8:500",
-            EN_BET_COMMAND.PollDivergencePosition => "#7:$7:500",
-            EN_BET_COMMAND.ResetAlarm => "#0:!",
-            _ => ""
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_BET_COMMAND.InitMotor:
+                    return "#I:!";
+                case EN_BET_COMMAND.MoveManual:
+                    return string.Join(
+                        ":",
+                        "MOVE",
+                        magnification.ToString("F3", CultureInfo.InvariantCulture),
+                        divergence.ToString("F3", CultureInfo.InvariantCulture));
+                case EN_BET_COMMAND.MoveMagnification:
+                    return $"#2:{ToMotorStep(magnification).ToString(CultureInfo.InvariantCulture)}!";
+                case EN_BET_COMMAND.MoveDivergence:
+                    return $"#1:{ToMotorStep(divergence).ToString(CultureInfo.InvariantCulture)}!";
+                case EN_BET_COMMAND.Refresh:
+                    return "#8:$8:500";
+                case EN_BET_COMMAND.PollMagnificationPosition:
+                    return "#8:$8:500";
+                case EN_BET_COMMAND.PollDivergencePosition:
+                    return "#7:$7:500";
+                case EN_BET_COMMAND.ResetAlarm:
+                    return "#0:!";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateCommandSwitch1();
     }
 
     public static string BuildLogText(
@@ -67,16 +82,26 @@ internal sealed class CBeamExpander(
         double magnification = 0.0,
         double divergence = 0.0)
     {
-        return command switch
+        string EvaluateCommandSwitch2()
         {
-            EN_BET_COMMAND.MoveManual => string.Join(
-                " / ",
-                $"#1:{ToMotorStep(divergence).ToString(CultureInfo.InvariantCulture)}!",
-                $"#2:{ToMotorStep(magnification).ToString(CultureInfo.InvariantCulture)}!"),
-            EN_BET_COMMAND.MoveMagnification => $"#2:{ToMotorStep(magnification).ToString(CultureInfo.InvariantCulture)}!",
-            EN_BET_COMMAND.MoveDivergence => $"#1:{ToMotorStep(divergence).ToString(CultureInfo.InvariantCulture)}!",
-            _ => Build(command, magnification, divergence)
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_BET_COMMAND.MoveManual:
+                    return string.Join(
+                        " / ",
+                        $"#1:{ToMotorStep(divergence).ToString(CultureInfo.InvariantCulture)}!",
+                        $"#2:{ToMotorStep(magnification).ToString(CultureInfo.InvariantCulture)}!");
+                case EN_BET_COMMAND.MoveMagnification:
+                    return $"#2:{ToMotorStep(magnification).ToString(CultureInfo.InvariantCulture)}!";
+                case EN_BET_COMMAND.MoveDivergence:
+                    return $"#1:{ToMotorStep(divergence).ToString(CultureInfo.InvariantCulture)}!";
+                default:
+                    return Build(command, magnification, divergence);
+            }
+        }
+
+        return EvaluateCommandSwitch2();
     }
 
     public static bool IsSuccessResponse(string response)
@@ -113,67 +138,81 @@ internal sealed class CBeamExpander(
             LastError = EN_BET_ERROR.Ok,
             UpdatedAt = DateTimeOffset.Now
         };
-
-        return command switch
+        ST_BET_STATUS EvaluateCommandSwitch3()
         {
-            EN_BET_COMMAND.InitMotor => ok with
+            var switchValue = command;
+            switch (switchValue)
             {
-                IsMoving = false,
-                MagHomeCompleted = true,
-                DivHomeCompleted = true,
-                LastCommand = "INIT"
-            },
-            EN_BET_COMMAND.MoveManual => ok with
-            {
-                CurrentMagnification = simulation ? magnification : ok.CurrentMagnification,
-                TargetMagnification = magnification,
-                CurrentDivergence = simulation ? divergence : ok.CurrentDivergence,
-                TargetDivergence = divergence,
-                MagnificationAxisPosition = simulation ? magnification : ok.MagnificationAxisPosition,
-                DivergenceAxisPosition = simulation ? divergence : ok.DivergenceAxisPosition,
-                IsMoving = !simulation,
-                LastCommand = "MOVE"
-            },
-            EN_BET_COMMAND.MoveMagnification => ok with
-            {
-                CurrentMagnification = simulation ? magnification : ok.CurrentMagnification,
-                TargetMagnification = magnification,
-                MagnificationAxisPosition = simulation ? magnification : ok.MagnificationAxisPosition,
-                IsMoving = !simulation,
-                LastCommand = "MOVE MAG"
-            },
-            EN_BET_COMMAND.MoveDivergence => ok with
-            {
-                CurrentDivergence = simulation ? divergence : ok.CurrentDivergence,
-                TargetDivergence = divergence,
-                DivergenceAxisPosition = simulation ? divergence : ok.DivergenceAxisPosition,
-                IsMoving = !simulation,
-                LastCommand = "MOVE DIV"
-            },
-            EN_BET_COMMAND.Stop => ok with
-            {
-                IsMoving = false,
-                LastCommand = "STOP"
-            },
-            EN_BET_COMMAND.ResetAlarm => ok with
-            {
-                AlarmOn = false,
-                LastCommand = "RESET"
-            },
-            EN_BET_COMMAND.Refresh or EN_BET_COMMAND.PollMagnificationPosition => ok with
-            {
-                CurrentMagnification = ReadTaggedDouble(value, "M2", ok.CurrentMagnification),
-                MagnificationAxisPosition = ReadTaggedDouble(value, "M2", ok.MagnificationAxisPosition),
-                IsMoving = false
-            },
-            EN_BET_COMMAND.PollDivergencePosition => ok with
-            {
-                CurrentDivergence = ReadTaggedDouble(value, "M1", ok.CurrentDivergence),
-                DivergenceAxisPosition = ReadTaggedDouble(value, "M1", ok.DivergenceAxisPosition),
-                IsMoving = false
-            },
-            _ => ok
-        };
+                case EN_BET_COMMAND.InitMotor:
+                    return ok with
+                    {
+                        IsMoving = false,
+                        MagHomeCompleted = true,
+                        DivHomeCompleted = true,
+                        LastCommand = "INIT"
+                    };
+                case EN_BET_COMMAND.MoveManual:
+                    return ok with
+                    {
+                        CurrentMagnification = simulation ? magnification : ok.CurrentMagnification,
+                        TargetMagnification = magnification,
+                        CurrentDivergence = simulation ? divergence : ok.CurrentDivergence,
+                        TargetDivergence = divergence,
+                        MagnificationAxisPosition = simulation ? magnification : ok.MagnificationAxisPosition,
+                        DivergenceAxisPosition = simulation ? divergence : ok.DivergenceAxisPosition,
+                        IsMoving = !simulation,
+                        LastCommand = "MOVE"
+                    };
+                case EN_BET_COMMAND.MoveMagnification:
+                    return ok with
+                    {
+                        CurrentMagnification = simulation ? magnification : ok.CurrentMagnification,
+                        TargetMagnification = magnification,
+                        MagnificationAxisPosition = simulation ? magnification : ok.MagnificationAxisPosition,
+                        IsMoving = !simulation,
+                        LastCommand = "MOVE MAG"
+                    };
+                case EN_BET_COMMAND.MoveDivergence:
+                    return ok with
+                    {
+                        CurrentDivergence = simulation ? divergence : ok.CurrentDivergence,
+                        TargetDivergence = divergence,
+                        DivergenceAxisPosition = simulation ? divergence : ok.DivergenceAxisPosition,
+                        IsMoving = !simulation,
+                        LastCommand = "MOVE DIV"
+                    };
+                case EN_BET_COMMAND.Stop:
+                    return ok with
+                    {
+                        IsMoving = false,
+                        LastCommand = "STOP"
+                    };
+                case EN_BET_COMMAND.ResetAlarm:
+                    return ok with
+                    {
+                        AlarmOn = false,
+                        LastCommand = "RESET"
+                    };
+                case EN_BET_COMMAND.Refresh or EN_BET_COMMAND.PollMagnificationPosition:
+                    return ok with
+                    {
+                        CurrentMagnification = ReadTaggedDouble(value, "M2", ok.CurrentMagnification),
+                        MagnificationAxisPosition = ReadTaggedDouble(value, "M2", ok.MagnificationAxisPosition),
+                        IsMoving = false
+                    };
+                case EN_BET_COMMAND.PollDivergencePosition:
+                    return ok with
+                    {
+                        CurrentDivergence = ReadTaggedDouble(value, "M1", ok.CurrentDivergence),
+                        DivergenceAxisPosition = ReadTaggedDouble(value, "M1", ok.DivergenceAxisPosition),
+                        IsMoving = false
+                    };
+                default:
+                    return ok;
+            }
+        }
+
+        return EvaluateCommandSwitch3();
     }
 
     public override async Task<string> Execute(
@@ -210,7 +249,12 @@ internal sealed class CBeamExpander(
 
         try
         {
-            LastReceived = await Task.Run(() => ExecuteBeamExpander(function), cancellationToken);
+            string RunTask1()
+            {
+                return ExecuteBeamExpander(function);
+            }
+
+            LastReceived = await Task.Run(RunTask1, cancellationToken);
             LastError = LastReceived.StartsWith("ERR:", StringComparison.OrdinalIgnoreCase)
                 ? LastReceived
                 : "";
@@ -249,14 +293,21 @@ internal sealed class CBeamExpander(
         {
             return SendPolling(text);
         }
-
-        return parts.Length > 0 ? parts[0].ToUpperInvariant() switch
+        string EvaluateValueSwitch4()
         {
-            "MOVE" when parts.Length >= 3 &&
-                double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var mag) &&
-                double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var div) => SendMove(mag, div),
-            _ => "ERR:-2"
-        } : "ERR:-2";
+            var switchValue = parts[0].ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "MOVE" when parts.Length >= 3 &&
+                        double.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var mag) &&
+                        double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var div):
+                    return SendMove(mag, div);
+                default:
+                    return "ERR:-2";
+            }
+        }
+
+        return parts.Length > 0 ? EvaluateValueSwitch4() : "ERR:-2";
     }
 
     private string SendMove(double magnification, double divergence)
@@ -290,12 +341,21 @@ internal sealed class CBeamExpander(
 
     private string SendPolling(string command)
     {
-        var normalized = NormalizePollingCommand(command) switch
+        string EvaluateValueSwitch5()
         {
-            "7" => "M1",
-            "8" => "M2",
-            _ => ""
-        };
+            var switchValue = NormalizePollingCommand(command);
+            switch (switchValue)
+            {
+                case "7":
+                    return "M1";
+                case "8":
+                    return "M2";
+                default:
+                    return "";
+            }
+        }
+
+        var normalized = EvaluateValueSwitch5();
 
         if (string.IsNullOrWhiteSpace(normalized))
         {
@@ -413,16 +473,23 @@ internal sealed class CBeamExpander(
         double divergence,
         ST_BET_STATUS current)
     {
-        return command switch
+        string EvaluateCommandSwitch6()
         {
-            EN_BET_COMMAND.PollMagnificationPosition or EN_BET_COMMAND.Refresh =>
-                $"M2:{current.CurrentMagnification.ToString("F3", CultureInfo.InvariantCulture)}",
-            EN_BET_COMMAND.PollDivergencePosition =>
-                $"M1:{current.CurrentDivergence.ToString("F3", CultureInfo.InvariantCulture)}",
-            EN_BET_COMMAND.MoveManual =>
-                $"MOVE:{magnification.ToString("F3", CultureInfo.InvariantCulture)}:{divergence.ToString("F3", CultureInfo.InvariantCulture)}",
-            _ => "OK"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_BET_COMMAND.PollMagnificationPosition or EN_BET_COMMAND.Refresh:
+                    return $"M2:{current.CurrentMagnification.ToString("F3", CultureInfo.InvariantCulture)}";
+                case EN_BET_COMMAND.PollDivergencePosition:
+                    return $"M1:{current.CurrentDivergence.ToString("F3", CultureInfo.InvariantCulture)}";
+                case EN_BET_COMMAND.MoveManual:
+                    return $"MOVE:{magnification.ToString("F3", CultureInfo.InvariantCulture)}:{divergence.ToString("F3", CultureInfo.InvariantCulture)}";
+                default:
+                    return "OK";
+            }
+        }
+
+        return EvaluateCommandSwitch6();
     }
 
     private static EN_BET_ERROR ReadError(string response)
@@ -435,14 +502,23 @@ internal sealed class CBeamExpander(
         {
             return EN_BET_ERROR.Error;
         }
-
-        return code switch
+        EN_BET_ERROR EvaluateCodeSwitch7()
         {
-            -99 => EN_BET_ERROR.NotSupported,
-            -2 => EN_BET_ERROR.InvalidResponse,
-            -1 => EN_BET_ERROR.Timeout,
-            _ => EN_BET_ERROR.Error
-        };
+            var switchValue = code;
+            switch (switchValue)
+            {
+                case -99:
+                    return EN_BET_ERROR.NotSupported;
+                case -2:
+                    return EN_BET_ERROR.InvalidResponse;
+                case -1:
+                    return EN_BET_ERROR.Timeout;
+                default:
+                    return EN_BET_ERROR.Error;
+            }
+        }
+
+        return EvaluateCodeSwitch7();
     }
 
     private static double ReadTaggedDouble(string response, string tag, double defaultValue)
@@ -462,11 +538,16 @@ internal sealed class CBeamExpander(
         var text = response.Trim();
         var colonIndex = text.IndexOf(':', StringComparison.Ordinal);
         var value = colonIndex >= 0 ? text[(colonIndex + 1)..] : text;
+        bool TakeWhileCharacterCallback2(char character)
+        {
+            return char.IsDigit(character) ||
+                            character == '-' ||
+                            character == '+' ||
+                            character == '.';
+        }
+
         value = new string(value
-            .TakeWhile(character => char.IsDigit(character) ||
-                character == '-' ||
-                character == '+' ||
-                character == '.')
+            .TakeWhile(TakeWhileCharacterCallback2)
             .ToArray());
 
         if (!double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var step))
@@ -502,9 +583,15 @@ public sealed record ST_BET_TABLE_DATA(
 {
     private const double DefaultRowBeamSize = 32.64;
 
-    public double SpotSize => Magnification == 0.0
+    public double SpotSize
+    {
+        get
+        {
+            return Magnification == 0.0
         ? 0.001
         : (DefaultRowBeamSize / Magnification) / 1000.0;
+        }
+    }
 }
 
 

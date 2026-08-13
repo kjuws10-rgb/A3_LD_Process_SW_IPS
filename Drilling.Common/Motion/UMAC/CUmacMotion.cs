@@ -8,9 +8,15 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("UMAC")]
-internal sealed class CUmacMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CUmacMotion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("UMAC", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "UMAC";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "UMAC";
+        }
+    }
 }
 

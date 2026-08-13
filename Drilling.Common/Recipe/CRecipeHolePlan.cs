@@ -29,9 +29,21 @@ public sealed record ST_RECIPE_HOLE_POINT(
     double ScannerOffsetY,
     double StageWaitPosition)
 {
-    public double OffsetX => RecipeOffsetX;
+    public double OffsetX
+    {
+        get
+        {
+            return RecipeOffsetX;
+        }
+    }
 
-    public double OffsetY => RecipeOffsetY;
+    public double OffsetY
+    {
+        get
+        {
+            return RecipeOffsetY;
+        }
+    }
 }
 
 public sealed record ST_RECIPE_HOLE_PLAN(
@@ -63,6 +75,44 @@ internal readonly record struct ST_HEAD_ASSIGNMENT_CANDIDATE(
 
 public static class CRecipeHolePlan
 {
+    private sealed class CPreparedHolePoint
+    {
+        public CPreparedHolePoint(
+            int index,
+            ST_RECIPE_RAW_HOLE_POINT point,
+            int headNo,
+            double headCenterX,
+            double scannerGxDirection,
+            double scannerGyDirection,
+            double headDefaultOffsetX,
+            double headDefaultOffsetY,
+            double stageHoleX,
+            double shotStageY)
+        {
+            Index = index;
+            Point = point;
+            HeadNo = headNo;
+            HeadCenterX = headCenterX;
+            ScannerGxDirection = scannerGxDirection;
+            ScannerGyDirection = scannerGyDirection;
+            HeadDefaultOffsetX = headDefaultOffsetX;
+            HeadDefaultOffsetY = headDefaultOffsetY;
+            StageHoleX = stageHoleX;
+            ShotStageY = shotStageY;
+        }
+
+        public int Index { get; }
+        public ST_RECIPE_RAW_HOLE_POINT Point { get; }
+        public int HeadNo { get; }
+        public double HeadCenterX { get; }
+        public double ScannerGxDirection { get; }
+        public double ScannerGyDirection { get; }
+        public double HeadDefaultOffsetX { get; }
+        public double HeadDefaultOffsetY { get; }
+        public double StageHoleX { get; }
+        public double ShotStageY { get; }
+    }
+
     public static ST_RECIPE_HOLE_PLAN Build(
         IReadOnlyDictionary<string, string> parameters)
     {
@@ -76,144 +126,149 @@ public static class CRecipeHolePlan
         var stageScanDirectionY = ReadDirection(parameters, -1.0, "STAGE_SCAN_DIRECTION_Y");
         var scanStartDelayLengthY = Math.Abs(ReadDouble(parameters, 0.0, "SCAN_START_DELAY_LENGTH_Y"));
         var akMarginY = ReadDouble(parameters, 0.0, "AK_MARGIN_Y");
+        int HandleAssignedHeadCounts1(int headNo)
+        {
+            return headNo;
+        }
+
+        int HandleAssignedHeadCounts2(int _)
+        {
+            return 0;
+        }
+
         var assignedHeadCounts = Enumerable.Range(1, headCount)
-            .ToDictionary(headNo => headNo, _ => 0);
+            .ToDictionary(HandleAssignedHeadCounts1, HandleAssignedHeadCounts2);
         var rawPoints = BuildRawPoints(parameters, cellCount);
-        var preparedPoints = rawPoints
-            .Select((point, index) =>
+        List<CPreparedHolePoint> preparedPointList = new List<CPreparedHolePoint>();
+        for (int index = 0; index < rawPoints.Count; index++)
+        {
+            ST_RECIPE_RAW_HOLE_POINT point = rawPoints[index];
+            int headNo = AssignHeadNo(
+                point.DesignX,
+                headCount,
+                parameters,
+                assignedHeadCounts);
+            if (headNo > 0)
             {
-                var headNo = AssignHeadNo(
-                    point.DesignX,
-                    headCount,
+                assignedHeadCounts[headNo]++;
+            }
+
+            double headCenterX = headNo > 0
+                ? ReadHeadCenterX(parameters, headNo)
+                : point.DesignX;
+            double headCenterY = headNo > 0
+                ? ReadHeadCenterY(parameters, headNo)
+                : 0.0;
+            double scannerGxDirection = headNo > 0
+                ? ReadHeadScannerDirection(
                     parameters,
-                    assignedHeadCounts);
-                if (headNo > 0)
-                {
-                    assignedHeadCounts[headNo]++;
-                }
+                    headNo,
+                    headNo % 2 == 0 ? 1.0 : -1.0,
+                    "STAGE_X_TO_GX")
+                : 1.0;
+            double scannerGyDirection = headNo > 0
+                ? ReadHeadScannerDirection(
+                    parameters,
+                    headNo,
+                    headNo % 2 == 0 ? -1.0 : 1.0,
+                    "STAGE_Y_TO_GY")
+                : 1.0;
+            double headDefaultOffsetX = headNo > 0
+                ? ReadHeadDefaultOffset(parameters, headNo, "X")
+                : 0.0;
+            double headDefaultOffsetY = headNo > 0
+                ? ReadHeadDefaultOffset(parameters, headNo, "Y")
+                : 0.0;
+            double stageHoleX = point.DesignX;
+            double stageHoleY = ConvertRecipeYToStageY(point.DesignY - akMarginY);
+            double shotStageY = headCenterY + stageHoleY;
 
-                var headCenterX = headNo > 0
-                    ? ReadHeadCenterX(
-                        parameters,
-                        headNo)
-                    : point.DesignX;
-                var headCenterY = headNo > 0
-                    ? ReadHeadCenterY(
-                        parameters,
-                        headNo)
-                    : 0.0;
-                var scannerGxDirection = headNo > 0
-                    ? ReadHeadScannerDirection(
-                        parameters,
-                        headNo,
-                        headNo % 2 == 0 ? 1.0 : -1.0,
-                        "STAGE_X_TO_GX")
-                    : 1.0;
-                var scannerGyDirection = headNo > 0
-                    ? ReadHeadScannerDirection(
-                        parameters,
-                        headNo,
-                        headNo % 2 == 0 ? -1.0 : 1.0,
-                        "STAGE_Y_TO_GY")
-                    : 1.0;
-                var headDefaultOffsetX = headNo > 0
-                    ? ReadHeadDefaultOffset(
-                        parameters,
-                        headNo,
-                        "X")
-                    : 0.0;
-                var headDefaultOffsetY = headNo > 0
-                    ? ReadHeadDefaultOffset(
-                        parameters,
-                        headNo,
-                        "Y")
-                    : 0.0;
-                var stageHoleX = point.DesignX;
-                var stageHoleY = ConvertRecipeYToStageY(point.DesignY - akMarginY);
-                var shotStageY = headCenterY + stageHoleY;
+            preparedPointList.Add(new CPreparedHolePoint(
+                index,
+                point,
+                headNo,
+                headCenterX,
+                scannerGxDirection,
+                scannerGyDirection,
+                headDefaultOffsetX,
+                headDefaultOffsetY,
+                stageHoleX,
+                shotStageY));
+        }
 
-                return new
-                {
-                    Index = index,
-                    Point = point,
-                    HeadNo = headNo,
-                    HeadCenterX = headCenterX,
-                    ScannerGxDirection = scannerGxDirection,
-                    ScannerGyDirection = scannerGyDirection,
-                    HeadDefaultOffsetX = headDefaultOffsetX,
-                    HeadDefaultOffsetY = headDefaultOffsetY,
-                    StageHoleX = stageHoleX,
-                    ShotStageY = shotStageY
-                };
-            })
-            .ToArray();
+        CPreparedHolePoint[] preparedPoints = preparedPointList.ToArray();
+        double GetShotStageY(CPreparedHolePoint point)
+        {
+            return point.ShotStageY;
+        }
+
         var firstShotStageY = preparedPoints.Length > 0
             ? stageScanDirectionY < 0.0
-                ? preparedPoints.Max(point => point.ShotStageY)
-                : preparedPoints.Min(point => point.ShotStageY)
+                ? preparedPoints.Max(GetShotStageY)
+                : preparedPoints.Min(GetShotStageY)
             : 0.0;
         var scanStartStageY = firstShotStageY - (stageScanDirectionY * scanStartDelayLengthY);
-        var calculatedPoints = preparedPoints
-            .Select(point =>
+        List<ST_RECIPE_HOLE_POINT> calculatedPointList = new List<ST_RECIPE_HOLE_POINT>();
+        foreach (CPreparedHolePoint point in preparedPoints)
+        {
+            double stageWaitDistanceY = (point.ShotStageY - scanStartStageY) * stageScanDirectionY;
+            if (stageWaitDistanceY < 0.0 && Math.Abs(stageWaitDistanceY) <= 0.000001)
             {
-                var stageWaitDistanceY = (point.ShotStageY - scanStartStageY) * stageScanDirectionY;
-                if (stageWaitDistanceY < 0.0 &&
-                    Math.Abs(stageWaitDistanceY) <= 0.000001)
-                {
-                    stageWaitDistanceY = 0.0;
-                }
+                stageWaitDistanceY = 0.0;
+            }
 
-                var scannerBaseGx = ApplyScannerAxis(
-                    point.StageHoleX,
-                    point.HeadCenterX,
-                    0.0,
-                    point.ScannerGxDirection);
-                var scannerBaseGy = stageWaitDistanceY * stageScanDirectionY * point.ScannerGyDirection;
-                var headDefaultScannerOffsetX =
-                    (point.HeadDefaultOffsetX * point.ScannerGxDirection);
-                var headDefaultScannerOffsetY =
-                    (ConvertRecipeYToStageY(point.HeadDefaultOffsetY) * point.ScannerGyDirection);
-                var scannerOffsetX =
-                    point.Point.RecipeOffsetX +
-                    headDefaultScannerOffsetX +
-                    point.Point.ReviewOffsetX;
-                var scannerOffsetY =
-                    point.Point.RecipeOffsetY +
-                    headDefaultScannerOffsetY +
-                    point.Point.ReviewOffsetY;
-                var scannerGx = scannerBaseGx + scannerOffsetX;
-                var scannerGy = scannerBaseGy + scannerOffsetY;
-                var stageWaitPosition = stageWaitDistanceY * Math.Abs(encoderScale) * stageScanDirectionY;
+            double scannerBaseGx = ApplyScannerAxis(
+                point.StageHoleX,
+                point.HeadCenterX,
+                0.0,
+                point.ScannerGxDirection);
+            double scannerBaseGy = stageWaitDistanceY * stageScanDirectionY * point.ScannerGyDirection;
+            double headDefaultScannerOffsetX = point.HeadDefaultOffsetX * point.ScannerGxDirection;
+            double headDefaultScannerOffsetY =
+                ConvertRecipeYToStageY(point.HeadDefaultOffsetY) * point.ScannerGyDirection;
+            double scannerOffsetX =
+                point.Point.RecipeOffsetX + headDefaultScannerOffsetX + point.Point.ReviewOffsetX;
+            double scannerOffsetY =
+                point.Point.RecipeOffsetY + headDefaultScannerOffsetY + point.Point.ReviewOffsetY;
+            double scannerGx = scannerBaseGx + scannerOffsetX;
+            double scannerGy = scannerBaseGy + scannerOffsetY;
+            double stageWaitPosition = stageWaitDistanceY * Math.Abs(encoderScale) * stageScanDirectionY;
 
-                return new ST_RECIPE_HOLE_POINT(
-                    point.Index + 1,
-                    point.Point.HoleKey,
-                    point.HeadNo,
-                    point.Point.CellNo,
-                    point.Point.HoleNo,
-                    point.Point.Column,
-                    point.Point.Row,
-                    point.Point.PixelCountX,
-                    point.Point.PixelCountY,
-                    point.Point.DesignX,
-                    point.Point.DesignY,
-                    scannerGx,
-                    scannerGy,
-                    point.StageHoleX,
-                    point.ShotStageY,
-                    point.Point.RecipeOffsetX,
-                    point.Point.RecipeOffsetY,
-                    point.HeadDefaultOffsetX,
-                    point.HeadDefaultOffsetY,
-                    point.Point.ReviewOffsetX,
-                    point.Point.ReviewOffsetY,
-                    scannerOffsetX,
-                    scannerOffsetY,
-                    stageWaitPosition);
-            })
-            .ToArray();
+            calculatedPointList.Add(new ST_RECIPE_HOLE_POINT(
+                point.Index + 1,
+                point.Point.HoleKey,
+                point.HeadNo,
+                point.Point.CellNo,
+                point.Point.HoleNo,
+                point.Point.Column,
+                point.Point.Row,
+                point.Point.PixelCountX,
+                point.Point.PixelCountY,
+                point.Point.DesignX,
+                point.Point.DesignY,
+                scannerGx,
+                scannerGy,
+                point.StageHoleX,
+                point.ShotStageY,
+                point.Point.RecipeOffsetX,
+                point.Point.RecipeOffsetY,
+                point.HeadDefaultOffsetX,
+                point.HeadDefaultOffsetY,
+                point.Point.ReviewOffsetX,
+                point.Point.ReviewOffsetY,
+                scannerOffsetX,
+                scannerOffsetY,
+                stageWaitPosition));
+        }
+
+        ST_RECIPE_HOLE_POINT[] calculatedPoints = calculatedPointList.ToArray();
+        ST_RECIPE_HOLE_POINT SelectPoint3(ST_RECIPE_HOLE_POINT point, int index)
+        {
+            return point with { SequenceNo = index + 1 };
+        }
+
         var points = OrderProcessPoints(calculatedPoints, stageScanDirectionY)
-            .Select((point, index) => point with { SequenceNo = index + 1 })
+            .Select(SelectPoint3)
             .ToArray();
 
         return new ST_RECIPE_HOLE_PLAN(
@@ -369,28 +424,28 @@ public static class CRecipeHolePlan
         {
             return [];
         }
-
+        ST_RECIPE_RAW_HOLE_POINT SelectPoint4(ST_CELL_DRILL_POINT point)
+        {
+            var holeName = CReviewHoleNameFormatter.ToMatrixName(point.PointNo, pixelCountX);
+            var recipeOffsetPrefix = $"CELL{cellNo}_{holeName}_RECIPE_OFFSET_";
+            var reviewOffsetPrefix = $"CELL{cellNo}_{holeName}_REVIEW_OFFSET_";
+            return new ST_RECIPE_RAW_HOLE_POINT(
+                ToHoleKey(cellNo, point.PointNo),
+                cellNo,
+                point.PointNo,
+                point.Column,
+                point.Row,
+                pixelCountX,
+                pixelCountY,
+                point.X,
+                point.Y,
+                ReadDouble(parameters, 0.0, $"{recipeOffsetPrefix}X"),
+                ReadDouble(parameters, 0.0, $"{recipeOffsetPrefix}Y"),
+                ReadDouble(parameters, defaultReviewOffsetX, $"{reviewOffsetPrefix}X"),
+                ReadDouble(parameters, defaultReviewOffsetY, $"{reviewOffsetPrefix}Y"));
+        }
         return calculated.Points
-            .Select(point =>
-            {
-                var holeName = CReviewHoleNameFormatter.ToMatrixName(point.PointNo, pixelCountX);
-                var recipeOffsetPrefix = $"CELL{cellNo}_{holeName}_RECIPE_OFFSET_";
-                var reviewOffsetPrefix = $"CELL{cellNo}_{holeName}_REVIEW_OFFSET_";
-                return new ST_RECIPE_RAW_HOLE_POINT(
-                    ToHoleKey(cellNo, point.PointNo),
-                    cellNo,
-                    point.PointNo,
-                    point.Column,
-                    point.Row,
-                    pixelCountX,
-                    pixelCountY,
-                    point.X,
-                    point.Y,
-                    ReadDouble(parameters, 0.0, $"{recipeOffsetPrefix}X"),
-                    ReadDouble(parameters, 0.0, $"{recipeOffsetPrefix}Y"),
-                    ReadDouble(parameters, defaultReviewOffsetX, $"{reviewOffsetPrefix}X"),
-                    ReadDouble(parameters, defaultReviewOffsetY, $"{reviewOffsetPrefix}Y"));
-            })
+            .Select(SelectPoint4)
             .ToArray();
     }
 
@@ -398,20 +453,65 @@ public static class CRecipeHolePlan
         IReadOnlyList<ST_RECIPE_HOLE_POINT> points,
         double stageScanDirectionY)
     {
+        double HandleRows5(ST_RECIPE_HOLE_POINT point)
+        {
+            return Math.Round(point.StageWaitPosition, 6);
+        }
+
         var rows = points
-            .GroupBy(point => Math.Round(point.StageWaitPosition, 6))
+            .GroupBy(HandleRows5)
             .ToArray();
+        double GetRowSortKey6(IGrouping<double, ST_RECIPE_HOLE_POINT> row)
+        {
+            return row.Key;
+        }
+
+        double GetRowSortKey7(IGrouping<double, ST_RECIPE_HOLE_POINT> row)
+        {
+            return row.Key;
+        }
+
         var orderedRows = (stageScanDirectionY < 0.0
-                ? rows.OrderByDescending(row => row.Key)
-                : rows.OrderBy(row => row.Key))
+                ? rows.OrderByDescending(GetRowSortKey6)
+                : rows.OrderBy(GetRowSortKey7))
             .ToArray();
         var orderedPoints = new List<ST_RECIPE_HOLE_POINT>(points.Count);
 
         for (var rowIndex = 0; rowIndex < orderedRows.Length; rowIndex++)
         {
+            double GetPointSortKey8(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.DesignX;
+            }
+
+            int GetPointSortKey9(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.CellNo;
+            }
+
+            int GetPointSortKey10(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.HoleNo;
+            }
+
+            double GetPointSortKey11(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.DesignX;
+            }
+
+            int GetPointSortKey12(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.CellNo;
+            }
+
+            int GetPointSortKey13(ST_RECIPE_HOLE_POINT point)
+            {
+                return point.HoleNo;
+            }
+
             var rowPoints = rowIndex % 2 == 0
-                ? orderedRows[rowIndex].OrderBy(point => point.DesignX).ThenBy(point => point.CellNo).ThenBy(point => point.HoleNo)
-                : orderedRows[rowIndex].OrderByDescending(point => point.DesignX).ThenBy(point => point.CellNo).ThenBy(point => point.HoleNo);
+                ? orderedRows[rowIndex].OrderBy(GetPointSortKey8).ThenBy(GetPointSortKey9).ThenBy(GetPointSortKey10)
+                : orderedRows[rowIndex].OrderByDescending(GetPointSortKey11).ThenBy(GetPointSortKey12).ThenBy(GetPointSortKey13);
 
             orderedPoints.AddRange(rowPoints);
         }
@@ -429,44 +529,62 @@ public static class CRecipeHolePlan
         {
             return 1;
         }
+        bool CheckHeadNo14(int headNo)
+        {
+            return ReadNullableDouble(
+                            parameters,
+                            $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
+                            $"H{headNo:00}_HEAD_FIELD_WIDTH_X").HasValue;
+        }
 
-        var hasIndividualAreas = Enumerable.Range(1, headCount).Any(headNo =>
-            ReadNullableDouble(
-                parameters,
-                $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
-                $"H{headNo:00}_HEAD_FIELD_WIDTH_X").HasValue);
+        var hasIndividualAreas = Enumerable.Range(1, headCount).Any(CheckHeadNo14);
 
         if (hasIndividualAreas)
         {
-            var candidates = Enumerable.Range(1, headCount)
-                .Select(headNo =>
-                {
-                    var centerX = ReadHeadCenterX(parameters, headNo);
-                    var widthX = ReadNullableDouble(
-                            parameters,
-                            $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
-                            $"H{headNo:00}_HEAD_FIELD_WIDTH_X")
-                        ?? 110.0;
-                    widthX = widthX > 0.0 ? widthX : 110.0;
-                    var halfWidth = widthX / 2.0;
+            ST_HEAD_ASSIGNMENT_CANDIDATE? SelectHeadNo15(int headNo)
+            {
+                var centerX = ReadHeadCenterX(parameters, headNo);
+                var widthX = ReadNullableDouble(
+                        parameters,
+                        $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
+                        $"H{headNo:00}_HEAD_FIELD_WIDTH_X")
+                    ?? 110.0;
+                widthX = widthX > 0.0 ? widthX : 110.0;
+                var halfWidth = widthX / 2.0;
 
-                    return designX >= centerX - halfWidth && designX <= centerX + halfWidth
-                        ? new ST_HEAD_ASSIGNMENT_CANDIDATE(headNo, Math.Abs(designX - centerX))
-                        : (ST_HEAD_ASSIGNMENT_CANDIDATE?)null;
-                })
-                .Where(candidate => candidate.HasValue)
-                .Select(candidate => candidate!.Value)
+                return designX >= centerX - halfWidth && designX <= centerX + halfWidth
+                    ? new ST_HEAD_ASSIGNMENT_CANDIDATE(headNo, Math.Abs(designX - centerX))
+                    : (ST_HEAD_ASSIGNMENT_CANDIDATE?)null;
+            }
+            bool FilterCandidate16(ST_HEAD_ASSIGNMENT_CANDIDATE? candidate)
+            {
+                return candidate.HasValue;
+            }
+
+            ST_HEAD_ASSIGNMENT_CANDIDATE SelectCandidate17(ST_HEAD_ASSIGNMENT_CANDIDATE? candidate)
+            {
+                return candidate!.Value;
+            }
+
+            var candidates = Enumerable.Range(1, headCount)
+                .Select(SelectHeadNo15)
+                .Where(FilterCandidate16)
+                .Select(SelectCandidate17)
                 .ToArray();
 
             return candidates.Length == 0
                 ? 0
                 : SelectHeadCandidate(candidates, assignedHeadCounts);
         }
+        ST_HEAD_ASSIGNMENT_CANDIDATE SelectHeadNo18(int headNo)
+        {
+            return new ST_HEAD_ASSIGNMENT_CANDIDATE(
+                            headNo,
+                            Math.Abs(designX - ReadHeadCenterX(parameters, headNo)));
+        }
 
         var fallbackCandidates = Enumerable.Range(1, headCount)
-            .Select(headNo => new ST_HEAD_ASSIGNMENT_CANDIDATE(
-                headNo,
-                Math.Abs(designX - ReadHeadCenterX(parameters, headNo))))
+            .Select(SelectHeadNo18)
             .ToArray();
 
         return SelectHeadCandidate(fallbackCandidates, assignedHeadCounts);
@@ -476,12 +594,27 @@ public static class CRecipeHolePlan
         IReadOnlyList<ST_HEAD_ASSIGNMENT_CANDIDATE> candidates,
         IReadOnlyDictionary<int, int> assignedHeadCounts)
     {
+        double GetCandidateSortKey19(ST_HEAD_ASSIGNMENT_CANDIDATE candidate)
+        {
+            return candidate.Distance;
+        }
+
+        int GetCandidateSortKey20(ST_HEAD_ASSIGNMENT_CANDIDATE candidate)
+        {
+            return assignedHeadCounts.TryGetValue(candidate.HeadNo, out var count)
+                            ? count
+                            : 0;
+        }
+
+        int GetCandidateSortKey21(ST_HEAD_ASSIGNMENT_CANDIDATE candidate)
+        {
+            return candidate.HeadNo;
+        }
+
         return candidates
-            .OrderBy(candidate => candidate.Distance)
-            .ThenBy(candidate => assignedHeadCounts.TryGetValue(candidate.HeadNo, out var count)
-                ? count
-                : 0)
-            .ThenBy(candidate => candidate.HeadNo)
+            .OrderBy(GetCandidateSortKey19)
+            .ThenBy(GetCandidateSortKey20)
+            .ThenBy(GetCandidateSortKey21)
             .First()
             .HeadNo;
     }
@@ -569,7 +702,12 @@ public static class CRecipeHolePlan
         double defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey22(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey22))
         {
             if (!parameters.TryGetValue(key, out var value) ||
                 string.IsNullOrWhiteSpace(value))
@@ -628,7 +766,12 @@ public static class CRecipeHolePlan
         double defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey23(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey23))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
@@ -644,7 +787,12 @@ public static class CRecipeHolePlan
         IReadOnlyDictionary<string, string> parameters,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey24(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey24))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
@@ -661,7 +809,12 @@ public static class CRecipeHolePlan
         int defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey25(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey25))
         {
             if (!parameters.TryGetValue(key, out var value))
             {

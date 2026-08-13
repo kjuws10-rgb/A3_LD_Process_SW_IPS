@@ -9,16 +9,16 @@ using Drilling.UI.Popup;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuReview : IMenu
+public sealed class CMenuReview : CMenuBase
 {
     private const int DefaultHeadCount = 8;
     private const int MaxHeadCount = 8;
     private const int DefaultCellCount = 20;
     private const string DefaultRuleFileName = "ALL_POINT.csv";
 
-    private readonly IReviewManager _reviewManager;
-    private readonly IReviewRuleFile _reviewRuleFile;
-    private readonly IRecipeManager _recipeManager;
+    private readonly CReviewManager _reviewManager;
+    private readonly CReviewRuleFileBase _reviewRuleFile;
+    private readonly CRecipeManager _recipeManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _statusReporter;
     private readonly Action _refreshScreen;
@@ -55,9 +55,9 @@ public sealed class CMenuReview : IMenu
     private ST_REVIEW_PLAN? _lastAllPlan;
 
     public CMenuReview(
-        IReviewManager reviewManager,
-        IReviewRuleFile reviewRuleFile,
-        IRecipeManager recipeManager,
+        CReviewManager reviewManager,
+        CReviewRuleFileBase reviewRuleFile,
+        CRecipeManager recipeManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> statusReporter,
         Action refreshScreen)
@@ -68,77 +68,237 @@ public sealed class CMenuReview : IMenu
         _selectedRecipeIdProvider = selectedRecipeIdProvider;
         _statusReporter = statusReporter;
         _refreshScreen = refreshScreen;
-        SelectTabCommand = new CButtonCommand(SelectTab, _ => !IsReviewExecutionActive);
-        SelectModeCommand = new CButtonCommand(SelectMode, _ => !IsReviewExecutionActive);
+        bool HandleSelectTabCommand1(object? _)
+        {
+            return !IsReviewExecutionActive;
+        }
+
+        SelectTabCommand = new CButtonCommand(SelectTab, HandleSelectTabCommand1);
+        bool HandleSelectModeCommand2(object? _)
+        {
+            return !IsReviewExecutionActive;
+        }
+
+        SelectModeCommand = new CButtonCommand(SelectMode, HandleSelectModeCommand2);
         TogglePointCommand = new CButtonCommand(ToggleHole);
         SetSampleHoleSelectionCommand = new CButtonCommand(SetSampleHoleSelection);
         QuickSelectCommand = new CButtonCommand(ApplyQuickSelect);
         SelectOneHoleCellCommand = new CButtonCommand(SelectOneHoleCell);
         SelectOneHoleCommand = new CButtonCommand(SelectOneHole);
         BackToOneHoleCellMapCommand = new CButtonCommand(BackToOneHoleCellMap);
-        ApplyOneHoleReviewOffsetCommand = new CButtonCommand(_ => _ = ApplyOneHoleReviewOffset());
+        void HandleApplyOneHoleReviewOffsetCommand3(object? _)
+        {
+            _ = ApplyOneHoleReviewOffset();
+        }
+
+        ApplyOneHoleReviewOffsetCommand = new CButtonCommand(HandleApplyOneHoleReviewOffsetCommand3);
         SelectRunCellCommand = new CButtonCommand(SelectRunCell);
         SelectRunHoleCommand = new CButtonCommand(SelectRunHole);
         BackToRunGlassPreviewCommand = new CButtonCommand(BackToRunGlassPreview);
         SelectSampleCellCommand = new CButtonCommand(SelectSampleCell);
         BackToSampleGlassPreviewCommand = new CButtonCommand(BackToSampleGlassPreview);
+        void HandleStartCommand4(object? _)
+        {
+            _ = StartReviewSequence();
+        }
+
+        bool HandleStartCommand5(object? _)
+        {
+            return !IsReviewExecutionActive;
+        }
+
         StartCommand = new CButtonCommand(
-            _ => _ = StartReviewSequence(),
-            _ => !IsReviewExecutionActive);
-        StopCommand = new CButtonCommand(_ => StopReviewSequence());
-        RetryCommand = new CButtonCommand(_ => _ = RetryRemainingReviewPoints());
-        LoadRuleCommand = new CButtonCommand(_ => _ = LoadSelectedReviewRule());
-        SaveRuleCommand = new CButtonCommand(_ => _ = SaveCurrentReviewRule());
+HandleStartCommand4,
+HandleStartCommand5);
+        void HandleStopCommand6(object? _)
+        {
+            StopReviewSequence();
+        }
+
+        StopCommand = new CButtonCommand(HandleStopCommand6);
+        void HandleRetryCommand7(object? _)
+        {
+            _ = RetryRemainingReviewPoints();
+        }
+
+        RetryCommand = new CButtonCommand(HandleRetryCommand7);
+        void HandleLoadRuleCommand8(object? _)
+        {
+            _ = LoadSelectedReviewRule();
+        }
+
+        LoadRuleCommand = new CButtonCommand(HandleLoadRuleCommand8);
+        void HandleSaveRuleCommand9(object? _)
+        {
+            _ = SaveCurrentReviewRule();
+        }
+
+        SaveRuleCommand = new CButtonCommand(HandleSaveRuleCommand9);
     }
 
-    public EN_MENU Menu => EN_MENU.Review;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Review;
+        }
+    }
 
-    public string Title => "REVIEW / INSPECTION";
+    public string Title
+    {
+        get
+        {
+            return "REVIEW / INSPECTION";
+        }
+    }
 
-    public string Subtitle => "Review hole selection, vision measurement result and re-measure workflow";
+    public string Subtitle
+    {
+        get
+        {
+            return "Review hole selection, vision measurement result and re-measure workflow";
+        }
+    }
 
-    public string PlanSummary => $"{_activePlanPointCount} / {_totalReviewPointCount} holes";
+    public string PlanSummary
+    {
+        get
+        {
+            return $"{_activePlanPointCount} / {_totalReviewPointCount} holes";
+        }
+    }
 
-    public int SampleMapColumnCount => Math.Max(1, _sampleMapColumnCount);
+    public int SampleMapColumnCount
+    {
+        get
+        {
+            return Math.Max(1, _sampleMapColumnCount);
+        }
+    }
 
-    public bool IsRunTab => _selectedTab.Equals("RUN", StringComparison.OrdinalIgnoreCase);
+    public bool IsRunTab
+    {
+        get
+        {
+            return _selectedTab.Equals("RUN", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsRunGlassPreviewVisible => IsRunTab && !_isRunCellDetailVisible;
+    public bool IsRunGlassPreviewVisible
+    {
+        get
+        {
+            return IsRunTab && !_isRunCellDetailVisible;
+        }
+    }
 
-    public bool IsRunCellDetailVisible => IsRunTab && _isRunCellDetailVisible;
+    public bool IsRunCellDetailVisible
+    {
+        get
+        {
+            return IsRunTab && _isRunCellDetailVisible;
+        }
+    }
 
-    public string RunWorkspaceTitle => _isRunCellDetailVisible
+    public string RunWorkspaceTitle
+    {
+        get
+        {
+            return _isRunCellDetailVisible
         ? $"Cell{_selectedRunCellNo} / Hole Detail"
         : "Glass / Cell Preview";
+        }
+    }
 
-    public string RunWorkspaceSummary => _isRunCellDetailVisible
+    public string RunWorkspaceSummary
+    {
+        get
+        {
+            return _isRunCellDetailVisible
         ? $"{RunCellHoleRows.Count} Holes"
         : RunGlassPreviewSummary;
+        }
+    }
 
-    public bool IsSampleSelectTab => _selectedTab.Equals("SAMPLE SELECT", StringComparison.OrdinalIgnoreCase);
+    public bool IsSampleSelectTab
+    {
+        get
+        {
+            return _selectedTab.Equals("SAMPLE SELECT", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsSampleGlassPreviewVisible => IsSampleSelectTab && !_isSampleCellDetailVisible;
+    public bool IsSampleGlassPreviewVisible
+    {
+        get
+        {
+            return IsSampleSelectTab && !_isSampleCellDetailVisible;
+        }
+    }
 
-    public bool IsSampleCellDetailVisible => IsSampleSelectTab && _isSampleCellDetailVisible;
+    public bool IsSampleCellDetailVisible
+    {
+        get
+        {
+            return IsSampleSelectTab && _isSampleCellDetailVisible;
+        }
+    }
 
-    public string SampleWorkspaceTitle => _isSampleCellDetailVisible
+    public string SampleWorkspaceTitle
+    {
+        get
+        {
+            return _isSampleCellDetailVisible
         ? $"Cell{_selectedSampleCellNo} / Sample Hole Selection"
         : "Glass / Cell Preview";
+        }
+    }
 
-    public string SampleWorkspaceSummary => _isSampleCellDetailVisible
-        ? $"{SampleCellHoleRows.Count(row => row.Use)} / {SampleCellHoleRows.Count} Holes Selected"
+    public string SampleWorkspaceSummary
+    {
+        get
+        {
+            bool CountRowCallback10(ST_REVIEW_POINT_SELECT_ROW row)
+            {
+                return row.Use;
+            }
+
+            return _isSampleCellDetailVisible
+        ? $"{SampleCellHoleRows.Count(CountRowCallback10)} / {SampleCellHoleRows.Count} Holes Selected"
         : SampleGlassPreviewSummary;
+        }
+    }
 
-    public string SampleRuleName => GetSelectionRuleText();
+    public string SampleRuleName
+    {
+        get
+        {
+            return GetSelectionRuleText();
+        }
+    }
 
-    public IReadOnlyList<string> SampleHeadOptions =>
-        Enumerable.Range(1, Math.Max(1, _headCount))
-            .Select(headNo => $"H{headNo:00}")
+    public IReadOnlyList<string> SampleHeadOptions
+    {
+        get
+        {
+            string SelectHeadNo11(int headNo)
+            {
+                return $"H{headNo:00}";
+            }
+
+            return Enumerable.Range(1, Math.Max(1, _headCount))
+            .Select(SelectHeadNo11)
             .ToArray();
+        }
+    }
 
     public string SelectedSampleHead
     {
-        get => $"H{_sampleRuleHeadNo:00}";
+        get
+        {
+            return $"H{_sampleRuleHeadNo:00}";
+        }
+
         set
         {
             var normalized = value?.Trim() ?? "";
@@ -154,14 +314,28 @@ public sealed class CMenuReview : IMenu
         }
     }
 
-    public IReadOnlyList<string> SampleCellOptions =>
-        Enumerable.Range(1, Math.Max(1, _cellCount))
-            .Select(cellNo => $"Cell{cellNo}")
+    public IReadOnlyList<string> SampleCellOptions
+    {
+        get
+        {
+            string SelectCellNo12(int cellNo)
+            {
+                return $"Cell{cellNo}";
+            }
+
+            return Enumerable.Range(1, Math.Max(1, _cellCount))
+            .Select(SelectCellNo12)
             .ToArray();
+        }
+    }
 
     public string SelectedSampleCell
     {
-        get => $"Cell{_sampleRuleCellNo}";
+        get
+        {
+            return $"Cell{_sampleRuleCellNo}";
+        }
+
         set
         {
             var normalized = value?.Trim() ?? "";
@@ -177,34 +351,98 @@ public sealed class CMenuReview : IMenu
         }
     }
 
-    public string SampleRuleSelectionSummary =>
-        $"{_selectedSampleHoleKeys.Count} Holes / " +
-        $"{_lastAllPlan?.Points.Where(point => _selectedSampleHoleKeys.Contains(point.HoleKey)).Select(point => point.CellNo).Distinct().Count() ?? 0} Cells";
-
-    public string SampleRuleDescription => _selectedRuleType switch
+    public string SampleRuleSelectionSummary
     {
-        EN_REVIEW_RULE_TYPE.AllPoint => "Select every Hole in every Cell.",
-        EN_REVIEW_RULE_TYPE.Edge => "Select the outer row and column Holes of each Cell.",
-        EN_REVIEW_RULE_TYPE.Center => "Select all inner Holes except the outer Edge row and column of each Cell.",
-        EN_REVIEW_RULE_TYPE.HeadPoint => $"Select Holes assigned to H{_sampleRuleHeadNo:00}.",
-        EN_REVIEW_RULE_TYPE.CellPoint => $"Select every Hole in Cell{_sampleRuleCellNo}.",
-        EN_REVIEW_RULE_TYPE.ZeroLine => "Select reference line Holes.",
-        _ => "Select or clear individual Holes in a Cell."
-    };
+        get
+        {
+            bool FilterPoint13(ST_REVIEW_PLAN_POINT point)
+            {
+                return _selectedSampleHoleKeys.Contains(point.HoleKey);
+            }
 
-    public bool IsOneHoleTab => _selectedTab.Equals("ONE HOLE", StringComparison.OrdinalIgnoreCase);
+            int SelectPoint14(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.CellNo;
+            }
 
-    public bool IsOneHoleCellMap => IsOneHoleTab && _isOneHoleCellMap;
+            return $"{_selectedSampleHoleKeys.Count} Holes / " +
+        $"{_lastAllPlan?.Points.Where(FilterPoint13).Select(SelectPoint14).Distinct().Count() ?? 0} Cells";
+        }
+    }
 
-    public bool IsOneHoleHoleMap => IsOneHoleTab && !_isOneHoleCellMap;
+    public string SampleRuleDescription
+    {
+        get
+        {
+            string Evaluate_selectedRuleTypeSwitch1()
+            {
+                var switchValue = _selectedRuleType;
+                switch (switchValue)
+                {
+                    case EN_REVIEW_RULE_TYPE.AllPoint:
+                        return "Select every Hole in every Cell.";
+                    case EN_REVIEW_RULE_TYPE.Edge:
+                        return "Select the outer row and column Holes of each Cell.";
+                    case EN_REVIEW_RULE_TYPE.Center:
+                        return "Select all inner Holes except the outer Edge row and column of each Cell.";
+                    case EN_REVIEW_RULE_TYPE.HeadPoint:
+                        return $"Select Holes assigned to H{_sampleRuleHeadNo:00}.";
+                    case EN_REVIEW_RULE_TYPE.CellPoint:
+                        return $"Select every Hole in Cell{_sampleRuleCellNo}.";
+                    case EN_REVIEW_RULE_TYPE.ZeroLine:
+                        return "Select reference line Holes.";
+                    default:
+                        return "Select or clear individual Holes in a Cell.";
+                }
+            }
 
-    public string OneHoleWorkspaceTitle => _isOneHoleCellMap
+            return Evaluate_selectedRuleTypeSwitch1();
+        }
+    }
+
+    public bool IsOneHoleTab
+    {
+        get
+        {
+            return _selectedTab.Equals("ONE HOLE", StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    public bool IsOneHoleCellMap
+    {
+        get
+        {
+            return IsOneHoleTab && _isOneHoleCellMap;
+        }
+    }
+
+    public bool IsOneHoleHoleMap
+    {
+        get
+        {
+            return IsOneHoleTab && !_isOneHoleCellMap;
+        }
+    }
+
+    public string OneHoleWorkspaceTitle
+    {
+        get
+        {
+            return _isOneHoleCellMap
         ? "Glass / Cell Preview"
         : $"Cell{_selectedOneHoleCellNo} / Hole Selection";
+        }
+    }
 
-    public string OneHoleWorkspaceSummary => _isOneHoleCellMap
+    public string OneHoleWorkspaceSummary
+    {
+        get
+        {
+            return _isOneHoleCellMap
         ? OneHoleGlassPreviewSummary
         : $"{OneHoleCellHoleRows.Count} Holes / Selected {GetSelectedOneHoleName()}";
+        }
+    }
 
     public IReadOnlyList<ST_REVIEW_TAB_ITEM> Tabs { get; private set; } = [];
 
@@ -262,7 +500,11 @@ public sealed class CMenuReview : IMenu
 
     public string SelectedRuleFile
     {
-        get => _selectedRuleFile;
+        get
+        {
+            return _selectedRuleFile;
+        }
+
         set
         {
             if (!string.IsNullOrWhiteSpace(value))
@@ -325,7 +567,7 @@ public sealed class CMenuReview : IMenu
         _isSampleCellDetailVisible = false;
     }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -373,17 +615,24 @@ public sealed class CMenuReview : IMenu
         var selectedRecipeId = _selectedRecipeIdProvider();
         if (!string.IsNullOrWhiteSpace(selectedRecipeId))
         {
-            var selectedRecipe = recipes.FirstOrDefault(recipe =>
-                recipe.Id.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase));
+            bool MatchRecipe15(ST_RECIPE_DATA recipe)
+            {
+                return recipe.Id.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var selectedRecipe = recipes.FirstOrDefault(MatchRecipe15);
 
             if (selectedRecipe is not null)
             {
                 return selectedRecipe;
             }
         }
+        bool MatchRecipe16(ST_RECIPE_DATA recipe)
+        {
+            return recipe.Id.Equals("DRILL_A01", StringComparison.OrdinalIgnoreCase);
+        }
 
-        return recipes.FirstOrDefault(recipe =>
-                recipe.Id.Equals("DRILL_A01", StringComparison.OrdinalIgnoreCase))
+        return recipes.FirstOrDefault(MatchRecipe16)
             ?? recipes[0];
     }
 
@@ -407,8 +656,12 @@ public sealed class CMenuReview : IMenu
         {
             _selectedRuleFile = NormalizeRuleFileInput(recipeRuleFile);
         }
+        string SelectPoint17(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
 
-        var validKeys = allPlan.Points.Select(point => point.HoleKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var validKeys = allPlan.Points.Select(SelectPoint17).ToHashSet(StringComparer.OrdinalIgnoreCase);
         if (isOneHoleResultRecipeChanged)
         {
             _oneHoleAppliedMeasurementKeys.Clear();
@@ -418,7 +671,12 @@ public sealed class CMenuReview : IMenu
         }
         else
         {
-            foreach (var invalidKey in _oneHoleResults.Keys.Where(key => !validKeys.Contains(key)).ToArray())
+            bool FilterKey18(string key)
+            {
+                return !validKeys.Contains(key);
+            }
+
+            foreach (var invalidKey in _oneHoleResults.Keys.Where(FilterKey18).ToArray())
             {
                 _oneHoleAppliedMeasurementKeys.Remove(invalidKey);
                 _oneHoleResults.Remove(invalidKey);
@@ -437,7 +695,12 @@ public sealed class CMenuReview : IMenu
         }
         else
         {
-            _selectedSampleHoleKeys.RemoveWhere(key => !validKeys.Contains(key));
+            bool RemoveWhereKeyCallback19(string key)
+            {
+                return !validKeys.Contains(key);
+            }
+
+            _selectedSampleHoleKeys.RemoveWhere(RemoveWhereKeyCallback19);
         }
 
         _selectedOneHoleCellNo = Math.Clamp(_selectedOneHoleCellNo, 1, _cellCount);
@@ -475,9 +738,13 @@ public sealed class CMenuReview : IMenu
 
         foreach (var key in keys)
         {
-            var parameter = recipe.Parameters.FirstOrDefault(item =>
-                item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
-                item.Name.Equals(key, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem20(ST_RECIPE_PARAM item)
+            {
+                return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                                item.Name.Equals(key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var parameter = recipe.Parameters.FirstOrDefault(MatchItem20);
 
             if (parameter is not null && !string.IsNullOrWhiteSpace(parameter.Value))
             {
@@ -497,8 +764,12 @@ public sealed class CMenuReview : IMenu
             _selectedRuleFile = DefaultRuleFileName;
             return;
         }
+        bool CheckFile21(string file)
+        {
+            return file.Equals(_selectedRuleFile, StringComparison.OrdinalIgnoreCase);
+        }
 
-        if (!RuleFiles.Any(file => file.Equals(_selectedRuleFile, StringComparison.OrdinalIgnoreCase)))
+        if (!RuleFiles.Any(CheckFile21))
         {
             _selectedRuleFile = RuleFiles[0];
         }
@@ -546,18 +817,36 @@ public sealed class CMenuReview : IMenu
         }
 
         _selectedMode = mode;
-        _selectedRuleType = mode.Trim().ToUpperInvariant() switch
+        EN_REVIEW_RULE_TYPE EvaluateValueSwitch2()
         {
-            "ALL HOLE" => EN_REVIEW_RULE_TYPE.AllPoint,
-            "ZERO DEFENSE" => EN_REVIEW_RULE_TYPE.ZeroLine,
-            _ => EN_REVIEW_RULE_TYPE.SamplePoint
-        };
-        _selectionRuleText = _selectedRuleType switch
+            var switchValue = mode.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "ALL HOLE":
+                    return EN_REVIEW_RULE_TYPE.AllPoint;
+                case "ZERO DEFENSE":
+                    return EN_REVIEW_RULE_TYPE.ZeroLine;
+                default:
+                    return EN_REVIEW_RULE_TYPE.SamplePoint;
+            }
+        }
+
+        _selectedRuleType = EvaluateValueSwitch2();
+        string Evaluate_selectedRuleTypeSwitch3()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "All Hole",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "0-Line",
-            _ => _selectionRuleText is "All Hole" or "0-Line" ? "Manual Sample" : _selectionRuleText
-        };
+            var switchValue = _selectedRuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "All Hole";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "0-Line";
+                default:
+                    return _selectionRuleText is "All Hole" or "0-Line" ? "Manual Sample" : _selectionRuleText;
+            }
+        }
+
+        _selectionRuleText = Evaluate_selectedRuleTypeSwitch3();
         _isRunCellDetailVisible = false;
         _selectedRunHoleKey = "";
         _statusReporter($"Review mode selected: {_selectedMode}");
@@ -576,8 +865,12 @@ public sealed class CMenuReview : IMenu
         {
             _selectedSampleHoleKeys.Remove(holeKey);
         }
+        bool MatchItem22(ST_REVIEW_PLAN_POINT item)
+        {
+            return item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var point = _lastAllPlan?.Points.FirstOrDefault(item => item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase));
+        var point = _lastAllPlan?.Points.FirstOrDefault(MatchItem22);
         if (point is not null)
         {
             _sampleRuleHeadNo = point.HeadNo;
@@ -601,14 +894,22 @@ public sealed class CMenuReview : IMenu
 
         ST_REVIEW_PLAN_POINT? lastPoint = null;
         var changedCount = 0;
+        bool FilterKey23(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
 
         foreach (var holeKey in selection.HoleKeys
                      .Select(CReviewManager.NormalizeHoleKey)
-                     .Where(key => !string.IsNullOrWhiteSpace(key))
+                     .Where(FilterKey23)
                      .Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            var point = _lastAllPlan?.Points.FirstOrDefault(item =>
-                item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase));
+            bool MatchItem24(ST_REVIEW_PLAN_POINT item)
+            {
+                return item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var point = _lastAllPlan?.Points.FirstOrDefault(MatchItem24);
             if (point is null)
             {
                 continue;
@@ -659,7 +960,12 @@ public sealed class CMenuReview : IMenu
         switch (rule)
         {
             case "ALL":
-                foreach (var key in allPlan.Points.Select(point => point.HoleKey))
+                string SelectPoint25(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.HoleKey;
+                }
+
+                foreach (var key in allPlan.Points.Select(SelectPoint25))
                 {
                     _selectedSampleHoleKeys.Add(key);
                 }
@@ -691,7 +997,17 @@ public sealed class CMenuReview : IMenu
                 _selectionRuleText = "Center";
                 break;
             case "HEAD":
-                foreach (var key in allPlan.Points.Where(point => point.HeadNo == _sampleRuleHeadNo).Select(point => point.HoleKey))
+                bool FilterPoint26(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.HeadNo == _sampleRuleHeadNo;
+                }
+
+                string SelectPoint27(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.HoleKey;
+                }
+
+                foreach (var key in allPlan.Points.Where(FilterPoint26).Select(SelectPoint27))
                 {
                     _selectedSampleHoleKeys.Add(key);
                 }
@@ -701,7 +1017,17 @@ public sealed class CMenuReview : IMenu
                 break;
             case "CELL":
                 _selectedSampleCellNo = _sampleRuleCellNo;
-                foreach (var key in allPlan.Points.Where(point => point.CellNo == _sampleRuleCellNo).Select(point => point.HoleKey))
+                bool FilterPoint28(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.CellNo == _sampleRuleCellNo;
+                }
+
+                string SelectPoint29(ST_REVIEW_PLAN_POINT point)
+                {
+                    return point.HoleKey;
+                }
+
+                foreach (var key in allPlan.Points.Where(FilterPoint28).Select(SelectPoint29))
                 {
                     _selectedSampleHoleKeys.Add(key);
                 }
@@ -751,7 +1077,12 @@ public sealed class CMenuReview : IMenu
     private void SelectOneHole(object? parameter)
     {
         var holeKey = CReviewManager.NormalizeHoleKey(parameter?.ToString() ?? "");
-        var point = _lastAllPlan?.Points.FirstOrDefault(item => item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem30(ST_REVIEW_PLAN_POINT item)
+        {
+            return item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var point = _lastAllPlan?.Points.FirstOrDefault(MatchItem30);
         if (point is null)
         {
             return;
@@ -795,9 +1126,12 @@ public sealed class CMenuReview : IMenu
             _refreshScreen();
             return;
         }
+        bool MatchPoint31(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(_displayedOneHoleMeasurementKey, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var measuredPoint = _reviewManager.CurrentPlan?.ReviewPoints.FirstOrDefault(point =>
-                point.HoleKey.Equals(_displayedOneHoleMeasurementKey, StringComparison.OrdinalIgnoreCase))
+        var measuredPoint = _reviewManager.CurrentPlan?.ReviewPoints.FirstOrDefault(MatchPoint31)
             ?? _oneHoleResults.GetValueOrDefault(_displayedOneHoleMeasurementKey);
         if (measuredPoint is null ||
             measuredPoint.State is not (EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng))
@@ -924,8 +1258,12 @@ public sealed class CMenuReview : IMenu
         var normalizedAxis = axis.Equals("Y", StringComparison.OrdinalIgnoreCase) ? "Y" : "X";
         var key = $"CELL{point.CellNo}_{point.HoleName}_REVIEW_OFFSET_{normalizedAxis}";
         var valueText = value.ToString("0.000000", CultureInfo.InvariantCulture);
-        var parameterIndex = parameters.FindIndex(parameter =>
-            parameter.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        bool HandleParameterIndex32(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var parameterIndex = parameters.FindIndex(HandleParameterIndex32);
 
         if (parameterIndex >= 0)
         {
@@ -970,8 +1308,12 @@ public sealed class CMenuReview : IMenu
     private void SelectRunHole(object? parameter)
     {
         var holeKey = CReviewManager.NormalizeHoleKey(parameter?.ToString() ?? "");
-        var point = _lastAllPlan?.Points.FirstOrDefault(item =>
-            item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem33(ST_REVIEW_PLAN_POINT item)
+        {
+            return item.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var point = _lastAllPlan?.Points.FirstOrDefault(MatchItem33);
         if (point is null)
         {
             return;
@@ -1018,11 +1360,15 @@ public sealed class CMenuReview : IMenu
     {
         var targetKeys = GetPlanHoleKeys(allPlan).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var currentPlan = _reviewManager.CurrentPlan;
+        string SelectPoint34(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
 
         if (currentPlan is not null &&
             currentPlan.RecipeId.Equals(recipe.Id, StringComparison.OrdinalIgnoreCase) &&
             currentPlan.ReviewPoints
-                .Select(point => point.HoleKey)
+                .Select(SelectPoint34)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase)
                 .SetEquals(targetKeys))
         {
@@ -1064,18 +1410,18 @@ public sealed class CMenuReview : IMenu
             {
                 reviewPlan = RestoreOneHoleReviewOffset(reviewPlan, oneHoleRunKey);
             }
+            void HandleStatus35(ST_REVIEW_PLAN plan)
+            {
+                if (isOneHoleRun)
+                {
+                    CaptureOneHoleResult(plan, oneHoleRunKey);
+                }
 
+                _refreshScreen();
+            }
             var status = await _reviewManager.Start(
                 reviewPlan,
-                plan =>
-                {
-                    if (isOneHoleRun)
-                    {
-                        CaptureOneHoleResult(plan, oneHoleRunKey);
-                    }
-
-                    _refreshScreen();
-                },
+HandleStatus35,
                 CancellationToken.None);
 
             if (isOneHoleRun && _reviewManager.CurrentPlan is not null)
@@ -1098,9 +1444,14 @@ public sealed class CMenuReview : IMenu
         }
     }
 
-    private bool IsReviewExecutionActive =>
-        _isStartRequestPending ||
+    private bool IsReviewExecutionActive
+    {
+        get
+        {
+            return _isStartRequestPending ||
         _reviewManager.SequenceState is EN_REVIEW_SEQUENCE_STATE.Running or EN_REVIEW_SEQUENCE_STATE.Stopping;
+        }
+    }
 
     private void NotifyReviewExecutionCommandStates()
     {
@@ -1139,11 +1490,16 @@ public sealed class CMenuReview : IMenu
             await RefreshRuleFiles(CancellationToken.None);
 
             var initialValue = Path.GetFileNameWithoutExtension(_selectedRuleFile);
+            string HandleRuleFileName36(string value)
+            {
+                return ValidateRuleFileName(NormalizeRuleFileInput(value));
+            }
+
             var ruleFileName = ShowReviewRuleNameDialog(
                 "Save Review Rule",
                 "Enter review rule file name.",
                 initialValue,
-                value => ValidateRuleFileName(NormalizeRuleFileInput(value)));
+HandleRuleFileName36);
 
             if (string.IsNullOrWhiteSpace(ruleFileName))
             {
@@ -1167,8 +1523,13 @@ public sealed class CMenuReview : IMenu
     {
         try
         {
+            void HandleStatus37(ST_REVIEW_PLAN _)
+            {
+                _refreshScreen();
+            }
+
             var status = await _reviewManager.RetryRemaining(
-                _ => _refreshScreen(),
+HandleStatus37,
                 CancellationToken.None);
 
             _statusReporter($"{status.Message} ({status.CompletedCount}/{status.TotalCount}, NG={status.NgCount})");
@@ -1193,28 +1554,78 @@ public sealed class CMenuReview : IMenu
         _selectedSampleHoleKeys.Clear();
 
         var allPlan = _lastAllPlan;
-        var selectedKeys = rule.RuleType switch
+        IEnumerable<string> EvaluateRuleTypeSwitch4()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint when allPlan is not null => allPlan.Points.Select(point => point.HoleKey),
-            EN_REVIEW_RULE_TYPE.Edge when allPlan is not null => SelectEdgeKeys(allPlan),
-            EN_REVIEW_RULE_TYPE.Center when allPlan is not null => SelectCenterKeys(allPlan),
-            EN_REVIEW_RULE_TYPE.HeadPoint when allPlan is not null => allPlan.Points.Where(point => point.HeadNo == _sampleRuleHeadNo).Select(point => point.HoleKey),
-            EN_REVIEW_RULE_TYPE.CellPoint when allPlan is not null => allPlan.Points.Where(point => point.CellNo == _sampleRuleCellNo).Select(point => point.HoleKey),
-            EN_REVIEW_RULE_TYPE.ZeroLine when allPlan is not null => SelectZeroLineKeys(allPlan, rule.ZeroPointCount),
-            _ => rule.HoleKeys
-        };
+            var switchValue = rule.RuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint when allPlan is not null:
+                    string SelectPoint38(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HoleKey;
+                    }
 
-        foreach (var holeKey in selectedKeys.Select(CReviewManager.NormalizeHoleKey).Where(key => !string.IsNullOrWhiteSpace(key)))
+                    return allPlan.Points.Select(SelectPoint38);
+                case EN_REVIEW_RULE_TYPE.Edge when allPlan is not null:
+                    return SelectEdgeKeys(allPlan);
+                case EN_REVIEW_RULE_TYPE.Center when allPlan is not null:
+                    return SelectCenterKeys(allPlan);
+                case EN_REVIEW_RULE_TYPE.HeadPoint when allPlan is not null:
+                    bool FilterPoint39(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HeadNo == _sampleRuleHeadNo;
+                    }
+
+                    string SelectPoint40(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HoleKey;
+                    }
+
+                    return allPlan.Points.Where(FilterPoint39).Select(SelectPoint40);
+                case EN_REVIEW_RULE_TYPE.CellPoint when allPlan is not null:
+                    bool FilterPoint41(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.CellNo == _sampleRuleCellNo;
+                    }
+
+                    string SelectPoint42(ST_REVIEW_PLAN_POINT point)
+                    {
+                        return point.HoleKey;
+                    }
+
+                    return allPlan.Points.Where(FilterPoint41).Select(SelectPoint42);
+                case EN_REVIEW_RULE_TYPE.ZeroLine when allPlan is not null:
+                    return SelectZeroLineKeys(allPlan, rule.ZeroPointCount);
+                default:
+                    return rule.HoleKeys;
+            }
+        }
+
+        var selectedKeys = EvaluateRuleTypeSwitch4();
+        bool FilterKey43(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var holeKey in selectedKeys.Select(CReviewManager.NormalizeHoleKey).Where(FilterKey43))
         {
             _selectedSampleHoleKeys.Add(holeKey);
         }
-
-        _selectedMode = rule.RuleType switch
+        string EvaluateRuleTypeSwitch5()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "ALL HOLE",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "ZERO DEFENSE",
-            _ => "SAMPLE HOLE"
-        };
+            var switchValue = rule.RuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "ALL HOLE";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "ZERO DEFENSE";
+                default:
+                    return "SAMPLE HOLE";
+            }
+        }
+
+        _selectedMode = EvaluateRuleTypeSwitch5();
         _selectionRuleText = string.IsNullOrWhiteSpace(rule.RuleName)
             ? ToRuleText(rule.RuleType)
             : rule.RuleName;
@@ -1243,14 +1654,24 @@ public sealed class CMenuReview : IMenu
         ST_REVIEW_PLAN allPlan)
     {
         var reviewPlan = ResolveReviewPlan(recipe, allPlan);
-        var currentPoint = reviewPlan.ReviewPoints.FirstOrDefault(point => point.State == EN_REVIEW_POINT_STATE.Current);
+        bool MatchPoint44(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State == EN_REVIEW_POINT_STATE.Current;
+        }
+
+        var currentPoint = reviewPlan.ReviewPoints.FirstOrDefault(MatchPoint44);
 
         _selectedRunCellNo = Math.Clamp(_selectedRunCellNo, 1, Math.Max(1, allPlan.CellCount));
+        int SelectPoint45(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo;
+        }
+
         IReadOnlySet<int>? visibleRunCellNos = _selectedMode.Equals(
             "SAMPLE HOLE",
             StringComparison.OrdinalIgnoreCase)
                 ? reviewPlan.ReviewPoints
-                    .Select(point => point.CellNo)
+                    .Select(SelectPoint45)
                     .ToHashSet()
                 : null;
         var glassPreview = CReviewGlassPreviewBuilder.Build(
@@ -1262,17 +1683,18 @@ public sealed class CMenuReview : IMenu
             visibleCellNos: visibleRunCellNos);
         _selectedSampleCellNo = Math.Clamp(_selectedSampleCellNo, 1, Math.Max(1, allPlan.CellCount));
         _sampleMapColumnCount = CalculateHoleMapColumnCount(allPlan, _selectedSampleCellNo);
-        var samplePreviewPoints = allPlan.Points
-            .Select(point =>
+        ST_REVIEW_PLAN_POINT SelectPoint46(ST_REVIEW_PLAN_POINT point)
+        {
+            var isSelected = _selectedSampleHoleKeys.Contains(point.HoleKey);
+            return point with
             {
-                var isSelected = _selectedSampleHoleKeys.Contains(point.HoleKey);
-                return point with
-                {
-                    Use = isSelected,
-                    State = isSelected ? EN_REVIEW_POINT_STATE.Ready : EN_REVIEW_POINT_STATE.Skip,
-                    Judge = "-"
-                };
-            })
+                Use = isSelected,
+                State = isSelected ? EN_REVIEW_POINT_STATE.Ready : EN_REVIEW_POINT_STATE.Skip,
+                Judge = "-"
+            };
+        }
+        var samplePreviewPoints = allPlan.Points
+            .Select(SelectPoint46)
             .ToArray();
         var sampleGlassPreview = CReviewGlassPreviewBuilder.Build(
             recipe,
@@ -1282,10 +1704,18 @@ public sealed class CMenuReview : IMenu
             samplePreviewPoints,
             useSampleSelectionColors: true);
         var oneHolePreviewPoints = BuildOneHolePreviewPoints(allPlan, reviewPlan);
-        var selectedOneHolePoint = oneHolePreviewPoints.FirstOrDefault(point =>
-            point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase));
-        var currentOneHolePoint = reviewPlan.ReviewPoints.FirstOrDefault(point =>
-            point.State == EN_REVIEW_POINT_STATE.Current);
+        bool MatchPoint47(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var selectedOneHolePoint = oneHolePreviewPoints.FirstOrDefault(MatchPoint47);
+        bool MatchPoint48(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State == EN_REVIEW_POINT_STATE.Current;
+        }
+
+        var currentOneHolePoint = reviewPlan.ReviewPoints.FirstOrDefault(MatchPoint48);
         var oneHoleGlassPreview = CReviewGlassPreviewBuilder.Build(
             recipe,
             allPlan.CellCount,
@@ -1336,34 +1766,55 @@ public sealed class CMenuReview : IMenu
         ];
 
         PointSelectRows = CreatePointSelectRows(allPlan, _selectedSampleHoleKeys, TogglePointCommand);
+        bool FilterPoint49(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo == _selectedSampleCellNo;
+        }
+
         SampleCellHoleRows = CreatePointSelectRows(
             allPlan with
             {
-                Points = allPlan.Points.Where(point => point.CellNo == _selectedSampleCellNo).ToArray()
+                Points = allPlan.Points.Where(FilterPoint49).ToArray()
             },
             _selectedSampleHoleKeys,
             TogglePointCommand);
-        var selectedRunPoint = reviewPlan.ReviewPoints.FirstOrDefault(point =>
-            point.HoleKey.Equals(_selectedRunHoleKey, StringComparison.OrdinalIgnoreCase));
-        var selectedOneHoleReviewPoint = reviewPlan.ReviewPoints.FirstOrDefault(point =>
-            point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase));
+        bool MatchPoint50(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(_selectedRunHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var selectedRunPoint = reviewPlan.ReviewPoints.FirstOrDefault(MatchPoint50);
+        bool MatchPoint51(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var selectedOneHoleReviewPoint = reviewPlan.ReviewPoints.FirstOrDefault(MatchPoint51);
         var displayedOneHoleMeasurement = GetDisplayedOneHoleMeasurement();
         CanApplyOneHoleReviewOffset =
             IsOneHoleTab &&
             _reviewManager.SequenceState is not (EN_REVIEW_SEQUENCE_STATE.Running or EN_REVIEW_SEQUENCE_STATE.Stopping) &&
             !_oneHoleAppliedMeasurementKeys.Contains(_displayedOneHoleMeasurementKey) &&
             displayedOneHoleMeasurement?.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng;
+        bool MatchPoint52(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        bool MatchPoint53(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng;
+        }
+
         SelectedPointItems = BuildSelectedPointItems(
             IsOneHoleTab
                 ? displayedOneHoleMeasurement ??
                     currentOneHolePoint ??
                     selectedOneHoleReviewPoint ??
-                    allPlan.Points.FirstOrDefault(point =>
-                        point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase))
+                    allPlan.Points.FirstOrDefault(MatchPoint52)
                 : currentPoint ??
                     selectedRunPoint ??
-                    reviewPlan.ReviewPoints.FirstOrDefault(point =>
-                        point.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng) ??
+                    reviewPlan.ReviewPoints.FirstOrDefault(MatchPoint53) ??
                     reviewPlan.ReviewPoints.FirstOrDefault());
 
         RunGlassPreviewImage = glassPreview.Image;
@@ -1373,13 +1824,28 @@ public sealed class CMenuReview : IMenu
             : [glassPreview.CurrentHoleMarker];
         RunGlassPreviewSummary = glassPreview.Summary;
         RunCellHoleMatrixRows = BuildRunCellHoleMatrixRows(reviewPlan, _selectedRunCellNo);
+        IEnumerable<ST_REVIEW_RUN_HOLE_ROW> SelectRow54(ST_REVIEW_RUN_HOLE_MATRIX_ROW row)
+        {
+            return row.Holes;
+        }
+
         RunCellHoleRows = RunCellHoleMatrixRows
-            .SelectMany(row => row.Holes)
+            .SelectMany(SelectRow54)
             .ToArray();
         SampleGlassPreviewImage = sampleGlassPreview.Image;
         SampleCellPreviewLabels = sampleGlassPreview.CellLabels;
+        bool FilterPoint55(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.Use;
+        }
+
+        int SelectPoint56(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo;
+        }
+
         SampleGlassPreviewSummary =
-            $"{samplePreviewPoints.Where(point => point.Use).Select(point => point.CellNo).Distinct().Count()} Cells / " +
+            $"{samplePreviewPoints.Where(FilterPoint55).Select(SelectPoint56).Distinct().Count()} Cells / " +
             $"{_selectedSampleHoleKeys.Count} Holes Selected";
         OneHoleGlassPreviewImage = oneHoleGlassPreview.Image;
         OneHoleCellPreviewLabels = oneHoleGlassPreview.CellLabels;
@@ -1388,8 +1854,13 @@ public sealed class CMenuReview : IMenu
             : [oneHoleGlassPreview.CurrentHoleMarker];
         OneHoleGlassPreviewSummary = oneHoleGlassPreview.Summary;
         OneHoleCellHoleMatrixRows = BuildOneHoleCellHoleMatrixRows(oneHolePreviewPoints, _selectedOneHoleCellNo);
+        IEnumerable<ST_REVIEW_RUN_HOLE_ROW> SelectRow57(ST_REVIEW_RUN_HOLE_MATRIX_ROW row)
+        {
+            return row.Holes;
+        }
+
         OneHoleCellHoleRows = OneHoleCellHoleMatrixRows
-            .SelectMany(row => row.Holes)
+            .SelectMany(SelectRow57)
             .ToArray();
 
         ResultRows = BuildResultRows(reviewPlan);
@@ -1433,23 +1904,43 @@ public sealed class CMenuReview : IMenu
         ST_REVIEW_PLAN reviewPlan,
         int cellNo)
     {
+        bool FilterPoint58(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo == cellNo;
+        }
+
+        int GetGroupSortKey59(IGrouping<int, ST_REVIEW_PLAN_POINT> group)
+        {
+            return group.Key;
+        }
+
+        ST_REVIEW_RUN_HOLE_MATRIX_ROW SelectGroup60(IGrouping<int, ST_REVIEW_PLAN_POINT> group)
+        {
+            ST_REVIEW_RUN_HOLE_ROW SelectPoint1(ST_REVIEW_PLAN_POINT point)
+            {
+                return new ST_REVIEW_RUN_HOLE_ROW(
+                                                    point.HoleKey,
+                                                    ToMatrixHoleName(point),
+                                                    ToRunHoleDetail(point),
+                                                    ToStateText(point.State),
+                                                    point.State == EN_REVIEW_POINT_STATE.Current,
+                                                    point.HoleKey.Equals(_selectedRunHoleKey, StringComparison.OrdinalIgnoreCase),
+                                                    SelectRunHoleCommand);
+            }
+
+            return new ST_REVIEW_RUN_HOLE_MATRIX_ROW(
+                            group.Key + 1,
+                            group
+                                .OrderBy(GetMatrixColumnIndex)
+                                .Select(SelectPoint1)
+                                .ToArray());
+        }
+
         return reviewPlan.ReviewPoints
-            .Where(point => point.CellNo == cellNo)
+            .Where(FilterPoint58)
             .GroupBy(GetMatrixRowIndex)
-            .OrderBy(group => group.Key)
-            .Select(group => new ST_REVIEW_RUN_HOLE_MATRIX_ROW(
-                group.Key + 1,
-                group
-                    .OrderBy(GetMatrixColumnIndex)
-                    .Select(point => new ST_REVIEW_RUN_HOLE_ROW(
-                        point.HoleKey,
-                        ToMatrixHoleName(point),
-                        ToRunHoleDetail(point),
-                        ToStateText(point.State),
-                        point.State == EN_REVIEW_POINT_STATE.Current,
-                        point.HoleKey.Equals(_selectedRunHoleKey, StringComparison.OrdinalIgnoreCase),
-                        SelectRunHoleCommand))
-                    .ToArray()))
+            .OrderBy(GetGroupSortKey59)
+            .Select(SelectGroup60)
             .ToArray();
     }
 
@@ -1457,33 +1948,49 @@ public sealed class CMenuReview : IMenu
         IReadOnlyList<ST_REVIEW_PLAN_POINT> points,
         int cellNo)
     {
-        return points
-            .Where(point => point.CellNo == cellNo)
-            .GroupBy(GetMatrixRowIndex)
-            .OrderBy(group => group.Key)
-            .Select(group => new ST_REVIEW_RUN_HOLE_MATRIX_ROW(
-                group.Key + 1,
-                group
-                    .OrderBy(GetMatrixColumnIndex)
-                    .Select(point =>
-                    {
-                        var isSelected = point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase);
-                        var detail = point.State is EN_REVIEW_POINT_STATE.Current or EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng
-                            ? ToRunHoleDetail(point)
-                            : isSelected
-                                ? "SELECTED"
-                                : "READY";
+        bool FilterPoint61(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo == cellNo;
+        }
 
-                        return new ST_REVIEW_RUN_HOLE_ROW(
-                            point.HoleKey,
-                            ToMatrixHoleName(point),
-                            detail,
-                            ToStateText(point.State),
-                            point.State == EN_REVIEW_POINT_STATE.Current,
-                            isSelected,
-                            SelectOneHoleCommand);
-                    })
-                    .ToArray()))
+        int GetGroupSortKey62(IGrouping<int, ST_REVIEW_PLAN_POINT> group)
+        {
+            return group.Key;
+        }
+
+        ST_REVIEW_RUN_HOLE_MATRIX_ROW SelectGroup63(IGrouping<int, ST_REVIEW_PLAN_POINT> group)
+        {
+            ST_REVIEW_RUN_HOLE_ROW SelectPoint2(ST_REVIEW_PLAN_POINT point)
+            {
+                var isSelected = point.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase);
+                var detail = point.State is EN_REVIEW_POINT_STATE.Current or EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng
+                    ? ToRunHoleDetail(point)
+                    : isSelected
+                        ? "SELECTED"
+                        : "READY";
+
+                return new ST_REVIEW_RUN_HOLE_ROW(
+                    point.HoleKey,
+                    ToMatrixHoleName(point),
+                    detail,
+                    ToStateText(point.State),
+                    point.State == EN_REVIEW_POINT_STATE.Current,
+                    isSelected,
+                    SelectOneHoleCommand);
+            }
+            return new ST_REVIEW_RUN_HOLE_MATRIX_ROW(
+                            group.Key + 1,
+                            group
+                                .OrderBy(GetMatrixColumnIndex)
+                                .Select(SelectPoint2)
+                                .ToArray());
+        }
+
+        return points
+            .Where(FilterPoint61)
+            .GroupBy(GetMatrixRowIndex)
+            .OrderBy(GetGroupSortKey62)
+            .Select(SelectGroup63)
             .ToArray();
     }
 
@@ -1491,32 +1998,37 @@ public sealed class CMenuReview : IMenu
         ST_REVIEW_PLAN allPlan,
         ST_REVIEW_PLAN reviewPlan)
     {
+        string HandleReviewPointByKey64(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
+
         var reviewPointByKey = reviewPlan.ReviewPoints
-            .ToDictionary(point => point.HoleKey, StringComparer.OrdinalIgnoreCase);
-
-        return allPlan.Points
-            .Select(point =>
+            .ToDictionary(HandleReviewPointByKey64, StringComparer.OrdinalIgnoreCase);
+        ST_REVIEW_PLAN_POINT SelectPoint65(ST_REVIEW_PLAN_POINT point)
+        {
+            if (reviewPointByKey.TryGetValue(point.HoleKey, out var reviewPoint) &&
+                reviewPoint.State is EN_REVIEW_POINT_STATE.Current or
+                    EN_REVIEW_POINT_STATE.Ok or
+                    EN_REVIEW_POINT_STATE.Ng)
             {
-                if (reviewPointByKey.TryGetValue(point.HoleKey, out var reviewPoint) &&
-                    reviewPoint.State is EN_REVIEW_POINT_STATE.Current or
-                        EN_REVIEW_POINT_STATE.Ok or
-                        EN_REVIEW_POINT_STATE.Ng)
-                {
-                    return reviewPoint;
-                }
+                return reviewPoint;
+            }
 
-                if (_oneHoleResults.TryGetValue(point.HoleKey, out var measuredPoint))
-                {
-                    return measuredPoint;
-                }
+            if (_oneHoleResults.TryGetValue(point.HoleKey, out var measuredPoint))
+            {
+                return measuredPoint;
+            }
 
-                return point with
-                {
-                    Use = true,
-                    State = EN_REVIEW_POINT_STATE.Ready,
-                    Judge = "-"
-                };
-            })
+            return point with
+            {
+                Use = true,
+                State = EN_REVIEW_POINT_STATE.Ready,
+                Judge = "-"
+            };
+        }
+        return allPlan.Points
+            .Select(SelectPoint65)
             .ToArray();
     }
 
@@ -1529,10 +2041,13 @@ public sealed class CMenuReview : IMenu
         {
             return;
         }
+        bool MatchPoint66(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase) &&
+                        point.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng;
+        }
 
-        var measuredPoint = plan.ReviewPoints.FirstOrDefault(point =>
-            point.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase) &&
-            point.State is EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng);
+        var measuredPoint = plan.ReviewPoints.FirstOrDefault(MatchPoint66);
         if (measuredPoint is null)
         {
             return;
@@ -1552,17 +2067,21 @@ public sealed class CMenuReview : IMenu
         {
             return plan;
         }
+        ST_REVIEW_PLAN_POINT SelectPoint67(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase)
+                                ? point with
+                                {
+                                    ReviewOffsetX = storedPoint.ReviewOffsetX,
+                                    ReviewOffsetY = storedPoint.ReviewOffsetY
+                                }
+                                : point;
+        }
 
         return plan with
         {
             Points = plan.Points
-                .Select(point => point.HoleKey.Equals(holeKey, StringComparison.OrdinalIgnoreCase)
-                    ? point with
-                    {
-                        ReviewOffsetX = storedPoint.ReviewOffsetX,
-                        ReviewOffsetY = storedPoint.ReviewOffsetY
-                    }
-                    : point)
+                .Select(SelectPoint67)
                 .ToArray()
         };
     }
@@ -1586,31 +2105,49 @@ public sealed class CMenuReview : IMenu
 
     private static string ToRunHoleDetail(ST_REVIEW_PLAN_POINT point)
     {
-        return point.State switch
+        string EvaluateStateSwitch6()
         {
-            EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng =>
-                $"X {FormatSigned(point.ErrorX)} / Y {FormatSigned(point.ErrorY)}",
-            EN_REVIEW_POINT_STATE.Current => "CURRENT",
-            EN_REVIEW_POINT_STATE.Skip => "SKIP",
-            _ => "READY"
-        };
+            var switchValue = point.State;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng:
+                    return $"X {FormatSigned(point.ErrorX)} / Y {FormatSigned(point.ErrorY)}";
+                case EN_REVIEW_POINT_STATE.Current:
+                    return "CURRENT";
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return "SKIP";
+                default:
+                    return "READY";
+            }
+        }
+
+        return EvaluateStateSwitch6();
     }
 
     private static int CalculateHoleMapColumnCount(
         ST_REVIEW_PLAN allPlan,
         int cellNo)
     {
+        bool FilterPoint68(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo == cellNo;
+        }
+
         var cellPoints = allPlan.Points
-            .Where(point => point.CellNo == cellNo)
+            .Where(FilterPoint68)
             .ToArray();
 
         if (cellPoints.Length == 0)
         {
             return 4;
         }
+        double SelectPoint69(ST_REVIEW_PLAN_POINT point)
+        {
+            return Math.Round(point.DesignX, 6);
+        }
 
         var distinctXCount = cellPoints
-            .Select(point => Math.Round(point.DesignX, 6))
+            .Select(SelectPoint69)
             .Distinct()
             .Count();
 
@@ -1623,8 +2160,17 @@ public sealed class CMenuReview : IMenu
         CButtonCommand command)
     {
         var rows = new List<ST_REVIEW_POINT_SELECT_ROW>(reviewPlan.Points.Count);
+        int GetPointSortKey70(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo;
+        }
 
-        foreach (var point in reviewPlan.Points.OrderBy(point => point.CellNo).ThenBy(point => point.HoleNo))
+        int GetPointSortKey71(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleNo;
+        }
+
+        foreach (var point in reviewPlan.Points.OrderBy(GetPointSortKey70).ThenBy(GetPointSortKey71))
         {
             var use = selectedKeys.Contains(point.HoleKey);
             var reason = GetHoleReason(point, use);
@@ -1655,16 +2201,20 @@ public sealed class CMenuReview : IMenu
         var selectedRows = reviewPlan.ReviewPoints
             .Take(6)
             .ToArray();
+        ST_REVIEW_RESULT_ROW SelectRow72(ST_REVIEW_PLAN_POINT row, int index)
+        {
+            return Result(
+                            $"10:24:{12 + index * 2:00}.{120 + index * 31:000}",
+                            row.HeadName,
+                            row.CellName,
+                            ToMatrixHoleName(row),
+                            FormatSigned(row.ErrorX),
+                            FormatSigned(row.ErrorY),
+                            row.Judge.Equals("-", StringComparison.OrdinalIgnoreCase) ? "WAIT" : row.Judge);
+        }
 
         return selectedRows
-            .Select((row, index) => Result(
-                $"10:24:{12 + index * 2:00}.{120 + index * 31:000}",
-                row.HeadName,
-                row.CellName,
-                ToMatrixHoleName(row),
-                FormatSigned(row.ErrorX),
-                FormatSigned(row.ErrorY),
-                row.Judge.Equals("-", StringComparison.OrdinalIgnoreCase) ? "WAIT" : row.Judge))
+            .Select(SelectRow72)
             .ToArray();
     }
 
@@ -1696,9 +2246,12 @@ public sealed class CMenuReview : IMenu
         {
             return "-";
         }
+        bool MatchItem73(ST_REVIEW_PLAN_POINT item)
+        {
+            return item.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var point = _lastAllPlan?.Points.FirstOrDefault(item =>
-            item.HoleKey.Equals(_oneHoleKey, StringComparison.OrdinalIgnoreCase));
+        var point = _lastAllPlan?.Points.FirstOrDefault(MatchItem73);
 
         return point is null ? "-" : ToMatrixHoleName(point);
     }
@@ -1717,39 +2270,69 @@ public sealed class CMenuReview : IMenu
 
         if (_selectedMode.Equals("ALL HOLE", StringComparison.OrdinalIgnoreCase))
         {
-            return allPlan.Points.Select(point => point.HoleKey).ToArray();
+            string SelectPoint74(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleKey;
+            }
+
+            return allPlan.Points.Select(SelectPoint74).ToArray();
         }
 
         if (_selectedMode.Equals("ZERO DEFENSE", StringComparison.OrdinalIgnoreCase))
         {
             return SelectZeroLineKeys(allPlan, 0);
         }
+        bool FilterKey75(string key)
+        {
+            bool CheckPoint3(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleKey.Equals(key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return allPlan.Points.Any(CheckPoint3);
+        }
+
+        string GetKeySortKey76(string key)
+        {
+            return key;
+        }
 
         return _selectedSampleHoleKeys
-            .Where(key => allPlan.Points.Any(point => point.HoleKey.Equals(key, StringComparison.OrdinalIgnoreCase)))
-            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterKey75)
+            .OrderBy(GetKeySortKey76, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     private static IReadOnlyCollection<string> CreateDefaultSampleHoleKeys(ST_REVIEW_PLAN allPlan)
     {
-        return allPlan.Points
-            .GroupBy(point => point.CellNo)
-            .SelectMany(group =>
-            {
-                var holes = group.OrderBy(point => point.HoleNo).ToArray();
-                if (holes.Length == 0)
-                {
-                    return [];
-                }
+        int GroupByPointCallback77(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo;
+        }
 
-                return new[]
-                {
+        IEnumerable<string> SelectGroup78(IGrouping<int, ST_REVIEW_PLAN_POINT> group)
+        {
+            int GetPointSortKey4(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleNo;
+            }
+
+            var holes = group.OrderBy(GetPointSortKey4).ToArray();
+            if (holes.Length == 0)
+            {
+                return [];
+            }
+
+            return new[]
+            {
                     holes.First().HoleKey,
                     holes[holes.Length / 2].HoleKey,
                     holes.Last().HoleKey
                 }.Distinct(StringComparer.OrdinalIgnoreCase);
-            })
+        }
+        return allPlan.Points
+            .GroupBy(GroupByPointCallback77)
+            .SelectMany(SelectGroup78)
             .ToArray();
     }
 
@@ -1771,15 +2354,38 @@ public sealed class CMenuReview : IMenu
         {
             return [];
         }
+        double HandleTargetY79(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignY;
+        }
 
-        var targetY = (plan.Points.Min(point => point.DesignY) + plan.Points.Max(point => point.DesignY)) / 2.0;
+        double HandleTargetY80(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignY;
+        }
+
+        var targetY = (plan.Points.Min(HandleTargetY79) + plan.Points.Max(HandleTargetY80)) / 2.0;
         var count = zeroPointCount <= 0 ? Math.Min(5, plan.Points.Count) : Math.Min(zeroPointCount, plan.Points.Count);
+        double GetPointSortKey81(ST_REVIEW_PLAN_POINT point)
+        {
+            return Math.Abs(point.DesignY - targetY);
+        }
+
+        double GetPointSortKey82(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignX;
+        }
+
+        string SelectPoint83(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
 
         return plan.Points
-            .OrderBy(point => Math.Abs(point.DesignY - targetY))
-            .ThenBy(point => point.DesignX)
+            .OrderBy(GetPointSortKey81)
+            .ThenBy(GetPointSortKey82)
             .Take(count)
-            .Select(point => point.HoleKey)
+            .Select(SelectPoint83)
             .ToArray();
     }
 
@@ -1805,16 +2411,29 @@ public sealed class CMenuReview : IMenu
 
     private static string ToRuleText(EN_REVIEW_RULE_TYPE ruleType)
     {
-        return ruleType switch
+        string EvaluateRuleTypeSwitch7()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "All Hole",
-            EN_REVIEW_RULE_TYPE.Edge => "Edge",
-            EN_REVIEW_RULE_TYPE.Center => "Center",
-            EN_REVIEW_RULE_TYPE.HeadPoint => "Head Hole",
-            EN_REVIEW_RULE_TYPE.CellPoint => "Cell Hole",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "0-Line",
-            _ => "Sample Hole"
-        };
+            var switchValue = ruleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "All Hole";
+                case EN_REVIEW_RULE_TYPE.Edge:
+                    return "Edge";
+                case EN_REVIEW_RULE_TYPE.Center:
+                    return "Center";
+                case EN_REVIEW_RULE_TYPE.HeadPoint:
+                    return "Head Hole";
+                case EN_REVIEW_RULE_TYPE.CellPoint:
+                    return "Cell Hole";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "0-Line";
+                default:
+                    return "Sample Hole";
+            }
+        }
+
+        return EvaluateRuleTypeSwitch7();
     }
 
     private static string? ShowReviewRuleNameDialog(
@@ -1841,8 +2460,12 @@ public sealed class CMenuReview : IMenu
         {
             return "Review rule name is required.";
         }
+        bool CheckCharacter84(char character)
+        {
+            return Path.GetInvalidFileNameChars().Contains(character);
+        }
 
-        return nameWithoutExtension.Any(character => Path.GetInvalidFileNameChars().Contains(character))
+        return nameWithoutExtension.Any(CheckCharacter84)
             ? "Review rule name contains invalid file name characters."
             : "";
     }
@@ -1875,14 +2498,25 @@ public sealed class CMenuReview : IMenu
 
     private static string ToStateText(EN_REVIEW_POINT_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch8()
         {
-            EN_REVIEW_POINT_STATE.Current => "Current",
-            EN_REVIEW_POINT_STATE.Ok => "OK",
-            EN_REVIEW_POINT_STATE.Ng => "NG",
-            EN_REVIEW_POINT_STATE.Skip => "Skip",
-            _ => "Ready"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Current:
+                    return "Current";
+                case EN_REVIEW_POINT_STATE.Ok:
+                    return "OK";
+                case EN_REVIEW_POINT_STATE.Ng:
+                    return "NG";
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return "Skip";
+                default:
+                    return "Ready";
+            }
+        }
+
+        return EvaluateStateSwitch8();
     }
 
     private static string ToMatrixHoleName(ST_REVIEW_PLAN_POINT point)
@@ -1930,7 +2564,13 @@ public sealed record ST_REVIEW_SET_ROW(
     string Count,
     string State)
 {
-    public Brush StateBrush => CReviewStatusBrush.ForState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CReviewStatusBrush.ForState(State);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_RUN_HOLE_ROW(
@@ -1942,17 +2582,35 @@ public sealed record ST_REVIEW_RUN_HOLE_ROW(
     bool IsSelected,
     CButtonCommand SelectCommand)
 {
-    public Brush StateBrush => CReviewStatusBrush.ForState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CReviewStatusBrush.ForState(State);
+        }
+    }
 
-    public Brush BorderBrush => IsCurrent || IsSelected
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsCurrent || IsSelected
         ? CStatusBrush.Active
         : CStatusBrush.Frozen(0x3B, 0x4A, 0x5B);
+        }
+    }
 
-    public Brush BackgroundBrush => IsCurrent
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsCurrent
         ? CStatusBrush.Frozen(0x18, 0x43, 0x63)
         : IsSelected
             ? CStatusBrush.Frozen(0x32, 0x47, 0x5A)
             : CStatusBrush.Frozen(0x18, 0x20, 0x29);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_RUN_HOLE_MATRIX_ROW(
@@ -1970,28 +2628,52 @@ internal static class CReviewStatusBrush
 
     public static Brush ForState(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch9()
         {
-            "READY" => Ready,
-            "CURRENT" => Current,
-            "OK" => Ok,
-            "NG" => Ng,
-            "SKIP" => CStatusBrush.Muted,
-            _ => CStatusBrush.ForDisplayState(state)
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "READY":
+                    return Ready;
+                case "CURRENT":
+                    return Current;
+                case "OK":
+                    return Ok;
+                case "NG":
+                    return Ng;
+                case "SKIP":
+                    return CStatusBrush.Muted;
+                default:
+                    return CStatusBrush.ForDisplayState(state);
+            }
+        }
+
+        return EvaluateValueSwitch9();
     }
 
     public static Brush ForState(EN_REVIEW_POINT_STATE state)
     {
-        return state switch
+        Brush EvaluateStateSwitch10()
         {
-            EN_REVIEW_POINT_STATE.Ready => Ready,
-            EN_REVIEW_POINT_STATE.Current => Current,
-            EN_REVIEW_POINT_STATE.Ok => Ok,
-            EN_REVIEW_POINT_STATE.Ng => Ng,
-            EN_REVIEW_POINT_STATE.Skip => CStatusBrush.Muted,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Ready:
+                    return Ready;
+                case EN_REVIEW_POINT_STATE.Current:
+                    return Current;
+                case EN_REVIEW_POINT_STATE.Ok:
+                    return Ok;
+                case EN_REVIEW_POINT_STATE.Ng:
+                    return Ng;
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return CStatusBrush.Muted;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateStateSwitch10();
     }
 
     public static Brush ForPreviewBaseState(EN_REVIEW_POINT_STATE state)
@@ -2028,15 +2710,45 @@ public sealed record ST_REVIEW_POINT_SELECT_ROW(
     CButtonCommand ToggleCommand,
     CButtonCommand DragSelectionCommand)
 {
-    public string UseText => Use ? "USE" : "-";
+    public string UseText
+    {
+        get
+        {
+            return Use ? "USE" : "-";
+        }
+    }
 
-    public string StateText => Use ? "Selected" : "Skip";
+    public string StateText
+    {
+        get
+        {
+            return Use ? "Selected" : "Skip";
+        }
+    }
 
-    public Brush UseBrush => Use ? CStatusBrush.Active : CStatusBrush.Muted;
+    public Brush UseBrush
+    {
+        get
+        {
+            return Use ? CStatusBrush.Active : CStatusBrush.Muted;
+        }
+    }
 
-    public Brush BorderBrush => Use ? CStatusBrush.Active : CStatusBrush.Frozen(0x27, 0x32, 0x41);
+    public Brush BorderBrush
+    {
+        get
+        {
+            return Use ? CStatusBrush.Active : CStatusBrush.Frozen(0x27, 0x32, 0x41);
+        }
+    }
 
-    public Brush BackgroundBrush => Use ? CStatusBrush.Frozen(0x0B, 0x3B, 0x78) : CStatusBrush.Frozen(0x0B, 0x11, 0x19);
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return Use ? CStatusBrush.Frozen(0x0B, 0x3B, 0x78) : CStatusBrush.Frozen(0x0B, 0x11, 0x19);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_SAMPLE_DRAG_SELECTION(
@@ -2052,7 +2764,13 @@ public sealed record ST_REVIEW_RESULT_ROW(
     string ErrorY,
     string Judge)
 {
-    public Brush JudgeBrush => CStatusBrush.ForDisplayState(Judge);
+    public Brush JudgeBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Judge);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_HISTORY_ROW(
@@ -2062,5 +2780,11 @@ public sealed record ST_REVIEW_HISTORY_ROW(
     string Ng,
     string Result)
 {
-    public Brush ResultBrush => CStatusBrush.ForDisplayState(Result);
+    public Brush ResultBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Result);
+        }
+    }
 }

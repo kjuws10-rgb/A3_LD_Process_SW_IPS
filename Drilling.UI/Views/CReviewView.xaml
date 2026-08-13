@@ -1,6 +1,7 @@
 <UserControl x:Class="Drilling.UI.Views.CReviewView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menu="clr-namespace:Drilling.UI.Menu"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -330,7 +331,7 @@
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center">
-                <Button Command="{Binding CurrentScreen.Review.StartCommand}"
+                <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.StartCommand}"
                         Style="{StaticResource ReviewCommandButton}"
                         Background="{DynamicResource ButtonSuccessBrush}"
                         BorderBrush="{DynamicResource StatusReadyBrush}">
@@ -344,7 +345,7 @@
                         <TextBlock Text="START" />
                     </StackPanel>
                 </Button>
-                <Button Command="{Binding CurrentScreen.Review.StopCommand}"
+                <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.StopCommand}"
                         Style="{StaticResource ReviewCommandButton}"
                         Background="{DynamicResource ButtonDangerBrush}"
                         BorderBrush="{DynamicResource ButtonDangerBorderBrush}">
@@ -356,7 +357,7 @@
                         <TextBlock Text="STOP" />
                     </StackPanel>
                 </Button>
-                <Button Command="{Binding CurrentScreen.Review.RetryCommand}"
+                <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.RetryCommand}"
                         Style="{StaticResource ReviewCommandButton}"
                         Background="{DynamicResource ButtonPrimaryBrush}"
                         BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}">
@@ -388,7 +389,7 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <Button Content="{Binding Name}"
-                            Command="{Binding SelectCommand}"
+                            menu:CButtonCommandBehavior.Command="{Binding SelectCommand}"
                             CommandParameter="{Binding Name}">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource ReviewTabButton}">
@@ -471,7 +472,7 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding SelectCommand}"
+                                    <Button menu:CButtonCommandBehavior.Command="{Binding SelectCommand}"
                                             CommandParameter="{Binding Name}">
                                         <Button.Style>
                                             <Style TargetType="Button" BasedOn="{StaticResource ReviewModeButton}">
@@ -567,7 +568,7 @@
                                     <DataTemplate>
                                         <Button Width="{Binding Width}"
                                                 Height="{Binding Height}"
-                                                Command="{Binding DataContext.CurrentScreen.Review.SelectRunCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Review.SelectRunCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding CellNo}"
                                                 Padding="0"
                                                 Cursor="Hand">
@@ -649,7 +650,7 @@
                             </Grid.RowDefinitions>
 
                             <Button Content="← BACK TO GLASS"
-                                    Command="{Binding CurrentScreen.Review.BackToRunGlassPreviewCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.BackToRunGlassPreviewCommand}"
                                     HorizontalAlignment="Left"
                                     MinWidth="132"
                                     Height="34"
@@ -678,7 +679,7 @@
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Button Command="{Binding SelectCommand}"
+                                                        <Button menu:CButtonCommandBehavior.Command="{Binding SelectCommand}"
                                                                 CommandParameter="{Binding HoleKey}"
                                                                 Width="116"
                                                                 Height="66"
@@ -984,7 +985,7 @@
                                     <DataTemplate>
                                         <Button Width="{Binding Width}"
                                                 Height="{Binding Height}"
-                                                Command="{Binding DataContext.CurrentScreen.Review.SelectSampleCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Review.SelectSampleCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding CellNo}"
                                                 Padding="0"
                                                 Cursor="Hand">
@@ -1032,7 +1033,7 @@
                             </Grid.RowDefinitions>
 
                             <Button Content="← BACK TO GLASS"
-                                    Command="{Binding CurrentScreen.Review.BackToSampleGlassPreviewCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.BackToSampleGlassPreviewCommand}"
                                     HorizontalAlignment="Left"
                                     MinWidth="132"
                                     Height="34"
@@ -1061,7 +1062,7 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Button Command="{Binding ToggleCommand}"
+                                            <Button menu:CButtonCommandBehavior.Command="{Binding ToggleCommand}"
                                                     CommandParameter="{Binding HoleKey}"
                                                     Height="64"
                                                     Margin="3"
@@ -1144,7 +1145,7 @@
                         <Button Grid.Row="1"
                                 Grid.Column="1"
                                 Content="LOAD"
-                                Command="{Binding CurrentScreen.Review.LoadRuleCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.LoadRuleCommand}"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Height="36"
                                 MinWidth="76"
@@ -1156,7 +1157,7 @@
                         <Button Grid.Row="1"
                                 Grid.Column="2"
                                 Content="SAVE RULE"
-                                Command="{Binding CurrentScreen.Review.SaveRuleCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.SaveRuleCommand}"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Height="36"
                                 MinWidth="88"
@@ -1171,25 +1172,25 @@
                                  Columns="2"
                                  Rows="4">
                         <Button Content="ALL"
-                                Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                 CommandParameter="ALL"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Background="{DynamicResource ButtonPrimaryBrush}"
                                 BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}" />
                         <Button Content="CLEAR"
-                                Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                 CommandParameter="CLEAR"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Background="{DynamicResource ButtonSecondaryBrush}"
                                 BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}" />
                         <Button Content="EDGE"
-                                Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                 CommandParameter="EDGE"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Background="{DynamicResource ButtonSecondaryBrush}"
                                 BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}" />
                         <Button Content="CENTER"
-                                Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                 CommandParameter="CENTER"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Background="{DynamicResource ButtonSecondaryBrush}"
@@ -1206,7 +1207,7 @@
                                       Margin="0,0,4,0" />
                             <Button Grid.Column="1"
                                     Content="HEAD HOLE"
-                                    Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                     CommandParameter="HEAD"
                                     Style="{StaticResource ReviewCommandButton}"
                                     MinWidth="0"
@@ -1228,7 +1229,7 @@
                                       Margin="0,0,4,0" />
                             <Button Grid.Column="1"
                                     Content="CELL HOLE"
-                                    Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                     CommandParameter="CELL"
                                     Style="{StaticResource ReviewCommandButton}"
                                     MinWidth="0"
@@ -1239,7 +1240,7 @@
                                     BorderBrush="{DynamicResource ButtonSecondaryBorderBrush}" />
                         </Grid>
                         <Button Content="0-LINE"
-                                Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.QuickSelectCommand}"
                                 CommandParameter="ZERO"
                                 Style="{StaticResource ReviewCommandButton}"
                                 Background="{DynamicResource ButtonWarningBrush}"
@@ -1324,7 +1325,7 @@
                                     <DataTemplate>
                                         <Button Width="{Binding Width}"
                                                 Height="{Binding Height}"
-                                                Command="{Binding DataContext.CurrentScreen.Review.SelectOneHoleCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Review.SelectOneHoleCellCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding CellNo}"
                                                 Padding="0"
                                                 Cursor="Hand">
@@ -1405,7 +1406,7 @@
                             </Grid.RowDefinitions>
 
                             <Button Content="← BACK TO GLASS"
-                                    Command="{Binding CurrentScreen.Review.BackToOneHoleCellMapCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.BackToOneHoleCellMapCommand}"
                                     HorizontalAlignment="Left"
                                     MinWidth="132"
                                     Height="34"
@@ -1434,7 +1435,7 @@
                                                 </ItemsControl.ItemsPanel>
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <Button Command="{Binding SelectCommand}"
+                                                        <Button menu:CButtonCommandBehavior.Command="{Binding SelectCommand}"
                                                                 CommandParameter="{Binding HoleKey}"
                                                                 Width="116"
                                                                 Height="66"
@@ -1515,7 +1516,7 @@
                             <TextBlock Text="Current Measurement"
                                        Style="{StaticResource ReviewPanelTitle}" />
                             <Button Content="APPLY OFFSET"
-                                    Command="{Binding CurrentScreen.Review.ApplyOneHoleReviewOffsetCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Review.ApplyOneHoleReviewOffsetCommand}"
                                     IsEnabled="{Binding CurrentScreen.Review.CanApplyOneHoleReviewOffset}"
                                     HorizontalAlignment="Right"
                                     Style="{StaticResource ReviewInlineCommandButton}" />

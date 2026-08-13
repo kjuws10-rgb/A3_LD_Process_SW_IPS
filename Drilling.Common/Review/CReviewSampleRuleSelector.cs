@@ -4,18 +4,28 @@ public static class CReviewSampleRuleSelector
 {
     public static IReadOnlyCollection<string> SelectEdgeHoleKeys(ST_REVIEW_PLAN plan)
     {
+        string SelectPoint1(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
+
         return plan.Points
             .Where(IsCellEdgeHole)
-            .Select(point => point.HoleKey)
+            .Select(SelectPoint1)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
     public static IReadOnlyCollection<string> SelectCenterHoleKeys(ST_REVIEW_PLAN plan)
     {
+        string SelectPoint2(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleKey;
+        }
+
         return plan.Points
             .Where(IsCellCenterHole)
-            .Select(point => point.HoleKey)
+            .Select(SelectPoint2)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }

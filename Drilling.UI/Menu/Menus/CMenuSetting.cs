@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO;
-using System.ComponentModel;
 using Drilling.Common.Managers;
 using Drilling.Common.Interface;
 using Drilling.Common.Motion;
@@ -11,9 +10,9 @@ using System.Windows.Media;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuSetting : CBindingBase, IMenu
+public sealed class CMenuSetting : CMenuBase
 {
-    private readonly ISettingManager _settingManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedTabProvider;
     private readonly Action<string> _selectedTabSetter;
     private readonly Func<string> _selectedGroupProvider;
@@ -35,7 +34,7 @@ public sealed class CMenuSetting : CBindingBase, IMenu
     ];
 
     public CMenuSetting(
-        ISettingManager settingManager,
+        CSettingManager settingManager,
         Func<string> selectedTabProvider,
         Action<string> selectedTabSetter,
         Func<string> selectedGroupProvider,
@@ -57,16 +56,73 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         _refreshShellStatus = refreshShellStatus;
         _refreshCurrentScreen = refreshCurrentScreen;
 
-        SelectTabCommand = new CButtonCommand(async parameter => await SelectTab(parameter));
-        SelectGroupCommand = new CButtonCommand(async parameter => await SelectGroup(parameter));
-        ConnectInterfaceCommand = new CButtonCommand(async _ => await ConnectInterface(), _ => CanOperateSelectedInterface);
-        DisconnectInterfaceCommand = new CButtonCommand(async _ => await DisconnectInterface(), _ => CanOperateSelectedInterface);
-        SaveCommand = new CButtonCommand(async _ => await Save());
-        CancelCommand = new CButtonCommand(async _ => await Cancel());
-        ReloadCommand = new CButtonCommand(async _ => await Reload());
+        async void HandleSelectTabCommand1(object? parameter)
+        {
+            await SelectTab(parameter);
+        }
+
+        SelectTabCommand = new CButtonCommand(HandleSelectTabCommand1);
+
+        async void HandleSelectGroupCommand2(object? parameter)
+        {
+            await SelectGroup(parameter);
+        }
+
+        SelectGroupCommand = new CButtonCommand(HandleSelectGroupCommand2);
+
+        async void HandleConnectInterfaceCommand3(object? _)
+        {
+            await ConnectInterface();
+        }
+
+        bool HandleConnectInterfaceCommand4(object? _)
+        {
+            return CanOperateSelectedInterface;
+        }
+
+        ConnectInterfaceCommand = new CButtonCommand(HandleConnectInterfaceCommand3, HandleConnectInterfaceCommand4);
+
+        async void HandleDisconnectInterfaceCommand5(object? _)
+        {
+            await DisconnectInterface();
+        }
+
+        bool HandleDisconnectInterfaceCommand6(object? _)
+        {
+            return CanOperateSelectedInterface;
+        }
+
+        DisconnectInterfaceCommand = new CButtonCommand(HandleDisconnectInterfaceCommand5, HandleDisconnectInterfaceCommand6);
+
+        async void HandleSaveCommand7(object? _)
+        {
+            await Save();
+        }
+
+        SaveCommand = new CButtonCommand(HandleSaveCommand7);
+
+        async void HandleCancelCommand8(object? _)
+        {
+            await Cancel();
+        }
+
+        CancelCommand = new CButtonCommand(HandleCancelCommand8);
+
+        async void HandleReloadCommand9(object? _)
+        {
+            await Reload();
+        }
+
+        ReloadCommand = new CButtonCommand(HandleReloadCommand9);
     }
 
-    public EN_MENU Menu => EN_MENU.Setting;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Setting;
+        }
+    }
 
     public IReadOnlyList<ST_SCREEN_SECTION> Tabs { get; private set; } = [];
 
@@ -106,25 +162,41 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     public CButtonCommand ReloadCommand { get; }
 
-    public bool IsInterfaceTab => SelectedTab == "INTERFACE";
+    public bool IsInterfaceTab
+    {
+        get
+        {
+            return SelectedTab == "INTERFACE";
+        }
+    }
 
-    public bool IsParameterTab => !IsInterfaceTab;
+    public bool IsParameterTab
+    {
+        get
+        {
+            return !IsInterfaceTab;
+        }
+    }
 
     public ST_SETTING_INTERFACE_ROW? SelectedInterfaceRow
     {
-        get => _selectedInterfaceRow;
+        get
+        {
+            return _selectedInterfaceRow;
+        }
+
         set
         {
             if (_selectedInterfaceRow is not null)
             {
-                _selectedInterfaceRow.PropertyChanged -= SelectedInterfaceRowChanged;
+                UnsubscribeSelectedInterfaceRow(_selectedInterfaceRow);
             }
 
             if (!SetProperty(ref _selectedInterfaceRow, value))
             {
                 if (_selectedInterfaceRow is not null)
                 {
-                    _selectedInterfaceRow.PropertyChanged += SelectedInterfaceRowChanged;
+                    SubscribeSelectedInterfaceRow(_selectedInterfaceRow);
                 }
 
                 return;
@@ -132,31 +204,41 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
             if (_selectedInterfaceRow is not null)
             {
-                _selectedInterfaceRow.PropertyChanged += SelectedInterfaceRowChanged;
+                SubscribeSelectedInterfaceRow(_selectedInterfaceRow);
             }
 
             RefreshInterfaceCommandState();
         }
     }
 
-    public bool CanOperateSelectedInterface =>
-        IsInterfaceTab &&
+    public bool CanOperateSelectedInterface
+    {
+        get
+        {
+            return IsInterfaceTab &&
         SelectedInterfaceRow is not null &&
         !SelectedInterfaceRow.IsSimulation;
+        }
+    }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var displaySections = new List<ST_SCREEN_SECTION>();
 
         foreach (var section in Sections)
         {
             var sectionParameters = await _settingManager.LoadSection(section, cancellationToken);
+            ST_DISPLAY_ITEM SelectItem10(ST_SYSTEM_PARAMETER item)
+            {
+                return new ST_DISPLAY_ITEM(
+                                    item.Name,
+                                    $"{item.Value} {item.Unit}".Trim(),
+                                    item.Description);
+            }
+
             displaySections.Add(new ST_SCREEN_SECTION(
                 ToTabText(section),
-                sectionParameters.Select(item => new ST_DISPLAY_ITEM(
-                    item.Name,
-                    $"{item.Value} {item.Unit}".Trim(),
-                    item.Description)).ToArray()));
+                sectionParameters.Select(SelectItem10).ToArray()));
         }
 
         var selectedTab = NormalizeTab(_selectedTabProvider());
@@ -175,13 +257,27 @@ public sealed class CMenuSetting : CBindingBase, IMenu
             ? BuildInterfaceGroups(allInterfaceRows)
             : BuildGroups(allRows);
         var selectedGroup = NormalizeGroup(_selectedGroupProvider(), groups);
+        bool FilterRow11(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return row.Group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase);
+        }
+
         var filteredRows = selectedGroup == "ALL"
             ? allRows
-            : allRows.Where(row => row.Group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase)).ToArray();
+            : allRows.Where(FilterRow11).ToArray();
+        bool FilterRow12(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.Type.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase);
+        }
+
         var filteredInterfaceRows = selectedGroup == "ALL"
             ? allInterfaceRows
-            : allInterfaceRows.Where(row => row.Type.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase)).ToArray();
+            : allInterfaceRows.Where(FilterRow12).ToArray();
         var history = await _settingManager.LoadHistory(selectedSection, cancellationToken);
+        ST_SETTING_GROUP SelectGroup13(string group)
+        {
+            return new ST_SETTING_GROUP(group, group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase));
+        }
 
         Apply(
             displaySections,
@@ -189,7 +285,7 @@ public sealed class CMenuSetting : CBindingBase, IMenu
             selectedTab,
             selectedGroup,
             BuildTabs(selectedTab),
-            groups.Select(group => new ST_SETTING_GROUP(group, group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase))).ToArray(),
+            groups.Select(SelectGroup13).ToArray(),
             allRows,
             filteredRows,
             allInterfaceRows,
@@ -341,19 +437,24 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         }
 
         var section = ToSection(SelectedTab);
+        ST_SYSTEM_PARAMETER SelectRow14(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return new ST_SYSTEM_PARAMETER(
+                            section,
+                            row.Parameter,
+                            row.Value,
+                            NormalizeSettingUnit(row.Unit),
+                            row.Description,
+                            row.Group,
+                            row.Key,
+                            row.DefaultValue,
+                            row.DataType,
+                            row.Min,
+                            row.Max);
+        }
+
         var parameters = AllParameterRows
-            .Select(row => new ST_SYSTEM_PARAMETER(
-                section,
-                row.Parameter,
-                row.Value,
-                NormalizeSettingUnit(row.Unit),
-                row.Description,
-                row.Group,
-                row.Key,
-                row.DefaultValue,
-                row.DataType,
-                row.Min,
-                row.Max))
+            .Select(SelectRow14)
             .ToArray();
 
         try
@@ -459,9 +560,18 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         {
             return rows[0];
         }
+        bool MatchRow15(ST_SETTING_INTERFACE_ROW row)
+        {
+            return IsSameInterfaceKey(row, current);
+        }
 
-        return rows.FirstOrDefault(row => IsSameInterfaceKey(row, current))
-            ?? rows.FirstOrDefault(row => row.NickName.Equals(current.NickName, StringComparison.OrdinalIgnoreCase))
+        bool MatchRow16(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.NickName.Equals(current.NickName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return rows.FirstOrDefault(MatchRow15)
+            ?? rows.FirstOrDefault(MatchRow16)
             ?? rows[0];
     }
 
@@ -473,14 +583,23 @@ public sealed class CMenuSetting : CBindingBase, IMenu
             left.Number.Trim().Equals(right.Number.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 
-    private void SelectedInterfaceRowChanged(object? sender, PropertyChangedEventArgs e)
+    private void SubscribeSelectedInterfaceRow(ST_SETTING_INTERFACE_ROW row)
     {
-        if (e.PropertyName is nameof(ST_SETTING_INTERFACE_ROW.Simul) or
-            nameof(ST_SETTING_INTERFACE_ROW.IsSimulation) or
-            nameof(ST_SETTING_INTERFACE_ROW.IsModified))
-        {
-            RefreshInterfaceCommandState();
-        }
+        row.SimulChanged += SelectedInterfaceRowValueChanged;
+        row.IsSimulationChanged += SelectedInterfaceRowValueChanged;
+        row.IsModifiedChanged += SelectedInterfaceRowValueChanged;
+    }
+
+    private void UnsubscribeSelectedInterfaceRow(ST_SETTING_INTERFACE_ROW row)
+    {
+        row.SimulChanged -= SelectedInterfaceRowValueChanged;
+        row.IsSimulationChanged -= SelectedInterfaceRowValueChanged;
+        row.IsModifiedChanged -= SelectedInterfaceRowValueChanged;
+    }
+
+    private void SelectedInterfaceRowValueChanged(object? sender, EventArgs eventArgs)
+    {
+        RefreshInterfaceCommandState();
     }
 
     private void RefreshInterfaceCommandState()
@@ -492,38 +611,68 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static IReadOnlyList<ST_SETTING_TAB> BuildTabs(string selectedTab)
     {
+        string SelectSection17(EN_SETTING_TAB section)
+        {
+            return ToTabText(section);
+        }
+
+        ST_SETTING_TAB SelectTab18(string tab)
+        {
+            return new ST_SETTING_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase));
+        }
+
         return Sections
-            .Select(section => ToTabText(section))
-            .Select(tab => new ST_SETTING_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectSection17)
+            .Select(SelectTab18)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_SYSTEM_PARAMETER_ROW> BuildParameterRows(
         IReadOnlyList<ST_SYSTEM_PARAMETER> parameters)
     {
+        bool FilterParameter19(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Show && parameter.Use;
+        }
+
+        ST_SYSTEM_PARAMETER_ROW SelectParameter20(ST_SYSTEM_PARAMETER parameter)
+        {
+            return new ST_SYSTEM_PARAMETER_ROW(
+                            NormalizeSettingText(parameter.Group, "COMMON"),
+                            parameter.Name,
+                            parameter.Value,
+                            NormalizeUnit(parameter.Unit),
+                            parameter.Description,
+                            false,
+                            GetValueState(parameter.Value),
+                            parameter.Key,
+                            parameter.DefaultValue,
+                            parameter.DataType,
+                            parameter.Min,
+                            parameter.Max);
+        }
+
         return parameters
-            .Where(parameter => parameter.Show && parameter.Use)
-            .Select(parameter => new ST_SYSTEM_PARAMETER_ROW(
-                NormalizeSettingText(parameter.Group, "COMMON"),
-                parameter.Name,
-                parameter.Value,
-                NormalizeUnit(parameter.Unit),
-                parameter.Description,
-                false,
-                GetValueState(parameter.Value),
-                parameter.Key,
-                parameter.DefaultValue,
-                parameter.DataType,
-                parameter.Min,
-                parameter.Max))
+            .Where(FilterParameter19)
+            .Select(SelectParameter20)
             .ToArray();
     }
 
     private static IReadOnlyList<string> BuildGroups(IReadOnlyList<ST_SYSTEM_PARAMETER_ROW> rows)
     {
+        string SelectRow21(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return row.Group;
+        }
+
+        bool FilterGroup22(string group)
+        {
+            return !string.IsNullOrWhiteSpace(group);
+        }
+
         var groups = rows
-            .Select(row => row.Group)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Select(SelectRow21)
+            .Where(FilterGroup22)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -532,9 +681,19 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static IReadOnlyList<string> BuildInterfaceGroups(IReadOnlyList<ST_SETTING_INTERFACE_ROW> rows)
     {
+        string SelectRow23(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.Type;
+        }
+
+        bool FilterGroup24(string group)
+        {
+            return !string.IsNullOrWhiteSpace(group);
+        }
+
         var groups = rows
-            .Select(row => row.Type)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Select(SelectRow23)
+            .Where(FilterGroup24)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -544,27 +703,42 @@ public sealed class CMenuSetting : CBindingBase, IMenu
     private static IReadOnlyList<ST_DISPLAY_ITEM> BuildHistoryItems(
         IReadOnlyList<ST_SETTING_HISTORY> history)
     {
+        ST_DISPLAY_ITEM SelectItem25(ST_SETTING_HISTORY item)
+        {
+            return new ST_DISPLAY_ITEM(
+                            item.ChangedAt.ToString("HH:mm:ss"),
+                            $"{item.Action} / {item.ParameterName}",
+                            $"{item.OldValue} -> {item.NewValue}");
+        }
+
         return history
-            .Select(item => new ST_DISPLAY_ITEM(
-                item.ChangedAt.ToString("HH:mm:ss"),
-                $"{item.Action} / {item.ParameterName}",
-                $"{item.OldValue} -> {item.NewValue}"))
+            .Select(SelectItem25)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_SETTING_HISTORY_ROW> BuildHistoryRows(
         IReadOnlyList<ST_SETTING_HISTORY> history)
     {
+        bool FilterItem26(ST_SETTING_HISTORY item)
+        {
+            return !item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase);
+        }
+
+        ST_SETTING_HISTORY_ROW SelectItem27(ST_SETTING_HISTORY item)
+        {
+            return new ST_SETTING_HISTORY_ROW(
+                            item.ChangedAt.ToString("HH:mm:ss"),
+                            item.OperatorId,
+                            ToTabText(item.Section),
+                            item.ParameterName,
+                            item.OldValue,
+                            item.NewValue,
+                            "Warn");
+        }
+
         return history
-            .Where(item => !item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase))
-            .Select(item => new ST_SETTING_HISTORY_ROW(
-                item.ChangedAt.ToString("HH:mm:ss"),
-                item.OperatorId,
-                ToTabText(item.Section),
-                item.ParameterName,
-                item.OldValue,
-                item.NewValue,
-                "Warn"))
+            .Where(FilterItem26)
+            .Select(SelectItem27)
             .ToArray();
     }
 
@@ -574,10 +748,25 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         IReadOnlyList<ST_SETTING_INTERFACE_ROW> interfaceRows,
         IReadOnlyList<ST_SETTING_HISTORY> history)
     {
+        bool HandleModifiedCount28(ST_SETTING_INTERFACE_ROW row)
+        {
+            return row.IsModified;
+        }
+
+        bool HandleModifiedCount29(ST_SYSTEM_PARAMETER_ROW row)
+        {
+            return row.IsModified;
+        }
+
         var modifiedCount = selectedTab == "INTERFACE"
-            ? interfaceRows.Count(row => row.IsModified)
-            : rows.Count(row => row.IsModified);
-        var lastSavedTime = history.FirstOrDefault(item => item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase))?.ChangedAt;
+            ? interfaceRows.Count(HandleModifiedCount28)
+            : rows.Count(HandleModifiedCount29);
+        bool MatchItem30(ST_SETTING_HISTORY item)
+        {
+            return item.Action.Equals("SAVE", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var lastSavedTime = history.FirstOrDefault(MatchItem30)?.ChangedAt;
 
         return
         [
@@ -589,129 +778,224 @@ public sealed class CMenuSetting : CBindingBase, IMenu
     private static IReadOnlyList<ST_SETTING_INTERFACE_ROW> BuildInterfaceRows(
         IReadOnlyList<ST_INTERFACE_DATA> interfaces)
     {
-        return interfaces
-            .OrderBy(item => item.Device)
-            .ThenBy(item => item.Number)
-            .ThenBy(item => item.NickName, StringComparer.OrdinalIgnoreCase)
-            .Select((item, index) =>
-            {
-                var arguments = item.Arguments
-                    .Concat(Enumerable.Repeat("", 5))
-                    .Take(5)
-                    .ToArray();
+        EN_EQP_MODULE GetItemSortKey31(ST_INTERFACE_DATA item)
+        {
+            return item.Device;
+        }
 
-                return new ST_SETTING_INTERFACE_ROW(
-                    (index + 1).ToString("D2", CultureInfo.InvariantCulture),
-                    InterfaceTypeText(item.InterfaceType),
-                    DeviceText(item.Device),
-                    item.Number.ToString(CultureInfo.InvariantCulture),
-                    item.NickName,
-                    item.SystemSection,
-                    item.AutoConnection ? "ON" : "OFF",
-                    item.IsSimulation ? "ON" : "OFF",
-                    arguments[0],
-                    arguments[1],
-                    arguments[2],
-                    arguments[3],
-                    arguments[4],
-                    item.Extra);
-            })
+        int GetItemSortKey32(ST_INTERFACE_DATA item)
+        {
+            return item.Number;
+        }
+
+        string GetItemSortKey33(ST_INTERFACE_DATA item)
+        {
+            return item.NickName;
+        }
+
+        ST_SETTING_INTERFACE_ROW SelectItem34(ST_INTERFACE_DATA item, int index)
+        {
+            var arguments = item.Arguments
+                .Concat(Enumerable.Repeat("", 5))
+                .Take(5)
+                .ToArray();
+
+            return new ST_SETTING_INTERFACE_ROW(
+                (index + 1).ToString("D2", CultureInfo.InvariantCulture),
+                InterfaceTypeText(item.InterfaceType),
+                DeviceText(item.Device),
+                item.Number.ToString(CultureInfo.InvariantCulture),
+                item.NickName,
+                item.SystemSection,
+                item.AutoConnection ? "ON" : "OFF",
+                item.IsSimulation ? "ON" : "OFF",
+                arguments[0],
+                arguments[1],
+                arguments[2],
+                arguments[3],
+                arguments[4],
+                item.Extra);
+        }
+        return interfaces
+            .OrderBy(GetItemSortKey31)
+            .ThenBy(GetItemSortKey32)
+            .ThenBy(GetItemSortKey33, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectItem34)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_INTERFACE_DATA> ToInterfaceData(
         IReadOnlyList<ST_SETTING_INTERFACE_ROW> rows)
     {
+        ST_INTERFACE_DATA SelectRow35(ST_SETTING_INTERFACE_ROW row)
+        {
+            return new ST_INTERFACE_DATA(
+                            ParseInterfaceType(row.Type),
+                            ParseDevice(row.Device),
+                            ReadInt(row.Number, row.NickName, "NUMBER"),
+                            RequireText(row.NickName, "NICKNAME"),
+                            RequireText(row.SystemSection, "SYSTEM_SECTION"),
+                            ReadBool(row.AutoConnection, row.NickName, "AUTOCONNECTION"),
+                            ReadBool(row.Simul, row.NickName, "SIMUL"),
+                            [row.Arg1.Trim(), row.Arg2.Trim(), row.Arg3.Trim(), row.Arg4.Trim(), row.Arg5.Trim()],
+                            row.Extra);
+        }
+
         return rows
-            .Select(row => new ST_INTERFACE_DATA(
-                ParseInterfaceType(row.Type),
-                ParseDevice(row.Device),
-                ReadInt(row.Number, row.NickName, "NUMBER"),
-                RequireText(row.NickName, "NICKNAME"),
-                RequireText(row.SystemSection, "SYSTEM_SECTION"),
-                ReadBool(row.AutoConnection, row.NickName, "AUTOCONNECTION"),
-                ReadBool(row.Simul, row.NickName, "SIMUL"),
-                [row.Arg1.Trim(), row.Arg2.Trim(), row.Arg3.Trim(), row.Arg4.Trim(), row.Arg5.Trim()],
-                row.Extra))
+            .Select(SelectRow35)
             .ToArray();
     }
 
     private static EN_INTERFACE_TYPE ParseInterfaceType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_INTERFACE_TYPE EvaluateValueSwitch1()
         {
-            "OPCUA" => EN_INTERFACE_TYPE.OpcUa,
-            "MODBUS_SERIAL" => EN_INTERFACE_TYPE.ModbusSerial,
-            "MODBUS_TCP" => EN_INTERFACE_TYPE.ModbusTcp,
-            "SERIAL" => EN_INTERFACE_TYPE.Serial,
-            "SOCKET_C" => EN_INTERFACE_TYPE.SocketClient,
-            "SOCKET_S" => EN_INTERFACE_TYPE.SocketServer,
-            "SOCKET_C_UDP" => EN_INTERFACE_TYPE.SocketClientUdp,
-            "SOCKET_S_UDP" => EN_INTERFACE_TYPE.SocketServerUdp,
-            "ACS_NET" or "ACS" => EN_INTERFACE_TYPE.AcsNet,
-            "XPS_NET" or "XPS" or "NEWPORT_XPS" => EN_INTERFACE_TYPE.XpsNet,
-            "AUTOMATION1_NET" or "AUTOMATION1" or "A1_NET" or "AEROTECH_AUTOMATION1" => EN_INTERFACE_TYPE.Automation1Net,
-            "PICOMOTOR" or "PICO_MOTOR" or "PICO" => EN_INTERFACE_TYPE.PicoMotor,
-            _ => throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown TYPE: {value}")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "OPCUA":
+                    return EN_INTERFACE_TYPE.OpcUa;
+                case "MODBUS_SERIAL":
+                    return EN_INTERFACE_TYPE.ModbusSerial;
+                case "MODBUS_TCP":
+                    return EN_INTERFACE_TYPE.ModbusTcp;
+                case "SERIAL":
+                    return EN_INTERFACE_TYPE.Serial;
+                case "SOCKET_C":
+                    return EN_INTERFACE_TYPE.SocketClient;
+                case "SOCKET_S":
+                    return EN_INTERFACE_TYPE.SocketServer;
+                case "SOCKET_C_UDP":
+                    return EN_INTERFACE_TYPE.SocketClientUdp;
+                case "SOCKET_S_UDP":
+                    return EN_INTERFACE_TYPE.SocketServerUdp;
+                case "ACS_NET" or "ACS":
+                    return EN_INTERFACE_TYPE.AcsNet;
+                case "XPS_NET" or "XPS" or "NEWPORT_XPS":
+                    return EN_INTERFACE_TYPE.XpsNet;
+                case "AUTOMATION1_NET" or "AUTOMATION1" or "A1_NET" or "AEROTECH_AUTOMATION1":
+                    return EN_INTERFACE_TYPE.Automation1Net;
+                case "PICOMOTOR" or "PICO_MOTOR" or "PICO":
+                    return EN_INTERFACE_TYPE.PicoMotor;
+                default:
+                    throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown TYPE: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static EN_EQP_MODULE ParseDevice(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_EQP_MODULE EvaluateValueSwitch2()
         {
-            "WONIK_CONTROL" or "WONIK_CTRL" or "CONTROL" => EN_EQP_MODULE.WonikCtrl,
-            "WONIK_VISION" or "VISION" => EN_EQP_MODULE.Vision,
-            "AUTOMATION1" or "AUTOMATION_ONE" or "A1" => EN_EQP_MODULE.Automation1,
-            "MOTION" or "SCANNER" => EN_EQP_MODULE.Motion,
-            "TALON" or "TALON_LASER" or "LASER" => EN_EQP_MODULE.TalonLaser,
-            "CHILLER" or "ORION_CHILLER" or "SMCCHILLER" => EN_EQP_MODULE.Chiller,
-            "CONEX_AGP" or "ATTENUATOR" => EN_EQP_MODULE.Attenuator,
-            "BEAM_EXPANDER" or "BET" => EN_EQP_MODULE.Bet,
-            "POWER_METER" or "POWERMETER" or "POWERMAX" => EN_EQP_MODULE.PowerMeter,
-            "MELSEC" or "PLC" => EN_EQP_MODULE.Melsec,
-            "PICO_MOTOR" or "PICOMOTOR" or "PICO" => EN_EQP_MODULE.PicoMotor,
-            _ => throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown DEVICE: {value}")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "WONIK_CONTROL" or "WONIK_CTRL" or "CONTROL":
+                    return EN_EQP_MODULE.WonikCtrl;
+                case "WONIK_VISION" or "VISION":
+                    return EN_EQP_MODULE.Vision;
+                case "AUTOMATION1" or "AUTOMATION_ONE" or "A1":
+                    return EN_EQP_MODULE.Automation1;
+                case "MOTION" or "SCANNER":
+                    return EN_EQP_MODULE.Motion;
+                case "TALON" or "TALON_LASER" or "LASER":
+                    return EN_EQP_MODULE.TalonLaser;
+                case "CHILLER" or "ORION_CHILLER" or "SMCCHILLER":
+                    return EN_EQP_MODULE.Chiller;
+                case "CONEX_AGP" or "ATTENUATOR":
+                    return EN_EQP_MODULE.Attenuator;
+                case "BEAM_EXPANDER" or "BET":
+                    return EN_EQP_MODULE.Bet;
+                case "POWER_METER" or "POWERMETER" or "POWERMAX":
+                    return EN_EQP_MODULE.PowerMeter;
+                case "MELSEC" or "PLC":
+                    return EN_EQP_MODULE.Melsec;
+                case "PICO_MOTOR" or "PICOMOTOR" or "PICO":
+                    return EN_EQP_MODULE.PicoMotor;
+                default:
+                    throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown DEVICE: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static string InterfaceTypeText(EN_INTERFACE_TYPE type)
     {
-        return type switch
+        string EvaluateTypeSwitch3()
         {
-            EN_INTERFACE_TYPE.SocketClient => "SOCKET_C",
-            EN_INTERFACE_TYPE.SocketServer => "SOCKET_S",
-            EN_INTERFACE_TYPE.SocketClientUdp => "SOCKET_C_UDP",
-            EN_INTERFACE_TYPE.SocketServerUdp => "SOCKET_S_UDP",
-            EN_INTERFACE_TYPE.ModbusSerial => "MODBUS_SERIAL",
-            EN_INTERFACE_TYPE.ModbusTcp => "MODBUS_TCP",
-            EN_INTERFACE_TYPE.OpcUa => "OPCUA",
-            EN_INTERFACE_TYPE.Serial => "SERIAL",
-            EN_INTERFACE_TYPE.AcsNet => "ACS_NET",
-            EN_INTERFACE_TYPE.XpsNet => "XPS_NET",
-            EN_INTERFACE_TYPE.Automation1Net => "AUTOMATION1_NET",
-            EN_INTERFACE_TYPE.PicoMotor => "PICOMOTOR",
-            _ => type.ToString().ToUpperInvariant()
-        };
+            var switchValue = type;
+            switch (switchValue)
+            {
+                case EN_INTERFACE_TYPE.SocketClient:
+                    return "SOCKET_C";
+                case EN_INTERFACE_TYPE.SocketServer:
+                    return "SOCKET_S";
+                case EN_INTERFACE_TYPE.SocketClientUdp:
+                    return "SOCKET_C_UDP";
+                case EN_INTERFACE_TYPE.SocketServerUdp:
+                    return "SOCKET_S_UDP";
+                case EN_INTERFACE_TYPE.ModbusSerial:
+                    return "MODBUS_SERIAL";
+                case EN_INTERFACE_TYPE.ModbusTcp:
+                    return "MODBUS_TCP";
+                case EN_INTERFACE_TYPE.OpcUa:
+                    return "OPCUA";
+                case EN_INTERFACE_TYPE.Serial:
+                    return "SERIAL";
+                case EN_INTERFACE_TYPE.AcsNet:
+                    return "ACS_NET";
+                case EN_INTERFACE_TYPE.XpsNet:
+                    return "XPS_NET";
+                case EN_INTERFACE_TYPE.Automation1Net:
+                    return "AUTOMATION1_NET";
+                case EN_INTERFACE_TYPE.PicoMotor:
+                    return "PICOMOTOR";
+                default:
+                    return type.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateTypeSwitch3();
     }
 
     private static string DeviceText(EN_EQP_MODULE module)
     {
-        return module switch
+        string EvaluateModuleSwitch4()
         {
-            EN_EQP_MODULE.WonikCtrl => "WONIK_CONTROL",
-            EN_EQP_MODULE.Vision => "WONIK_VISION",
-            EN_EQP_MODULE.Automation1 => "AUTOMATION1",
-            EN_EQP_MODULE.Motion => "MOTION",
-            EN_EQP_MODULE.TalonLaser => "TALON",
-            EN_EQP_MODULE.Chiller => "CHILLER",
-            EN_EQP_MODULE.Attenuator => "CONEX_AGP",
-            EN_EQP_MODULE.Bet => "BEAM_EXPANDER",
-            EN_EQP_MODULE.PowerMeter => "POWER_METER",
-            EN_EQP_MODULE.PicoMotor => "PICO_MOTOR",
-            EN_EQP_MODULE.Melsec => "MELSEC",
-            _ => module.ToString().ToUpperInvariant()
-        };
+            var switchValue = module;
+            switch (switchValue)
+            {
+                case EN_EQP_MODULE.WonikCtrl:
+                    return "WONIK_CONTROL";
+                case EN_EQP_MODULE.Vision:
+                    return "WONIK_VISION";
+                case EN_EQP_MODULE.Automation1:
+                    return "AUTOMATION1";
+                case EN_EQP_MODULE.Motion:
+                    return "MOTION";
+                case EN_EQP_MODULE.TalonLaser:
+                    return "TALON";
+                case EN_EQP_MODULE.Chiller:
+                    return "CHILLER";
+                case EN_EQP_MODULE.Attenuator:
+                    return "CONEX_AGP";
+                case EN_EQP_MODULE.Bet:
+                    return "BEAM_EXPANDER";
+                case EN_EQP_MODULE.PowerMeter:
+                    return "POWER_METER";
+                case EN_EQP_MODULE.PicoMotor:
+                    return "PICO_MOTOR";
+                case EN_EQP_MODULE.Melsec:
+                    return "MELSEC";
+                default:
+                    return module.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateModuleSwitch4();
     }
 
     private static string InterfaceRowLabel(ST_SETTING_INTERFACE_ROW row)
@@ -731,12 +1015,21 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static bool ReadBool(string value, string nickName, string fieldName)
     {
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch5()
         {
-            "1" or "TRUE" or "ON" or "YES" or "USE" or "SIMUL" or "SIMULATION" or "SIM" => true,
-            "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL" => false,
-            _ => throw new InvalidDataException($"JHMI_INTERFACE save blocked. {nickName}/{fieldName} must be 1/0 or ON/OFF.")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES" or "USE" or "SIMUL" or "SIMULATION" or "SIM":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL":
+                    return false;
+                default:
+                    throw new InvalidDataException($"JHMI_INTERFACE save blocked. {nickName}/{fieldName} must be 1/0 or ON/OFF.");
+            }
+        }
+
+        return EvaluateValueSwitch5();
     }
 
     private static int ReadInt(string value, string nickName, string fieldName)
@@ -767,7 +1060,12 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         IReadOnlyList<string> groups)
     {
         var normalized = NormalizeSettingText(group, "ALL");
-        return groups.Any(item => item.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+        bool CheckItem36(string item)
+        {
+            return item.Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return groups.Any(CheckItem36)
             ? normalized
             : "ALL";
     }
@@ -800,23 +1098,42 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static EN_SETTING_TAB ToSection(string tab)
     {
-        return tab.Trim().ToUpperInvariant() switch
+        EN_SETTING_TAB EvaluateValueSwitch6()
         {
-            "INTERFACE" => EN_SETTING_TAB.Interface,
-            "IO" => EN_SETTING_TAB.Io,
-            "MOTOR" => EN_SETTING_TAB.Motor,
-            "ALARM" => EN_SETTING_TAB.Alarm,
-            _ => EN_SETTING_TAB.Option
-        };
+            var switchValue = tab.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INTERFACE":
+                    return EN_SETTING_TAB.Interface;
+                case "IO":
+                    return EN_SETTING_TAB.Io;
+                case "MOTOR":
+                    return EN_SETTING_TAB.Motor;
+                case "ALARM":
+                    return EN_SETTING_TAB.Alarm;
+                default:
+                    return EN_SETTING_TAB.Option;
+            }
+        }
+
+        return EvaluateValueSwitch6();
     }
 
     private static string ToTabText(EN_SETTING_TAB section)
     {
-        return section switch
+        string EvaluateSectionSwitch7()
         {
-            EN_SETTING_TAB.Io => "IO",
-            _ => section.ToString().ToUpperInvariant()
-        };
+            var switchValue = section;
+            switch (switchValue)
+            {
+                case EN_SETTING_TAB.Io:
+                    return "IO";
+                default:
+                    return section.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateSectionSwitch7();
     }
 
     private static string GetDefaultGroup()
@@ -884,7 +1201,11 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             if (!SetProperty(ref _value, value))
@@ -909,31 +1230,75 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
 
     public EN_RECIPE_DATA_TYPE DataType { get; }
 
-    public bool IsVisionFlipOption =>
-        Key.Equals("VisionXFlip", StringComparison.OrdinalIgnoreCase) ||
+    public bool IsVisionFlipOption
+    {
+        get
+        {
+            return Key.Equals("VisionXFlip", StringComparison.OrdinalIgnoreCase) ||
         Key.Equals("VisionYFlip", StringComparison.OrdinalIgnoreCase) ||
         Key.Equals("VisionXyFlip", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsBoolean => DataType == EN_RECIPE_DATA_TYPE.Bool;
+    public bool IsBoolean
+    {
+        get
+        {
+            return DataType == EN_RECIPE_DATA_TYPE.Bool;
+        }
+    }
 
-    public bool UsesSelectionEditor => IsVisionFlipOption || IsBoolean;
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return IsVisionFlipOption || IsBoolean;
+        }
+    }
 
-    public IReadOnlyList<string> ValueOptions =>
-        UsesSelectionEditor ? VisionFlipOptions : [];
+    public IReadOnlyList<string> ValueOptions
+    {
+        get
+        {
+            return UsesSelectionEditor ? VisionFlipOptions : [];
+        }
+    }
 
     public double Min { get; }
 
     public double Max { get; }
 
-    public string OriginalValue => _originalValue;
+    public string OriginalValue
+    {
+        get
+        {
+            return _originalValue;
+        }
+    }
 
-    public bool IsModified => !NormalizeValue(Value).Equals(NormalizeValue(_originalValue), StringComparison.OrdinalIgnoreCase);
+    public bool IsModified
+    {
+        get
+        {
+            return !NormalizeValue(Value).Equals(NormalizeValue(_originalValue), StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public string ModifiedText => IsModified ? "Yes" : "No";
+    public string ModifiedText
+    {
+        get
+        {
+            return IsModified ? "Yes" : "No";
+        }
+    }
 
     public string ValueState
     {
-        get => _valueState;
+        get
+        {
+            return _valueState;
+        }
+
         private set
         {
             if (SetProperty(ref _valueState, value))
@@ -943,14 +1308,35 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
         }
     }
 
-    public Brush ValueBrush => ValueState switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateValueStateSwitch8()
+            {
+                var switchValue = ValueState;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
 
-    public Brush ModifiedBrush => IsModified ? CStatusBrush.Wait : CStatusBrush.PrimaryText;
+            return EvaluateValueStateSwitch8();
+        }
+    }
+
+    public Brush ModifiedBrush
+    {
+        get
+        {
+            return IsModified ? CStatusBrush.Wait : CStatusBrush.PrimaryText;
+        }
+    }
 
     private static string NormalizeValue(string value)
     {
@@ -975,11 +1361,25 @@ public sealed record ST_SETTING_HISTORY_ROW(
     string After,
     string AfterState = "Warn")
 {
-    public Brush AfterBrush => AfterState switch
+    public Brush AfterBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            Brush EvaluateAfterStateSwitch9()
+            {
+                var switchValue = AfterState;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateAfterStateSwitch9();
+        }
+    }
 }
 
 public sealed record ST_SETTING_SUMMARY_ROW(
@@ -987,13 +1387,29 @@ public sealed record ST_SETTING_SUMMARY_ROW(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateStateSwitch10()
+            {
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch10();
+        }
+    }
 }
 
 public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
@@ -1081,78 +1497,165 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
 
     public string Type
     {
-        get => _type;
-        set => SetEditable(ref _type, value);
+        get
+        {
+            return _type;
+        }
+
+        set
+        {
+            SetEditable(ref _type, value);
+        }
     }
 
     public string Device
     {
-        get => _device;
-        set => SetEditable(ref _device, value);
+        get
+        {
+            return _device;
+        }
+
+        set
+        {
+            SetEditable(ref _device, value);
+        }
     }
 
     public string Number
     {
-        get => _number;
-        set => SetEditable(ref _number, value);
+        get
+        {
+            return _number;
+        }
+
+        set
+        {
+            SetEditable(ref _number, value);
+        }
     }
 
     public string NickName
     {
-        get => _nickName;
-        set => SetEditable(ref _nickName, value);
+        get
+        {
+            return _nickName;
+        }
+
+        set
+        {
+            SetEditable(ref _nickName, value);
+        }
     }
 
     public string SystemSection
     {
-        get => _systemSection;
-        set => SetEditable(ref _systemSection, value);
+        get
+        {
+            return _systemSection;
+        }
+
+        set
+        {
+            SetEditable(ref _systemSection, value);
+        }
     }
 
     public string AutoConnection
     {
-        get => _autoConnection;
-        set => SetEditable(ref _autoConnection, value);
+        get
+        {
+            return _autoConnection;
+        }
+
+        set
+        {
+            SetEditable(ref _autoConnection, value);
+        }
     }
 
     public string Simul
     {
-        get => _simul;
-        set => SetEditable(ref _simul, value);
+        get
+        {
+            return _simul;
+        }
+
+        set
+        {
+            SetEditable(ref _simul, value);
+        }
     }
 
     public string Arg1
     {
-        get => _arg1;
-        set => SetEditable(ref _arg1, value);
+        get
+        {
+            return _arg1;
+        }
+
+        set
+        {
+            SetEditable(ref _arg1, value);
+        }
     }
 
     public string Arg2
     {
-        get => _arg2;
-        set => SetEditable(ref _arg2, value);
+        get
+        {
+            return _arg2;
+        }
+
+        set
+        {
+            SetEditable(ref _arg2, value);
+        }
     }
 
     public string Arg3
     {
-        get => _arg3;
-        set => SetEditable(ref _arg3, value);
+        get
+        {
+            return _arg3;
+        }
+
+        set
+        {
+            SetEditable(ref _arg3, value);
+        }
     }
 
     public string Arg4
     {
-        get => _arg4;
-        set => SetEditable(ref _arg4, value);
+        get
+        {
+            return _arg4;
+        }
+
+        set
+        {
+            SetEditable(ref _arg4, value);
+        }
     }
 
     public string Arg5
     {
-        get => _arg5;
-        set => SetEditable(ref _arg5, value);
+        get
+        {
+            return _arg5;
+        }
+
+        set
+        {
+            SetEditable(ref _arg5, value);
+        }
     }
 
-    public bool IsModified =>
-        IsChanged(Type, _originalType) ||
+    public bool IsModified
+    {
+        get
+        {
+            return IsChanged(Type, _originalType) ||
         IsChanged(Device, _originalDevice) ||
         IsChanged(Number, _originalNumber) ||
         IsChanged(NickName, _originalNickName) ||
@@ -1164,22 +1667,64 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
         IsChanged(Arg3, _originalArg3) ||
         IsChanged(Arg4, _originalArg4) ||
         IsChanged(Arg5, _originalArg5);
+        }
+    }
 
-    public bool IsSimulation => Simul.Trim().ToUpperInvariant() switch
+    public bool IsSimulation
     {
-        "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL" => false,
-        _ => true
-    };
+        get
+        {
+            bool EvaluateValueSwitch11()
+            {
+                var switchValue = Simul.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL":
+                        return false;
+                    default:
+                        return true;
+                }
+            }
 
-    public string ModifiedText => IsModified ? "Yes" : "No";
+            return EvaluateValueSwitch11();
+        }
+    }
 
-    public Brush ModifiedBrush => IsModified ? CStatusBrush.Wait : CStatusBrush.Muted;
-
-    public Brush SimulBrush => Simul.Trim().ToUpperInvariant() switch
+    public string ModifiedText
     {
-        "SIMULATION" or "SIMUL" or "SIM" or "1" => CStatusBrush.Simul,
-        _ => CStatusBrush.Online
-    };
+        get
+        {
+            return IsModified ? "Yes" : "No";
+        }
+    }
+
+    public Brush ModifiedBrush
+    {
+        get
+        {
+            return IsModified ? CStatusBrush.Wait : CStatusBrush.Muted;
+        }
+    }
+
+    public Brush SimulBrush
+    {
+        get
+        {
+            Brush EvaluateValueSwitch12()
+            {
+                var switchValue = Simul.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "SIMULATION" or "SIMUL" or "SIM" or "1":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.Online;
+                }
+            }
+
+            return EvaluateValueSwitch12();
+        }
+    }
 
     private void SetEditable(ref string field, string value)
     {

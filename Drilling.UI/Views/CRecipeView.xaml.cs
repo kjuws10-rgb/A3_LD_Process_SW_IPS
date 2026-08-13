@@ -32,12 +32,33 @@ public partial class CRecipeView : UserControl
                 Tag: string field
             }) return;
         e.Handled = true;
-        var value = field switch
+        string EvaluateFieldSwitch1()
         {
-            "FirstX" => row.FirstX, "FirstY" => row.FirstY, "Rotation" => row.Rotation,
-            "CountX" => row.CountX, "CountY" => row.CountY, "PitchX" => row.PitchX,
-            "PitchY" => row.PitchY, "PixelSize" => row.PixelSize, _ => ""
-        };
+            var switchValue = field;
+            switch (switchValue)
+            {
+                case "FirstX":
+                    return row.FirstX;
+                case "FirstY":
+                    return row.FirstY;
+                case "Rotation":
+                    return row.Rotation;
+                case "CountX":
+                    return row.CountX;
+                case "CountY":
+                    return row.CountY;
+                case "PitchX":
+                    return row.PitchX;
+                case "PitchY":
+                    return row.PitchY;
+                case "PixelSize":
+                    return row.PixelSize;
+                default:
+                    return "";
+            }
+        }
+
+        var value = EvaluateFieldSwitch1();
         var type = field is "CountX" or "CountY" ? EN_RECIPE_DATA_TYPE.Int : EN_RECIPE_DATA_TYPE.Double;
         var dialog = new CValueInputDialog(field, value, type, 0, 0) { Owner = Window.GetWindow(this) };
         if (dialog.ShowDialog() != true) return;

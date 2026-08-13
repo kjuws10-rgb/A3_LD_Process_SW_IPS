@@ -8,9 +8,15 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("AJIN")]
-internal sealed class CAjinMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CAjinMotion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("AJIN", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "AJIN";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "AJIN";
+        }
+    }
 }
 

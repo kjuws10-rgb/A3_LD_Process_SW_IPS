@@ -8,10 +8,16 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("XPS", "XPS.NET", "XPS_NET", "NEWPORT_XPS")]
-internal sealed class CXpsMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CXpsMotion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("XPS", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "XPS";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "XPS";
+        }
+    }
 
     public override async Task<ST_MOTOR_AXIS_STATUS?> ReadAxisStatus(
         ST_MOTOR_DATA axis,
@@ -29,18 +35,33 @@ internal sealed class CXpsMotion(IInterfaceManager? interfaceManager, int device
         EN_MOTION_COMMAND command,
         double parameter)
     {
-        var commandText = command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_MOTION_COMMAND.ServoOn => "SERVO_ON",
-            EN_MOTION_COMMAND.ServoOff => "SERVO_OFF",
-            EN_MOTION_COMMAND.Home => "HOME",
-            EN_MOTION_COMMAND.MoveAbs => $"MOVE_ABS:{parameter:F6}",
-            EN_MOTION_COMMAND.MoveRel => $"MOVE_REL:{parameter:F6}",
-            EN_MOTION_COMMAND.Stop => "STOP",
-            EN_MOTION_COMMAND.ResetAlarm => "RESET_ALARM",
-            EN_MOTION_COMMAND.Refresh => "READ",
-            _ => "READ"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_MOTION_COMMAND.ServoOn:
+                    return "SERVO_ON";
+                case EN_MOTION_COMMAND.ServoOff:
+                    return "SERVO_OFF";
+                case EN_MOTION_COMMAND.Home:
+                    return "HOME";
+                case EN_MOTION_COMMAND.MoveAbs:
+                    return $"MOVE_ABS:{parameter:F6}";
+                case EN_MOTION_COMMAND.MoveRel:
+                    return $"MOVE_REL:{parameter:F6}";
+                case EN_MOTION_COMMAND.Stop:
+                    return "STOP";
+                case EN_MOTION_COMMAND.ResetAlarm:
+                    return "RESET_ALARM";
+                case EN_MOTION_COMMAND.Refresh:
+                    return "READ";
+                default:
+                    return "READ";
+            }
+        }
+
+        var commandText = EvaluateCommandSwitch1();
 
         return $"{CommandPrefix}:AXIS:{axis.Axis}:{axis.Name}:{GetGroupName(axis)}:{commandText}";
     }
@@ -108,6 +129,11 @@ internal sealed class CXpsMotion(IInterfaceManager? interfaceManager, int device
         string value,
         params string[] patterns)
     {
-        return patterns.Any(pattern => value.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+        bool CheckPattern1(string pattern)
+        {
+            return value.Contains(pattern, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return patterns.Any(CheckPattern1);
     }
 }

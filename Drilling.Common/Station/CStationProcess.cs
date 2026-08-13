@@ -79,14 +79,14 @@ public sealed class CStationProcess
             EN_EQP_MODULE.Bet
         };
 
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly IMotionManager _motionManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CMotionManager _motionManager;
     private readonly CInterLockManager _interLockManager;
-    private readonly ISettingManager _settingManager;
-    private readonly IProductManager? _productManager;
-    private readonly IAutomationScriptFile _automationScriptFile;
-    private readonly IAutomationManager _automationManager;
-    private readonly ILogManager? _logManager;
+    private readonly CSettingManager _settingManager;
+    private readonly CProductManager? _productManager;
+    private readonly CAutomationScriptFileBase _automationScriptFile;
+    private readonly CAutomationManager _automationManager;
+    private readonly CLogManager? _logManager;
     private readonly SemaphoreSlim _runLock = new(1, 1);
     private readonly List<ST_PROCESS_LOG_ITEM> _processLogs = [];
     private readonly Dictionary<string, string> _autoStepStates = CreateAutoStepStateMap();
@@ -102,14 +102,14 @@ public sealed class CStationProcess
     private ST_STATION_STATUS _stationStatus;
 
     public CStationProcess(
-        IInterfaceManager interfaceManager,
-        IMotionManager motionManager,
+        CInterfaceManager interfaceManager,
+        CMotionManager motionManager,
         CInterLockManager interLockManager,
-        ISettingManager settingManager,
-        IAutomationScriptFile automationScriptFile,
-        IAutomationManager automationManager,
-        IProductManager? productManager = null,
-        ILogManager? logManager = null,
+        CSettingManager settingManager,
+        CAutomationScriptFileBase automationScriptFile,
+        CAutomationManager automationManager,
+        CProductManager? productManager = null,
+        CLogManager? logManager = null,
         string stationName = "PROCESS",
         string? scriptDirectory = null)
     {
@@ -137,9 +137,21 @@ public sealed class CStationProcess
             DateTimeOffset.Now);
     }
 
-    public ST_STATION_PROCESS_STATUS Current => _snapshot;
+    public ST_STATION_PROCESS_STATUS Current
+    {
+        get
+        {
+            return _snapshot;
+        }
+    }
 
-    public ST_STATION_STATUS Status => _stationStatus;
+    public ST_STATION_STATUS Status
+    {
+        get
+        {
+            return _stationStatus;
+        }
+    }
 
     public static IReadOnlyList<ST_STATION_PROCESS_FLOW_ITEM> GetProcessFlow()
     {
@@ -228,10 +240,15 @@ public sealed class CStationProcess
                 processPlan,
                 RunInspectionStep,
                 cancellationToken);
+            Task ExecuteAutoStepValueCallback1(ST_PROCESS_PLAN _, CancellationToken token)
+            {
+                return CompleteProcess(token);
+            }
+
             await ExecuteAutoStep(
                 AutoStepComplete,
                 processPlan,
-                (_, token) => CompleteProcess(token),
+ExecuteAutoStepValueCallback1,
                 cancellationToken);
 
             return _snapshot;
@@ -372,11 +389,16 @@ public sealed class CStationProcess
     {
         AddProcessLog("INFO", "RECIPE", $"Recipe/Product data loaded. Recipe={processPlan.RecipeId}, Product={processPlan.ProductId}");
         AddProcessLog("INFO", "PARAM", $"Process parameter loaded ({processPlan.Parameters.Count} items).");
+        string SelectHeadNo2(int headNo)
+        {
+            return $"H{headNo:00}={FormatDouble(ReadDoubleAny(
+                            processPlan.Parameters,
+                            23.50,
+                            CreateHeadKeys(headNo, "ATTENUATOR_POSITION")))}";
+        }
+
         var attenuatorTargets = Enumerable.Range(1, 8)
-            .Select(headNo => $"H{headNo:00}={FormatDouble(ReadDoubleAny(
-                processPlan.Parameters,
-                23.50,
-                CreateHeadKeys(headNo, "ATTENUATOR_POSITION")))}")
+            .Select(SelectHeadNo2)
             .ToArray();
         AddProcessLog(
             "INFO",
@@ -429,11 +451,25 @@ public sealed class CStationProcess
     private Task EnsureOpticCommunicationReady(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        bool FilterStatus3(ST_INTERFACE_COMM_STATUS status)
+        {
+            return OpticReadyModules.Contains(status.Module);
+        }
+
+        EN_EQP_MODULE GetStatusSortKey4(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Module;
+        }
+
+        int GetStatusSortKey5(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
 
         var statuses = _interfaceManager.GetInterfaceCommunicationList()
-            .Where(status => OpticReadyModules.Contains(status.Module))
-            .OrderBy(status => status.Module)
-            .ThenBy(status => status.Number)
+            .Where(FilterStatus3)
+            .OrderBy(GetStatusSortKey4)
+            .ThenBy(GetStatusSortKey5)
             .ToArray();
 
         if (statuses.Length == 0)
@@ -449,9 +485,13 @@ public sealed class CStationProcess
                 "OPTIC",
                 $"{FormatInterfaceName(status)} communication state is {FormatCommState(status.ConnectionState)}.");
         }
+        bool FilterStatus6(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.ConnectionState == EN_COMM_STATE.Offline;
+        }
 
         var offlineDevices = statuses
-            .Where(status => status.ConnectionState == EN_COMM_STATE.Offline)
+            .Where(FilterStatus6)
             .Select(FormatInterfaceName)
             .ToArray();
 
@@ -477,44 +517,66 @@ public sealed class CStationProcess
 
         foreach (var device in devices)
         {
+            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback7(CancellationToken token)
+            {
+                return _interfaceManager.ExecuteTalonLaserCommand(
+                                    device.Number,
+                                    EN_TALON_COMMAND.SetLaserOnOff,
+                                    1.0,
+                                    token);
+            }
+
             await ExecuteOpticCommand(
                 "LASER",
                 device,
                 "Laser ON",
-                token => _interfaceManager.ExecuteTalonLaserCommand(
-                    device.Number,
-                    EN_TALON_COMMAND.SetLaserOnOff,
-                    1.0,
-                    token),
+ExecuteOpticCommandTokenCallback7,
                 cancellationToken);
+            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback8(CancellationToken token)
+            {
+                return _interfaceManager.ExecuteTalonLaserCommand(
+                                    device.Number,
+                                    EN_TALON_COMMAND.SetGateOpenClose,
+                                    1.0,
+                                    token);
+            }
 
             await ExecuteOpticCommand(
                 "LASER",
                 device,
                 "Gate OPEN",
-                token => _interfaceManager.ExecuteTalonLaserCommand(
-                    device.Number,
-                    EN_TALON_COMMAND.SetGateOpenClose,
-                    1.0,
-                    token),
+ExecuteOpticCommandTokenCallback8,
                 cancellationToken);
+            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback9(CancellationToken token)
+            {
+                return _interfaceManager.ExecuteTalonLaserCommand(
+                                    device.Number,
+                                    EN_TALON_COMMAND.SetShutterOpenClose,
+                                    1.0,
+                                    token);
+            }
 
             await ExecuteOpticCommand(
                 "LASER",
                 device,
                 "Shutter OPEN",
-                token => _interfaceManager.ExecuteTalonLaserCommand(
-                    device.Number,
-                    EN_TALON_COMMAND.SetShutterOpenClose,
-                    1.0,
-                    token),
+ExecuteOpticCommandTokenCallback9,
                 cancellationToken);
+            Task<ST_LASER_STATUS> WaitForOpticReadyTokenCallback10(CancellationToken token)
+            {
+                return _interfaceManager.GetLaserStatus(device.Number, token);
+            }
+
+            bool WaitForOpticReadyStatusCallback11(ST_LASER_STATUS status)
+            {
+                return status.PowerOn && status.GateOn && status.ShutterOpen;
+            }
 
             await WaitForOpticReady(
                 "LASER",
                 $"{FormatInterfaceName(device)} process ready state",
-                token => _interfaceManager.GetLaserStatus(device.Number, token),
-                status => status.PowerOn && status.GateOn && status.ShutterOpen,
+WaitForOpticReadyTokenCallback10,
+WaitForOpticReadyStatusCallback11,
                 FormatLaserStatus,
                 cancellationToken);
         }
@@ -528,44 +590,66 @@ public sealed class CStationProcess
         {
             try
             {
+                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback12(CancellationToken token)
+                {
+                    return _interfaceManager.ExecuteTalonLaserCommand(
+                                            device.Number,
+                                            EN_TALON_COMMAND.SetLaserOnOff,
+                                            0.0,
+                                            token);
+                }
+
                 await ExecuteOpticCommand(
                     "LASER",
                     device,
                     "Laser OFF",
-                    token => _interfaceManager.ExecuteTalonLaserCommand(
-                        device.Number,
-                        EN_TALON_COMMAND.SetLaserOnOff,
-                        0.0,
-                        token),
+ExecuteOpticCommandTokenCallback12,
                     cancellationToken);
+                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback13(CancellationToken token)
+                {
+                    return _interfaceManager.ExecuteTalonLaserCommand(
+                                            device.Number,
+                                            EN_TALON_COMMAND.SetGateOpenClose,
+                                            0.0,
+                                            token);
+                }
 
                 await ExecuteOpticCommand(
                     "LASER",
                     device,
                     "Gate CLOSE",
-                    token => _interfaceManager.ExecuteTalonLaserCommand(
-                        device.Number,
-                        EN_TALON_COMMAND.SetGateOpenClose,
-                        0.0,
-                        token),
+ExecuteOpticCommandTokenCallback13,
                     cancellationToken);
+                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback14(CancellationToken token)
+                {
+                    return _interfaceManager.ExecuteTalonLaserCommand(
+                                            device.Number,
+                                            EN_TALON_COMMAND.SetShutterOpenClose,
+                                            0.0,
+                                            token);
+                }
 
                 await ExecuteOpticCommand(
                     "LASER",
                     device,
                     "Shutter CLOSE",
-                    token => _interfaceManager.ExecuteTalonLaserCommand(
-                        device.Number,
-                        EN_TALON_COMMAND.SetShutterOpenClose,
-                        0.0,
-                        token),
+ExecuteOpticCommandTokenCallback14,
                     cancellationToken);
+                Task<ST_LASER_STATUS> WaitForOpticReadyTokenCallback15(CancellationToken token)
+                {
+                    return _interfaceManager.GetLaserStatus(device.Number, token);
+                }
+
+                bool WaitForOpticReadyStatusCallback16(ST_LASER_STATUS status)
+                {
+                    return !status.PowerOn && !status.GateOn && !status.ShutterOpen;
+                }
 
                 await WaitForOpticReady(
                     "LASER",
                     $"{FormatInterfaceName(device)} safe return state",
-                    token => _interfaceManager.GetLaserStatus(device.Number, token),
-                    status => !status.PowerOn && !status.GateOn && !status.ShutterOpen,
+WaitForOpticReadyTokenCallback15,
+WaitForOpticReadyStatusCallback16,
                     FormatLaserStatus,
                     cancellationToken);
             }
@@ -588,21 +672,35 @@ public sealed class CStationProcess
 
         foreach (var device in devices)
         {
+            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback17(CancellationToken token)
+            {
+                return _interfaceManager.ExecuteChillerCommand(
+                                    device.Number,
+                                    EN_CHILLER_COMMAND.Run,
+                                    cancellationToken: token);
+            }
+
             await ExecuteOpticCommand(
                 "CHILLER",
                 device,
                 "Run",
-                token => _interfaceManager.ExecuteChillerCommand(
-                    device.Number,
-                    EN_CHILLER_COMMAND.Run,
-                    cancellationToken: token),
+ExecuteOpticCommandTokenCallback17,
                 cancellationToken);
+            Task<ST_CHILLER_STATUS> WaitForOpticReadyTokenCallback18(CancellationToken token)
+            {
+                return _interfaceManager.GetChillerStatus(device.Number, token);
+            }
+
+            bool WaitForOpticReadyStatusCallback19(ST_CHILLER_STATUS status)
+            {
+                return status.Running && !status.AlarmOn;
+            }
 
             await WaitForOpticReady(
                 "CHILLER",
                 $"{FormatInterfaceName(device)} run state",
-                token => _interfaceManager.GetChillerStatus(device.Number, token),
-                status => status.Running && !status.AlarmOn,
+WaitForOpticReadyTokenCallback18,
+WaitForOpticReadyStatusCallback19,
                 FormatChillerStatus,
                 cancellationToken);
         }
@@ -626,14 +724,19 @@ public sealed class CStationProcess
         {
             if (target is null)
             {
+                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback20(CancellationToken token)
+                {
+                    return _interfaceManager.ExecuteBETCommand(
+                                            device.Number,
+                                            EN_BET_COMMAND.Refresh,
+                                            cancellationToken: token);
+                }
+
                 await ExecuteOpticCommand(
                     "BET",
                     device,
                     "Refresh",
-                    token => _interfaceManager.ExecuteBETCommand(
-                        device.Number,
-                        EN_BET_COMMAND.Refresh,
-                        cancellationToken: token),
+ExecuteOpticCommandTokenCallback20,
                     cancellationToken);
 
                 var status = await _interfaceManager.GetBETStatus(device.Number, cancellationToken);
@@ -644,40 +747,58 @@ public sealed class CStationProcess
 
             if (target.TableIndex is not null)
             {
+                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback21(CancellationToken token)
+                {
+                    return _interfaceManager.ExecuteBETCommand(
+                                            device.Number,
+                                            EN_BET_COMMAND.MoveTable,
+                                            target.TableIndex.Value,
+                                            cancellationToken: token);
+                }
+
                 await ExecuteOpticCommand(
                     "BET",
                     device,
                     $"MoveTable {target.TableIndex.Value}",
-                    token => _interfaceManager.ExecuteBETCommand(
-                        device.Number,
-                        EN_BET_COMMAND.MoveTable,
-                        target.TableIndex.Value,
-                        cancellationToken: token),
+ExecuteOpticCommandTokenCallback21,
                     cancellationToken);
             }
             else
             {
+                Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback22(CancellationToken token)
+                {
+                    return _interfaceManager.ExecuteBETCommand(
+                                            device.Number,
+                                            EN_BET_COMMAND.MoveManual,
+                                            target.Magnification,
+                                            target.Divergence,
+                                            token);
+                }
+
                 await ExecuteOpticCommand(
                     "BET",
                     device,
                     $"MoveManual MAG={FormatDouble(target.Magnification)}, DIV={FormatDouble(target.Divergence)}",
-                    token => _interfaceManager.ExecuteBETCommand(
-                        device.Number,
-                        EN_BET_COMMAND.MoveManual,
-                        target.Magnification,
-                        target.Divergence,
-                        token),
+ExecuteOpticCommandTokenCallback22,
                     cancellationToken);
+            }
+            Task<ST_BET_STATUS> WaitForOpticReadyTokenCallback23(CancellationToken token)
+            {
+                return _interfaceManager.GetBETStatus(device.Number, token);
+            }
+
+            bool WaitForOpticReadyStatusCallback24(ST_BET_STATUS status)
+            {
+                return IsBETReady(status) &&
+                                    IsNear(status.CurrentMagnification, target.Magnification, OpticReadyPositionTolerance) &&
+                                    IsNear(status.CurrentDivergence, target.Divergence, OpticReadyPositionTolerance);
             }
 
             await WaitForOpticReady(
                 "BET",
                 $"{FormatInterfaceName(device)} target position",
-                token => _interfaceManager.GetBETStatus(device.Number, token),
-                status =>
-                    IsBETReady(status) &&
-                    IsNear(status.CurrentMagnification, target.Magnification, OpticReadyPositionTolerance) &&
-                    IsNear(status.CurrentDivergence, target.Divergence, OpticReadyPositionTolerance),
+WaitForOpticReadyTokenCallback23,
+WaitForOpticReadyStatusCallback24,
                 FormatBETStatus,
                 cancellationToken);
         }
@@ -702,25 +823,37 @@ public sealed class CStationProcess
                 processPlan.Parameters,
                 23.50,
                 CreateHeadKeys(headNo, "ATTENUATOR_POSITION"));
+            Task<ST_DEVICE_COMMAND_RESULT> ExecuteOpticCommandTokenCallback25(CancellationToken token)
+            {
+                return _interfaceManager.ExecuteAttenuatorCommand(
+                                    device.Number,
+                                    EN_ATTENUATOR_COMMAND.MoveAbs,
+                                    target,
+                                    token);
+            }
 
             await ExecuteOpticCommand(
                 "ATT",
                 device,
                 $"H{headNo:00} MoveAbs {FormatDouble(target)}",
-                token => _interfaceManager.ExecuteAttenuatorCommand(
-                    device.Number,
-                    EN_ATTENUATOR_COMMAND.MoveAbs,
-                    target,
-                    token),
+ExecuteOpticCommandTokenCallback25,
                 cancellationToken);
+            Task<ST_ATTENUATOR_STATUS> WaitForOpticReadyTokenCallback26(CancellationToken token)
+            {
+                return _interfaceManager.GetAttenuatorStatus(device.Number, token);
+            }
+
+            bool WaitForOpticReadyStatusCallback27(ST_ATTENUATOR_STATUS status)
+            {
+                return IsAttenuatorReady(status) &&
+                                    IsNear(status.CurrentPosition, target, OpticReadyPositionTolerance);
+            }
 
             await WaitForOpticReady(
                 "ATT",
                 $"{FormatInterfaceName(device)} H{headNo:00} target position",
-                token => _interfaceManager.GetAttenuatorStatus(device.Number, token),
-                status =>
-                    IsAttenuatorReady(status) &&
-                    IsNear(status.CurrentPosition, target, OpticReadyPositionTolerance),
+WaitForOpticReadyTokenCallback26,
+WaitForOpticReadyStatusCallback27,
                 FormatAttenuatorStatus,
                 cancellationToken);
         }
@@ -728,9 +861,19 @@ public sealed class CStationProcess
 
     private IReadOnlyList<ST_INTERFACE_DATA> GetOpticDevices(EN_EQP_MODULE module)
     {
+        int GetDataSortKey28(ST_INTERFACE_DATA data)
+        {
+            return data.Number;
+        }
+
+        string GetDataSortKey29(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
+
         return _interfaceManager.GetInterfaceList(module)
-            .OrderBy(data => data.Number)
-            .ThenBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetDataSortKey28)
+            .ThenBy(GetDataSortKey29, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }
 
@@ -815,7 +958,12 @@ public sealed class CStationProcess
         if (tableIndex is not null)
         {
             var table = await _interfaceManager.LoadBETData(cancellationToken);
-            var row = table.FirstOrDefault(item => item.Index == tableIndex.Value);
+            bool MatchItem30(ST_BET_TABLE_DATA item)
+            {
+                return item.Index == tableIndex.Value;
+            }
+
+            var row = table.FirstOrDefault(MatchItem30);
 
             if (row is null)
             {
@@ -940,8 +1088,13 @@ public sealed class CStationProcess
                 StringComparison.OrdinalIgnoreCase) == true
             ? _processModel
             : BuildProcessModel(processPlan);
+        IEnumerable<ST_RECIPE_HOLE_POINT> SelectHead31(ST_HEAD_PROCESS_DATA head)
+        {
+            return head.ProcessPoints;
+        }
+
         var processPoints = processModel.Heads
-            .SelectMany(head => head.ProcessPoints)
+            .SelectMany(SelectHead31)
             .ToArray();
 
         if (processPoints.Length == 0)
@@ -950,10 +1103,19 @@ public sealed class CStationProcess
             var headGapY = ReadDoubleAny(processPlan.Parameters, 0.0, "HeadGapY");
             return reviewToHead1GapY + headGapY;
         }
+        double MaxPointCallback32(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.StageY;
+        }
+
+        double MinPointCallback33(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.StageY;
+        }
 
         return stageScanDirectionY < 0.0
-            ? processPoints.Max(point => point.StageY)
-            : processPoints.Min(point => point.StageY);
+            ? processPoints.Max(MaxPointCallback32)
+            : processPoints.Min(MinPointCallback33);
     }
 
     private async Task SendProcessControlCommand(
@@ -1025,8 +1187,12 @@ public sealed class CStationProcess
         {
             throw new InvalidOperationException("Automation script is not built.");
         }
+        bool FilterScript34(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return script.TotalPoints > 0;
+        }
 
-        foreach (var headScript in _lastScript.HeadScripts.Where(script => script.TotalPoints > 0))
+        foreach (var headScript in _lastScript.HeadScripts.Where(FilterScript34))
         {
             AddProcessLog(
                 "INFO",
@@ -1063,9 +1229,13 @@ public sealed class CStationProcess
         {
             throw new InvalidOperationException("Automation script is not built.");
         }
+        bool FilterScript35(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return script.TotalPoints > 0;
+        }
 
         var headScripts = _lastScript.HeadScripts
-            .Where(script => script.TotalPoints > 0)
+            .Where(FilterScript35)
             .ToArray();
         var bufferedRun = IsBufferedRunEnabled(processPlan.Parameters);
 
@@ -1109,27 +1279,42 @@ public sealed class CStationProcess
         var queueSize = ReadBufferedRunQueueSize(processPlan.Parameters);
         var linesPerCommand = ReadBufferedRunLinesPerCommand(processPlan.Parameters);
         var timeoutMs = ReadBufferedRunTimeoutMs(processPlan.Parameters);
+        int HandleGroups36(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return script.AutomationNo;
+        }
+
         var groups = headScripts
-            .GroupBy(script => script.AutomationNo)
+            .GroupBy(HandleGroups36)
             .ToArray();
 
         foreach (var group in groups)
         {
+            string SelectScript37(ST_AUTOMATION1_HEAD_SCRIPT script)
+            {
+                return $"H{script.HeadNo:00}/T{script.TaskNo}";
+            }
+
             AddProcessLog(
                 "INFO",
                 "A1_RUN",
-                $"Automation1 #{group.Key} buffered run group requested. Heads={string.Join(", ", group.Select(script => $"H{script.HeadNo:00}/T{script.TaskNo}"))}, Queue={queueSize}, LinesPerCommand={linesPerCommand}, TimeoutMs={timeoutMs}");
+                $"Automation1 #{group.Key} buffered run group requested. Heads={string.Join(", ", group.Select(SelectScript37))}, Queue={queueSize}, LinesPerCommand={linesPerCommand}, TimeoutMs={timeoutMs}");
         }
 
         using var bufferedRunCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        Task<ST_BUFFERED_RUN_GROUP_RESULT> SelectGroup38(IGrouping<int, ST_AUTOMATION1_HEAD_SCRIPT> group)
+        {
+            return RunBufferedHeadScriptGroup(
+                            group.Key,
+                            group.ToArray(),
+                            queueSize,
+                            linesPerCommand,
+                            timeoutMs,
+                            bufferedRunCancellation.Token);
+        }
+
         var tasks = groups
-            .Select(group => RunBufferedHeadScriptGroup(
-                group.Key,
-                group.ToArray(),
-                queueSize,
-                linesPerCommand,
-                timeoutMs,
-                bufferedRunCancellation.Token))
+            .Select(SelectGroup38)
             .ToArray();
         var pendingTasks = tasks.ToHashSet();
         var results = new List<ST_BUFFERED_RUN_GROUP_RESULT>();
@@ -1185,22 +1370,31 @@ public sealed class CStationProcess
         int timeoutMs,
         CancellationToken cancellationToken)
     {
+        ST_BUFFERED_SCRIPT_RUN_ITEM SelectScript39(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return new ST_BUFFERED_SCRIPT_RUN_ITEM(
+                                script.FilePath,
+                                script.FileName,
+                                script.TaskNo);
+        }
+
         var response = await _automationManager.RunBufferedScripts(
             headScripts
-                .Select(script => new ST_BUFFERED_SCRIPT_RUN_ITEM(
-                    script.FilePath,
-                    script.FileName,
-                    script.TaskNo))
+                .Select(SelectScript39)
                 .ToArray(),
             automationNo,
             queueSize,
             linesPerCommand,
             timeoutMs,
             cancellationToken);
+        string SelectScript40(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return $"H{script.HeadNo:00}/T{script.TaskNo}";
+        }
 
         return new ST_BUFFERED_RUN_GROUP_RESULT(
             automationNo,
-            string.Join(", ", headScripts.Select(script => $"H{script.HeadNo:00}/T{script.TaskNo}")),
+            string.Join(", ", headScripts.Select(SelectScript40)),
             response);
     }
 
@@ -1208,52 +1402,45 @@ public sealed class CStationProcess
         IReadOnlyList<ST_AUTOMATION1_HEAD_SCRIPT> headScripts,
         Exception cause)
     {
-        var targets = headScripts
-            .Where(script => script.TotalPoints > 0)
-            .GroupBy(script => new { script.AutomationNo, script.TaskNo })
-            .Select(group => new
+        List<CBufferedRunTarget> targets = new List<CBufferedRunTarget>();
+        foreach (ST_AUTOMATION1_HEAD_SCRIPT script in headScripts)
+        {
+            if (script.TotalPoints <= 0)
             {
-                group.Key.AutomationNo,
-                group.Key.TaskNo,
-                HeadSummary = string.Join(", ", group.Select(script => $"H{script.HeadNo:00}"))
-            })
-            .ToArray();
+                continue;
+            }
+
+            CBufferedRunTarget? matchingTarget = null;
+            foreach (CBufferedRunTarget target in targets)
+            {
+                if (target.AutomationNo == script.AutomationNo && target.TaskNo == script.TaskNo)
+                {
+                    matchingTarget = target;
+                    break;
+                }
+            }
+
+            if (matchingTarget is null)
+            {
+                matchingTarget = new CBufferedRunTarget(script.AutomationNo, script.TaskNo);
+                targets.Add(matchingTarget);
+            }
+
+            matchingTarget.AddHead(script.HeadNo);
+        }
 
         AddProcessLog(
             "WARN",
             "A1_RUN",
-            $"Stopping buffered run tasks after failure. Reason={cause.Message}, Targets={targets.Length}");
+            $"Stopping buffered run tasks after failure. Reason={cause.Message}, Targets={targets.Count}");
 
-        var stopTasks = targets
-            .Select(async target =>
-            {
-                try
-                {
-                    var response = await _automationManager.StopTask(
-                        target.TaskNo,
-                        target.AutomationNo,
-                        CancellationToken.None);
-                    return new ST_BUFFERED_RUN_STOP_RESULT(
-                        target.AutomationNo,
-                        target.TaskNo,
-                        target.HeadSummary,
-                        true,
-                        response,
-                        "");
-                }
-                catch (Exception ex)
-                {
-                    return new ST_BUFFERED_RUN_STOP_RESULT(
-                        target.AutomationNo,
-                        target.TaskNo,
-                        target.HeadSummary,
-                        false,
-                        "",
-                        ex.Message);
-                }
-            })
-            .ToArray();
-        var stopResults = await Task.WhenAll(stopTasks);
+        List<Task<ST_BUFFERED_RUN_STOP_RESULT>> stopTasks = new List<Task<ST_BUFFERED_RUN_STOP_RESULT>>();
+        foreach (CBufferedRunTarget target in targets)
+        {
+            stopTasks.Add(StopBufferedRunTask(target));
+        }
+
+        ST_BUFFERED_RUN_STOP_RESULT[] stopResults = await Task.WhenAll(stopTasks);
 
         foreach (var stopResult in stopResults)
         {
@@ -1271,6 +1458,34 @@ public sealed class CStationProcess
                     "A1_RUN",
                     $"Buffered run stop failed. Automation1 #{stopResult.AutomationNo}, Task {stopResult.TaskNo}, Heads={stopResult.HeadSummary}: {stopResult.ErrorMessage}");
             }
+        }
+    }
+
+    private async Task<ST_BUFFERED_RUN_STOP_RESULT> StopBufferedRunTask(CBufferedRunTarget target)
+    {
+        try
+        {
+            string response = await _automationManager.StopTask(
+                target.TaskNo,
+                target.AutomationNo,
+                CancellationToken.None);
+            return new ST_BUFFERED_RUN_STOP_RESULT(
+                target.AutomationNo,
+                target.TaskNo,
+                target.HeadSummary,
+                true,
+                response,
+                "");
+        }
+        catch (Exception ex)
+        {
+            return new ST_BUFFERED_RUN_STOP_RESULT(
+                target.AutomationNo,
+                target.TaskNo,
+                target.HeadSummary,
+                false,
+                "",
+                ex.Message);
         }
     }
 
@@ -1496,9 +1711,19 @@ public sealed class CStationProcess
         var productId = ReadAnyParameter(processPlan, processPlan.ProductId, "ProductId", "PRODUCT_ID");
         var panelId = ReadAnyParameter(processPlan, processPlan.PanelId, "PanelId", "PANEL_ID", "PanelID");
         var lotId = ReadAnyParameter(processPlan, processPlan.LotId, "LotId", "LOT_ID", "LotID");
+        int HandleHeadPointCounts42(ST_HEAD_PATH_DATA head)
+        {
+            return head.HeadNo;
+        }
+
+        int HandleHeadPointCounts43(ST_HEAD_PATH_DATA head)
+        {
+            return head.Points.Count;
+        }
+
         var headPointCounts = preview.ToDictionary(
-            head => head.HeadNo,
-            head => head.Points.Count);
+HandleHeadPointCounts42,
+HandleHeadPointCounts43);
 
         await _productManager.CreateProduct(
             processPlan.ProcessId,
@@ -1524,8 +1749,12 @@ public sealed class CStationProcess
         }
 
         await _productManager.StartProduct(productId, cancellationToken);
+        bool FilterHead44(ST_HEAD_PATH_DATA head)
+        {
+            return head.Status == EN_HEAD_PROCESS_STATUS.Running;
+        }
 
-        foreach (var head in preview.Where(head => head.Status == EN_HEAD_PROCESS_STATUS.Running))
+        foreach (var head in preview.Where(FilterHead44))
         {
             await _productManager.SetHeadRunning(productId, head.HeadNo, cancellationToken);
         }
@@ -1639,11 +1868,16 @@ public sealed class CStationProcess
         ST_PROCESS_MODEL processModel,
         EN_HEAD_PROCESS_STATUS status)
     {
+        ST_HEAD_PATH_DATA SelectHead45(ST_HEAD_PROCESS_DATA head)
+        {
+            return new ST_HEAD_PATH_DATA(
+                            head.HeadNo,
+                            status,
+                            head.Path);
+        }
+
         return processModel.Heads
-            .Select(head => new ST_HEAD_PATH_DATA(
-                head.HeadNo,
-                status,
-                head.Path))
+            .Select(SelectHead45)
             .ToArray();
     }
 
@@ -1685,48 +1919,68 @@ public sealed class CStationProcess
             parameters,
             1500.0,
             "SCANNER_JUMP_SPEED");
+        int HandlePointsByHead46(ST_RECIPE_HOLE_POINT point)
+        {
+            return point.HeadNo;
+        }
+
+        int HandlePointsByHead47(IGrouping<int, ST_RECIPE_HOLE_POINT> group)
+        {
+            return group.Key;
+        }
+
+        ST_RECIPE_HOLE_POINT[] HandlePointsByHead48(IGrouping<int, ST_RECIPE_HOLE_POINT> group)
+        {
+            return group.ToArray();
+        }
+
         var pointsByHead = holePlan.Points
-            .GroupBy(point => point.HeadNo)
+            .GroupBy(HandlePointsByHead46)
             .ToDictionary(
-                group => group.Key,
-                group => group.ToArray(),
+HandlePointsByHead47,
+HandlePointsByHead48,
                 EqualityComparer<int>.Default);
-
-        var heads = Enumerable.Range(1, holePlan.HeadCount)
-            .Select(headNo =>
+        ST_HEAD_PROCESS_DATA SelectHeadNo49(int headNo)
+        {
+            var headPoints = pointsByHead.TryGetValue(headNo, out var values)
+                ? values
+                : [];
+            ST_PATH_POINT SelectPoint1(ST_RECIPE_HOLE_POINT point)
             {
-                var headPoints = pointsByHead.TryGetValue(headNo, out var values)
-                    ? values
-                    : [];
-                var previewPath = headPoints
-                    .Select(point => new ST_PATH_POINT(point.DesignX, point.DesignY))
-                    .ToArray();
-                var scannerMarkSpeed = ReadDoubleAny(
-                    parameters,
-                    defaultMarkSpeed,
-                    CreateHeadKeys(headNo, "SCANNER_MARK_SPEED"));
-                var scannerJumpSpeed = ReadDoubleAny(
-                    parameters,
-                    defaultJumpSpeed,
-                    CreateHeadKeys(headNo, "SCANNER_JUMP_SPEED"));
+                return new ST_PATH_POINT(point.DesignX, point.DesignY);
+            }
 
-                return new ST_HEAD_PROCESS_DATA(
-                    headNo,
-                    ReadDoubleAny(parameters, 1.0, CreateHeadKeys(headNo, "LASER_POWER")),
-                    ReadDoubleAny(parameters, 20.0, CreateHeadKeys(headNo, "LASER_FREQUENCY")),
-                    ReadIntAny(parameters, 10, CreateHeadKeys(headNo, "SHOT_COUNT")),
-                    ReadDoubleAny(parameters, 0.0, CreateHeadKeys(headNo, "SHOT_TIME_DELAY")),
-                    scannerMarkSpeed,
-                    scannerJumpSpeed,
-                    ReadDoubleAny(parameters, 0.0, CreateHeadKeys(headNo, "DOE_Z_POSITION")),
-                    previewPath)
-                {
-                    AutomationNo = ReadHeadAutomationNo(parameters, headNo),
-                    TaskNo = ReadHeadAutomationTaskNo(parameters, headNo),
-                    ScriptFileName = $"PROCESS_H{headNo:00}.ascript",
-                    ProcessPoints = headPoints
-                };
-            })
+            var previewPath = headPoints
+                .Select(SelectPoint1)
+                .ToArray();
+            var scannerMarkSpeed = ReadDoubleAny(
+                parameters,
+                defaultMarkSpeed,
+                CreateHeadKeys(headNo, "SCANNER_MARK_SPEED"));
+            var scannerJumpSpeed = ReadDoubleAny(
+                parameters,
+                defaultJumpSpeed,
+                CreateHeadKeys(headNo, "SCANNER_JUMP_SPEED"));
+
+            return new ST_HEAD_PROCESS_DATA(
+                headNo,
+                ReadDoubleAny(parameters, 1.0, CreateHeadKeys(headNo, "LASER_POWER")),
+                ReadDoubleAny(parameters, 20.0, CreateHeadKeys(headNo, "LASER_FREQUENCY")),
+                ReadIntAny(parameters, 10, CreateHeadKeys(headNo, "SHOT_COUNT")),
+                ReadDoubleAny(parameters, 0.0, CreateHeadKeys(headNo, "SHOT_TIME_DELAY")),
+                scannerMarkSpeed,
+                scannerJumpSpeed,
+                ReadDoubleAny(parameters, 0.0, CreateHeadKeys(headNo, "DOE_Z_POSITION")),
+                previewPath)
+            {
+                AutomationNo = ReadHeadAutomationNo(parameters, headNo),
+                TaskNo = ReadHeadAutomationTaskNo(parameters, headNo),
+                ScriptFileName = $"PROCESS_H{headNo:00}.ascript",
+                ProcessPoints = headPoints
+            };
+        }
+        var heads = Enumerable.Range(1, holePlan.HeadCount)
+            .Select(SelectHeadNo49)
             .ToArray();
 
         return new ST_PROCESS_MODEL(
@@ -1741,24 +1995,36 @@ public sealed class CStationProcess
         IReadOnlyList<ST_HEAD_PATH_DATA> preview,
         EN_PROCESS_STEP processStep)
     {
-        return preview
-            .Select(head =>
+        ST_HEAD_PATH_DATA SelectHead50(ST_HEAD_PATH_DATA head)
+        {
+            EN_HEAD_PROCESS_STATUS EvaluateProcessStepSwitch1()
             {
-                var status = processStep switch
+                var switchValue = processStep;
+                switch (switchValue)
                 {
-                    EN_PROCESS_STEP.Process => head.Points.Count > 0
-                        ? EN_HEAD_PROCESS_STATUS.Running
-                        : EN_HEAD_PROCESS_STATUS.Disabled,
-                    EN_PROCESS_STEP.Completed => head.Points.Count > 0
-                        ? EN_HEAD_PROCESS_STATUS.Completed
-                        : EN_HEAD_PROCESS_STATUS.Disabled,
-                    EN_PROCESS_STEP.Stopped => EN_HEAD_PROCESS_STATUS.Ready,
-                    EN_PROCESS_STEP.Error => EN_HEAD_PROCESS_STATUS.Error,
-                    _ => head.Status
-                };
+                    case EN_PROCESS_STEP.Process:
+                        return head.Points.Count > 0
+                                ? EN_HEAD_PROCESS_STATUS.Running
+                                : EN_HEAD_PROCESS_STATUS.Disabled;
+                    case EN_PROCESS_STEP.Completed:
+                        return head.Points.Count > 0
+                                ? EN_HEAD_PROCESS_STATUS.Completed
+                                : EN_HEAD_PROCESS_STATUS.Disabled;
+                    case EN_PROCESS_STEP.Stopped:
+                        return EN_HEAD_PROCESS_STATUS.Ready;
+                    case EN_PROCESS_STEP.Error:
+                        return EN_HEAD_PROCESS_STATUS.Error;
+                    default:
+                        return head.Status;
+                }
+            }
 
-                return head with { Status = status };
-            })
+            var status = EvaluateProcessStepSwitch1();
+
+            return head with { Status = status };
+        }
+        return preview
+            .Select(SelectHead50)
             .ToArray();
     }
 
@@ -1766,11 +2032,16 @@ public sealed class CStationProcess
         EN_SCRIPT_STATUS scriptStatus,
         EN_PROCESS_STEP processStep)
     {
+        ST_PROCESS_DISPLAY_ITEM SelectStep51(ST_STATION_PROCESS_FLOW_ITEM step)
+        {
+            return new ST_PROCESS_DISPLAY_ITEM(
+                            step.Order.ToString(CultureInfo.InvariantCulture),
+                            step.StepName,
+                            ReadAutoStepState(step.StepKey, scriptStatus, processStep));
+        }
+
         return ProcessFlowItems
-            .Select(step => new ST_PROCESS_DISPLAY_ITEM(
-                step.Order.ToString(CultureInfo.InvariantCulture),
-                step.StepName,
-                ReadAutoStepState(step.StepKey, scriptStatus, processStep)))
+            .Select(SelectStep51)
             .ToArray();
     }
 
@@ -1781,15 +2052,24 @@ public sealed class CStationProcess
     {
         if (processPlan is null)
         {
+            ST_PROCESS_DISPLAY_ITEM SelectStep52(ST_AUTO_STEP_INFO step)
+            {
+                return new ST_PROCESS_DISPLAY_ITEM(step.DisplayName, AutoStepWait);
+            }
+
             return AutoStepInfos
-                .Select(step => new ST_PROCESS_DISPLAY_ITEM(step.DisplayName, AutoStepWait))
+                .Select(SelectStep52)
                 .ToArray();
+        }
+        ST_PROCESS_DISPLAY_ITEM SelectStep53(ST_AUTO_STEP_INFO step)
+        {
+            return new ST_PROCESS_DISPLAY_ITEM(
+                            step.DisplayName,
+                            ReadAutoStepState(step.Key, scriptStatus, processStep));
         }
 
         return AutoStepInfos
-            .Select(step => new ST_PROCESS_DISPLAY_ITEM(
-                step.DisplayName,
-                ReadAutoStepState(step.Key, scriptStatus, processStep)))
+            .Select(SelectStep53)
             .ToArray();
     }
 
@@ -1816,13 +2096,23 @@ public sealed class CStationProcess
         ST_PROCESS_RESULT? result)
     {
         var hasScript = processPlan is not null && _lastScript is not null;
+        string SelectScript54(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return script.FileName;
+        }
+
         var scriptFiles = hasScript && _lastScript!.HeadScripts.Count > 0
-            ? string.Join(", ", _lastScript.HeadScripts.Select(script => script.FileName))
+            ? string.Join(", ", _lastScript.HeadScripts.Select(SelectScript54))
             : hasScript
                 ? _lastScript!.FileName
                 : "-";
+        string SelectScript55(ST_AUTOMATION1_HEAD_SCRIPT script)
+        {
+            return script.TaskNo.ToString(CultureInfo.InvariantCulture);
+        }
+
         var taskNumbers = hasScript && _lastScript!.HeadScripts.Count > 0
-            ? string.Join(", ", _lastScript.HeadScripts.Select(script => script.TaskNo.ToString(CultureInfo.InvariantCulture)))
+            ? string.Join(", ", _lastScript.HeadScripts.Select(SelectScript55))
             : hasScript
                 ? "1"
                 : "-";
@@ -1860,7 +2150,12 @@ public sealed class CStationProcess
         double progressPercent,
         TimeSpan elapsedTime)
     {
-        var totalPoints = preview.Sum(head => head.Points.Count);
+        int HandleTotalPoints56(ST_HEAD_PATH_DATA head)
+        {
+            return head.Points.Count;
+        }
+
+        var totalPoints = preview.Sum(HandleTotalPoints56);
 
         return new ST_PROCESS_STATISTICS(
             totalPoints,
@@ -1922,14 +2217,23 @@ public sealed class CStationProcess
         {
             return state;
         }
-
-        return (stepKey, scriptStatus, processStep) switch
+        string EvaluateValueSwitch1()
         {
-            (AutoStepProcess, EN_SCRIPT_STATUS.Created or EN_SCRIPT_STATUS.Running or EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Process) => AutoStepRunning,
-            (AutoStepInspection, EN_SCRIPT_STATUS.Running, EN_PROCESS_STEP.Inspection) => AutoStepRunning,
-            (AutoStepComplete, EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Completed) => AutoStepDone,
-            _ => AutoStepWait
-        };
+            var switchValue = (stepKey, scriptStatus, processStep);
+            switch (switchValue)
+            {
+                case (AutoStepProcess, EN_SCRIPT_STATUS.Created or EN_SCRIPT_STATUS.Running or EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Process):
+                    return AutoStepRunning;
+                case (AutoStepInspection, EN_SCRIPT_STATUS.Running, EN_PROCESS_STEP.Inspection):
+                    return AutoStepRunning;
+                case (AutoStepComplete, EN_SCRIPT_STATUS.Completed, EN_PROCESS_STEP.Completed):
+                    return AutoStepDone;
+                default:
+                    return AutoStepWait;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private EN_SCRIPT_STATUS ResolveStepScriptStatus(
@@ -1964,20 +2268,40 @@ public sealed class CStationProcess
 
     private static ST_STATION_PROCESS_FLOW_ITEM GetProcessFlowItem(string stepKey)
     {
-        return ProcessFlowItems.FirstOrDefault(step => step.StepKey.Equals(stepKey, StringComparison.OrdinalIgnoreCase))
+        bool MatchStep57(ST_STATION_PROCESS_FLOW_ITEM step)
+        {
+            return step.StepKey.Equals(stepKey, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return ProcessFlowItems.FirstOrDefault(MatchStep57)
             ?? throw new InvalidOperationException($"Auto step is not defined: {stepKey}");
     }
 
     private static string GetAutoStepName(string stepKey)
     {
-        return AutoStepInfos.FirstOrDefault(step => step.Key == stepKey)?.DisplayName ?? stepKey;
+        bool MatchStep58(ST_AUTO_STEP_INFO step)
+        {
+            return step.Key == stepKey;
+        }
+
+        return AutoStepInfos.FirstOrDefault(MatchStep58)?.DisplayName ?? stepKey;
     }
 
     private static Dictionary<string, string> CreateAutoStepStateMap()
     {
+        string ToDictionaryStepCallback59(ST_AUTO_STEP_INFO step)
+        {
+            return step.Key;
+        }
+
+        string ToDictionaryValueCallback60(ST_AUTO_STEP_INFO _)
+        {
+            return AutoStepWait;
+        }
+
         return AutoStepInfos.ToDictionary(
-            step => step.Key,
-            _ => AutoStepWait,
+ToDictionaryStepCallback59,
+ToDictionaryValueCallback60,
             StringComparer.OrdinalIgnoreCase);
     }
 
@@ -1986,17 +2310,31 @@ public sealed class CStationProcess
         EN_PROCESS_STEP processStep,
         int stepNo)
     {
-        return (scriptStatus, processStep, stepNo) switch
+        string EvaluateValueSwitch2()
         {
-            (EN_SCRIPT_STATUS.NotCreated, _, 0) => "ACTIVE",
-            (EN_SCRIPT_STATUS.Created, _, 0) => "DONE",
-            (EN_SCRIPT_STATUS.Created, _, 1) => "ACTIVE",
-            (EN_SCRIPT_STATUS.Running, _, <= 2) => "DONE",
-            (EN_SCRIPT_STATUS.Running, _, 3) => "ACTIVE",
-            (EN_SCRIPT_STATUS.Completed, _, _) => stepNo < 4 ? "DONE" : "ACTIVE",
-            (EN_SCRIPT_STATUS.Error, _, _) => stepNo == 3 ? "ERROR" : "-",
-            _ => "-"
-        };
+            var switchValue = (scriptStatus, processStep, stepNo);
+            switch (switchValue)
+            {
+                case (EN_SCRIPT_STATUS.NotCreated, _, 0):
+                    return "ACTIVE";
+                case (EN_SCRIPT_STATUS.Created, _, 0):
+                    return "DONE";
+                case (EN_SCRIPT_STATUS.Created, _, 1):
+                    return "ACTIVE";
+                case (EN_SCRIPT_STATUS.Running, _, <= 2):
+                    return "DONE";
+                case (EN_SCRIPT_STATUS.Running, _, 3):
+                    return "ACTIVE";
+                case (EN_SCRIPT_STATUS.Completed, _, _):
+                    return stepNo < 4 ? "DONE" : "ACTIVE";
+                case (EN_SCRIPT_STATUS.Error, _, _):
+                    return stepNo == 3 ? "ERROR" : "-";
+                default:
+                    return "-";
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static bool IsAttenuatorReady(ST_ATTENUATOR_STATUS status)
@@ -2061,12 +2399,21 @@ public sealed class CStationProcess
 
     private static string FormatCommState(EN_COMM_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch3()
         {
-            EN_COMM_STATE.Online => "ONLINE",
-            EN_COMM_STATE.Simulation => "SIMULATION",
-            _ => "OFFLINE"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_COMM_STATE.Online:
+                    return "ONLINE";
+                case EN_COMM_STATE.Simulation:
+                    return "SIMULATION";
+                default:
+                    return "OFFLINE";
+            }
+        }
+
+        return EvaluateStateSwitch3();
     }
 
     private static string FormatInterfaceName(ST_INTERFACE_DATA data)
@@ -2089,7 +2436,12 @@ public sealed class CStationProcess
         double defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey61(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey61))
         {
             if (!parameters.TryGetValue(key, out var value) ||
                 string.IsNullOrWhiteSpace(value))
@@ -2148,9 +2500,14 @@ public sealed class CStationProcess
         string command,
         IReadOnlyList<(string Key, string Value)> arguments)
     {
+        string SelectArgument62((string Key, string Value) argument)
+        {
+            return $"{argument.Key}={argument.Value}";
+        }
+
         return string.Join(
             ";",
-            new[] { command }.Concat(arguments.Select(argument => $"{argument.Key}={argument.Value}")));
+            new[] { command }.Concat(arguments.Select(SelectArgument62)));
     }
 
     private static bool IsProcessControlSuccessResponse(string response)
@@ -2182,7 +2539,12 @@ public sealed class CStationProcess
         IReadOnlyDictionary<string, string> parameters,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey63(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey63))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
@@ -2198,7 +2560,12 @@ public sealed class CStationProcess
         IReadOnlyDictionary<string, string> parameters,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey64(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey64))
         {
             if (!parameters.TryGetValue(key, out var value))
             {
@@ -2246,7 +2613,12 @@ public sealed class CStationProcess
         double defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey65(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey65))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var result))
@@ -2263,7 +2635,12 @@ public sealed class CStationProcess
         int defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey66(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey66))
         {
             if (!parameters.TryGetValue(key, out var value))
             {
@@ -2320,13 +2697,21 @@ public sealed class CStationProcess
         {
             return defaultValue;
         }
-
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch4()
         {
-            "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-            "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-            _ => defaultValue
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                    return true;
+                case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch4();
     }
 
     private static bool ReadBoolAny(
@@ -2334,17 +2719,31 @@ public sealed class CStationProcess
         bool defaultValue,
         params string[] keys)
     {
-        foreach (var key in keys.Where(key => !string.IsNullOrWhiteSpace(key)))
+        bool FilterKey67(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        foreach (var key in keys.Where(FilterKey67))
         {
             if (parameters.TryGetValue(key, out var value) &&
                 !string.IsNullOrWhiteSpace(value))
             {
-                return value.Trim().ToUpperInvariant() switch
+                bool EvaluateValueSwitch5()
                 {
-                    "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-                    "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-                    _ => defaultValue
-                };
+                    var switchValue = value.Trim().ToUpperInvariant();
+                    switch (switchValue)
+                    {
+                        case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                            return true;
+                        case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                            return false;
+                        default:
+                            return defaultValue;
+                    }
+                }
+
+                return EvaluateValueSwitch5();
             }
         }
 
@@ -2373,13 +2772,21 @@ public sealed class CStationProcess
         {
             return defaultValue;
         }
-
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch6()
         {
-            "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-            "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-            _ => defaultValue
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                    return true;
+                case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch6();
     }
 
     private static string ReadText(
@@ -2396,8 +2803,13 @@ public sealed class CStationProcess
     private static string[] CreateHeadKeys(int headNo, params string[] names)
     {
         var paddedHeadNoText = headNo.ToString("00", CultureInfo.InvariantCulture);
+        string SelectName68(string name)
+        {
+            return $"H{paddedHeadNoText}_{name}";
+        }
+
         return names
-            .Select(name => $"H{paddedHeadNoText}_{name}")
+            .Select(SelectName68)
             .ToArray();
     }
 
@@ -2522,7 +2934,12 @@ public sealed class CStationProcess
 
     private static string FormatInterLockBlockedMessage(ST_INTERLOCK_SUMMARY interLock)
     {
-        var item = interLock.Items.FirstOrDefault(x => x.Level != EN_INTERLOCK_LEVEL.Ok);
+        bool MatchX69(ST_INTERLOCK_ITEM x)
+        {
+            return x.Level != EN_INTERLOCK_LEVEL.Ok;
+        }
+
+        var item = interLock.Items.FirstOrDefault(MatchX69);
         return item is null
             ? "InterLock is not ready."
             : $"InterLock is not ready. {item.Signal}: {item.Detail}";
@@ -2530,11 +2947,19 @@ public sealed class CStationProcess
 
     private static string FormatScriptStatus(EN_SCRIPT_STATUS status)
     {
-        return status switch
+        string EvaluateStatusSwitch7()
         {
-            EN_SCRIPT_STATUS.NotCreated => "Not Created",
-            _ => status.ToString()
-        };
+            var switchValue = status;
+            switch (switchValue)
+            {
+                case EN_SCRIPT_STATUS.NotCreated:
+                    return "Not Created";
+                default:
+                    return status.ToString();
+            }
+        }
+
+        return EvaluateStatusSwitch7();
     }
 
     private static string FormatExecuteState(
@@ -2551,14 +2976,23 @@ public sealed class CStationProcess
         {
             return result.IsSuccess ? "Completed" : "Failed";
         }
-
-        return scriptStatus switch
+        string EvaluateScriptStatusSwitch8()
         {
-            EN_SCRIPT_STATUS.Running => "Running",
-            EN_SCRIPT_STATUS.Created => "Ready",
-            EN_SCRIPT_STATUS.Error => "Error",
-            _ => "-"
-        };
+            var switchValue = scriptStatus;
+            switch (switchValue)
+            {
+                case EN_SCRIPT_STATUS.Running:
+                    return "Running";
+                case EN_SCRIPT_STATUS.Created:
+                    return "Ready";
+                case EN_SCRIPT_STATUS.Error:
+                    return "Error";
+                default:
+                    return "-";
+            }
+        }
+
+        return EvaluateScriptStatusSwitch8();
     }
 
     private static string FormatScriptResult(
@@ -2619,6 +3053,33 @@ public sealed class CStationProcess
         int AutomationNo,
         string HeadSummary,
         string Response);
+
+    private sealed class CBufferedRunTarget
+    {
+        private readonly List<string> _headNames = new List<string>();
+
+        public CBufferedRunTarget(int automationNo, int taskNo)
+        {
+            AutomationNo = automationNo;
+            TaskNo = taskNo;
+        }
+
+        public int AutomationNo { get; }
+        public int TaskNo { get; }
+
+        public string HeadSummary
+        {
+            get
+            {
+                return string.Join(", ", _headNames);
+            }
+        }
+
+        public void AddHead(int headNo)
+        {
+            _headNames.Add($"H{headNo:00}");
+        }
+    }
 
     private sealed record ST_BUFFERED_RUN_STOP_RESULT(
         int AutomationNo,

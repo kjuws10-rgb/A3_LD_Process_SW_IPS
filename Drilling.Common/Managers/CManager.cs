@@ -79,7 +79,13 @@ public sealed record ST_POWER_METER_STATUS(
     string LastCommand = "",
     EN_POWER_METER_ERROR LastError = EN_POWER_METER_ERROR.Ok)
 {
-    public static ST_POWER_METER_STATUS Empty => new(0.0, "W", DateTimeOffset.Now);
+    public static ST_POWER_METER_STATUS Empty
+    {
+        get
+        {
+            return new(0.0, "W", DateTimeOffset.Now);
+        }
+    }
 }
 
 public sealed record ST_DEVICE_STATUS(
@@ -140,55 +146,48 @@ public sealed record ST_CONFIG_FILE_STATUS(
     bool IsValid,
     string Message);
 
-public interface IConfigStructureFile
+public abstract class CConfigStructureFileBase
 {
-    Task<IReadOnlyList<ST_CONFIG_FILE_STATUS>> Validate(
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_CONFIG_FILE_STATUS>> Validate(
+            CancellationToken cancellationToken = default);
 }
 
-public interface IManualScanFile
+public abstract class CManualScanFileBase
 {
-    Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default);
-
-    Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default);
-
-    Task<ST_MANUAL_SCAN_PARAM> Load(string settingName, CancellationToken cancellationToken = default);
-
-    Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default);
-
-    Task Save(
-        string settingName,
-        ST_MANUAL_SCAN_PARAM settings,
-        CancellationToken cancellationToken = default);
-
-    Task Rename(
-        string oldSettingName,
-        string newSettingName,
-        CancellationToken cancellationToken = default);
-
-    Task Delete(string settingName, CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default);
+    public abstract Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default);
+    public abstract Task<ST_MANUAL_SCAN_PARAM> Load(string settingName, CancellationToken cancellationToken = default);
+    public abstract Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            string settingName,
+            ST_MANUAL_SCAN_PARAM settings,
+            CancellationToken cancellationToken = default);
+    public abstract Task Rename(
+            string oldSettingName,
+            string newSettingName,
+            CancellationToken cancellationToken = default);
+    public abstract Task Delete(string settingName, CancellationToken cancellationToken = default);
 }
 public sealed class CManager
 {
     private readonly string _configRoot;
 
-    private readonly IRecipeFile _recipeFile;
-    private readonly ISettingFile _settingFile;
-    private readonly IManualScanFile _manualScanFile;
-    private readonly IInterfaceFile _interfaceFile;
-    private readonly IBETFile _betFile;
-    private readonly IPowerMeterFile _powerMeterFile;
-    private readonly IMotorFile _motorFile;
-    private readonly IIoFile _ioFile;
-    private readonly IMelsecMapFile _melsecMapFile;
-    private readonly IProductFile _productFile;
-    private readonly IReviewResultFile _reviewResultFile;
-    private readonly IReviewRuleFile _reviewRuleFile;
-    private readonly ILogManager _logManager;
-    private readonly IAutomationScriptFile _automationScriptFile;
-    private readonly IConfigStructureFile? _configStructureFile;
+    private readonly CRecipeFileBase _recipeFile;
+    private readonly CSettingFileBase _settingFile;
+    private readonly CManualScanFileBase _manualScanFile;
+    private readonly CInterfaceFileBase _interfaceFile;
+    private readonly CBETFileBase _betFile;
+    private readonly CPowerMeterFileBase _powerMeterFile;
+    private readonly CMotorFileBase _motorFile;
+    private readonly CIoFileBase _ioFile;
+    private readonly CMelsecMapFileBase _melsecMapFile;
+    private readonly CProductFileBase _productFile;
+    private readonly CReviewResultFileBase _reviewResultFile;
+    private readonly CReviewRuleFileBase _reviewRuleFile;
+    private readonly CLogManager _logManager;
+    private readonly CAutomationScriptFileBase _automationScriptFile;
+    private readonly CConfigStructureFileBase? _configStructureFile;
 
     private readonly CInterfaceManager _interfaceManager;
     private readonly CAutomationManager _automationManager;
@@ -197,10 +196,10 @@ public sealed class CManager
     private readonly CInterLockManager _interLockManager = new();
 
     private readonly CStationManager _stationManager;
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
-    private readonly IProductManager _productManager;
-    private readonly IReviewManager _reviewManager;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
+    private readonly CProductManager _productManager;
+    private readonly CReviewManager _reviewManager;
     private readonly object _startupLock = new();
     private readonly List<string> _startupMessages = [];
     private readonly List<ST_MANAGER_STARTUP_STEP> _startupSteps = [];
@@ -213,22 +212,22 @@ public sealed class CManager
 
     public CManager(
         string configRoot,
-        IRecipeFile recipeFile,
-        ISettingFile settingFile,
-        IManualScanFile manualScanFile,
-        IInterfaceFile interfaceFile,
-        IBETFile betFile,
-        IPowerMeterFile powerMeterFile,
-        IMotorFile motorFile,
-        IIoFile ioFile,
-        IMelsecMapFile melsecMapFile,
-        IProductFile productFile,
-        IReviewResultFile reviewResultFile,
-        IReviewRuleFile reviewRuleFile,
-        ILogManager logManager,
-        IAutomationScriptFile automationScriptFile,
+        CRecipeFileBase recipeFile,
+        CSettingFileBase settingFile,
+        CManualScanFileBase manualScanFile,
+        CInterfaceFileBase interfaceFile,
+        CBETFileBase betFile,
+        CPowerMeterFileBase powerMeterFile,
+        CMotorFileBase motorFile,
+        CIoFileBase ioFile,
+        CMelsecMapFileBase melsecMapFile,
+        CProductFileBase productFile,
+        CReviewResultFileBase reviewResultFile,
+        CReviewRuleFileBase reviewRuleFile,
+        CLogManager logManager,
+        CAutomationScriptFileBase automationScriptFile,
         bool? simulationMode = null,
-        IConfigStructureFile? configStructureFile = null)
+        CConfigStructureFileBase? configStructureFile = null)
     {
         _configRoot = configRoot;
         _recipeFile = recipeFile;
@@ -326,7 +325,13 @@ public sealed class CManager
             "Recipe/Setting managers created.");
     }
 
-    public string ConfigRoot => _configRoot;
+    public string ConfigRoot
+    {
+        get
+        {
+            return _configRoot;
+        }
+    }
 
     public IReadOnlyList<string> StartupMessages
     {
@@ -389,14 +394,23 @@ public sealed class CManager
 
     public async Task Initialize(CancellationToken cancellationToken = default)
     {
+        Task RunInitializeStepCallbackCallback1()
+        {
+            return _interfaceManager.Initialize(cancellationToken);
+        }
+
         await RunInitializeStep(
             "Initialize Interface Connection",
-            () => _interfaceManager.Initialize(cancellationToken),
+RunInitializeStepCallbackCallback1,
             cancellationToken);
+        Task RunInitializeStepCallbackCallback2()
+        {
+            return _motionManager.Initialize(cancellationToken);
+        }
 
         await RunInitializeStep(
             "Initialize Motion Controller",
-            () => _motionManager.Initialize(cancellationToken),
+RunInitializeStepCallbackCallback2,
             cancellationToken);
     }
 
@@ -424,44 +438,50 @@ public sealed class CManager
         return _interfaceManager.Reconnect(module, number, cancellationToken);
     }
 
-    public IStationManager Station()
+    public CStationManager Station()
     {
         return _stationManager;
     }
 
-    public IRecipeManager Recipe()
+    public CRecipeManager Recipe()
     {
         return _recipeManager;
     }
 
-    public ISettingManager Setting()
+    public CSettingManager Setting()
     {
         return _settingManager;
     }
 
-    public IProductManager Product()
+    public CProductManager Product()
     {
         return _productManager;
     }
 
-    public IReviewManager Review()
+    public CReviewManager Review()
     {
         return _reviewManager;
     }
 
-    public IInterfaceManager Interface()
+    public CInterfaceManager Interface()
     {
         return _interfaceManager;
     }
 
-    public IAutomationManager Automation()
+    public CAutomationManager Automation()
     {
         return _automationManager;
     }
 
-    public IAutomationManager automation => _automationManager;
+    public CAutomationManager automation
+    {
+        get
+        {
+            return _automationManager;
+        }
+    }
 
-    public IMotionManager Motion()
+    public CMotionManager Motion()
     {
         return _motionManager;
     }
@@ -476,67 +496,67 @@ public sealed class CManager
         return _interLockManager;
     }
 
-    public ILogManager Log()
+    public CLogManager Log()
     {
         return _logManager;
     }
 
-    public IRecipeFile RecipeFile()
+    public CRecipeFileBase RecipeFile()
     {
         return _recipeFile;
     }
 
-    public ISettingFile SettingFile()
+    public CSettingFileBase SettingFile()
     {
         return _settingFile;
     }
 
-    public IManualScanFile ManualScanFile()
+    public CManualScanFileBase ManualScanFile()
     {
         return _manualScanFile;
     }
 
-    public IInterfaceFile InterfaceFile()
+    public CInterfaceFileBase InterfaceFile()
     {
         return _interfaceFile;
     }
 
-    public IBETFile BETFile()
+    public CBETFileBase BETFile()
     {
         return _betFile;
     }
 
-    public IPowerMeterFile PowerMeterFile()
+    public CPowerMeterFileBase PowerMeterFile()
     {
         return _powerMeterFile;
     }
 
-    public IMotorFile MotorFile()
+    public CMotorFileBase MotorFile()
     {
         return _motorFile;
     }
 
-    public IIoFile IoFile()
+    public CIoFileBase IoFile()
     {
         return _ioFile;
     }
 
-    public IMelsecMapFile MelsecMapFile()
+    public CMelsecMapFileBase MelsecMapFile()
     {
         return _melsecMapFile;
     }
 
-    public IProductFile ProductFile()
+    public CProductFileBase ProductFile()
     {
         return _productFile;
     }
 
-    public IReviewRuleFile ReviewRuleFile()
+    public CReviewRuleFileBase ReviewRuleFile()
     {
         return _reviewRuleFile;
     }
 
-    public IReviewResultFile ReviewResultFile()
+    public CReviewResultFileBase ReviewResultFile()
     {
         return _reviewResultFile;
     }
@@ -774,21 +794,30 @@ public sealed class CManager
 
     private bool GetMotionSimulationMode(bool? simulationMode)
     {
+        bool CheckData3(ST_INTERFACE_DATA? data)
+        {
+            return data is null || data.IsSimulation;
+        }
+
         return simulationMode ?? _interfaceManager
             .GetInterfaceList(EN_EQP_MODULE.Motion)
             .DefaultIfEmpty()
-            .All(data => data is null || data.IsSimulation);
+            .All(CheckData3);
     }
 
     private string GetScriptDirectory()
     {
+        bool MatchParameter4(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Key.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase) ||
+                            parameter.Name.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase);
+        }
+
         var settingPath = _settingFile
             .Load(EN_SETTING_TAB.Option)
             .GetAwaiter()
             .GetResult()
-            .FirstOrDefault(parameter =>
-                parameter.Key.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase) ||
-                parameter.Name.Equals("LocalScriptPath", StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault(MatchParameter4)
             ?.Value;
 
         return ResolveProjectPath(settingPath, Path.Combine("Data", "Script"));

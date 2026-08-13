@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
+public sealed class CReviewRuleFile(string configRoot) : CReviewRuleFileBase
 {
     private const string DefaultRuleName = "ALL_POINT.csv";
 
@@ -18,23 +18,32 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
 
     private readonly string _ruleDirectory = Path.Combine(configRoot, "ReviewRule");
 
-    public Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureDefaultRuleFile();
+        bool FilterName1(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name);
+        }
+
+        string GetNameSortKey2(string name)
+        {
+            return name;
+        }
 
         var ruleNames = Directory
             .EnumerateFiles(_ruleDirectory, "*.csv")
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Where(FilterName1)
             .Cast<string>()
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<string>>(ruleNames);
     }
 
-    public Task<ST_REVIEW_RULE_DATA> Load(
+    public override Task<ST_REVIEW_RULE_DATA> Load(
         string ruleFileName,
         CancellationToken cancellationToken = default)
     {
@@ -79,6 +88,15 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
 
         var ruleType = ReadRuleType(ReadValue(values, "RULE_TYPE", "ALL_POINT"));
         var ruleName = ReadValue(values, "RULE_NAME", Path.GetFileNameWithoutExtension(normalizedName));
+        bool FilterKey3(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        string GetKeySortKey4(string key)
+        {
+            return key;
+        }
 
         return Task.FromResult(new ST_REVIEW_RULE_DATA(
             normalizedName,
@@ -88,13 +106,13 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
             ReadInt(values, "CELL_NO", 1),
             ReadInt(values, "ZERO_POINT_COUNT", 0),
             holeKeys
-                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Where(FilterKey3)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(GetKeySortKey4, StringComparer.OrdinalIgnoreCase)
                 .ToArray()));
     }
 
-    public Task Save(
+    public override Task Save(
         ST_REVIEW_RULE_DATA rule,
         CancellationToken cancellationToken = default)
     {
@@ -109,13 +127,27 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
             Row("COMMON", "CELL_NO", rule.CellNo.ToString(CultureInfo.InvariantCulture), "Target cell number for CELL_POINT"),
             Row("COMMON", "ZERO_POINT_COUNT", rule.ZeroPointCount.ToString(CultureInfo.InvariantCulture), "Zero line review point count")
         };
+        bool FilterKey5(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        bool FilterKey6(string key)
+        {
+            return !string.IsNullOrWhiteSpace(key);
+        }
+
+        string GetKeySortKey7(string key)
+        {
+            return key;
+        }
 
         foreach (var holeKey in rule.HoleKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Where(FilterKey5)
             .Select(CReviewManager.NormalizeHoleKey)
-            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Where(FilterKey6)
             .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(key => key, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(GetKeySortKey7, StringComparer.OrdinalIgnoreCase))
         {
             rows.Add(Row("HOLE", holeKey, "1", "Selected review hole"));
         }
@@ -215,29 +247,55 @@ public sealed class CReviewRuleFile(string configRoot) : IReviewRuleFile
 
     private static EN_REVIEW_RULE_TYPE ReadRuleType(string value)
     {
-        return value.Trim().ToUpperInvariant().Replace(" ", "_") switch
+        EN_REVIEW_RULE_TYPE EvaluateValueSwitch1()
         {
-            "ALL" or "ALL_POINT" => EN_REVIEW_RULE_TYPE.AllPoint,
-            "EDGE" => EN_REVIEW_RULE_TYPE.Edge,
-            "CENTER" => EN_REVIEW_RULE_TYPE.Center,
-            "HEAD" or "HEAD_POINT" => EN_REVIEW_RULE_TYPE.HeadPoint,
-            "CELL" or "CELL_POINT" => EN_REVIEW_RULE_TYPE.CellPoint,
-            "ZERO" or "ZERO_LINE" or "0_LINE" or "ZERO_DEFENSE" or "ZERO_DEFENCE" => EN_REVIEW_RULE_TYPE.ZeroLine,
-            _ => EN_REVIEW_RULE_TYPE.SamplePoint
-        };
+            var switchValue = value.Trim().ToUpperInvariant().Replace(" ", "_");
+            switch (switchValue)
+            {
+                case "ALL" or "ALL_POINT":
+                    return EN_REVIEW_RULE_TYPE.AllPoint;
+                case "EDGE":
+                    return EN_REVIEW_RULE_TYPE.Edge;
+                case "CENTER":
+                    return EN_REVIEW_RULE_TYPE.Center;
+                case "HEAD" or "HEAD_POINT":
+                    return EN_REVIEW_RULE_TYPE.HeadPoint;
+                case "CELL" or "CELL_POINT":
+                    return EN_REVIEW_RULE_TYPE.CellPoint;
+                case "ZERO" or "ZERO_LINE" or "0_LINE" or "ZERO_DEFENSE" or "ZERO_DEFENCE":
+                    return EN_REVIEW_RULE_TYPE.ZeroLine;
+                default:
+                    return EN_REVIEW_RULE_TYPE.SamplePoint;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string ToRuleTypeText(EN_REVIEW_RULE_TYPE ruleType)
     {
-        return ruleType switch
+        string EvaluateRuleTypeSwitch2()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "ALL_POINT",
-            EN_REVIEW_RULE_TYPE.Edge => "EDGE",
-            EN_REVIEW_RULE_TYPE.Center => "CENTER",
-            EN_REVIEW_RULE_TYPE.HeadPoint => "HEAD_POINT",
-            EN_REVIEW_RULE_TYPE.CellPoint => "CELL_POINT",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "ZERO_LINE",
-            _ => "SAMPLE_POINT"
-        };
+            var switchValue = ruleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "ALL_POINT";
+                case EN_REVIEW_RULE_TYPE.Edge:
+                    return "EDGE";
+                case EN_REVIEW_RULE_TYPE.Center:
+                    return "CENTER";
+                case EN_REVIEW_RULE_TYPE.HeadPoint:
+                    return "HEAD_POINT";
+                case EN_REVIEW_RULE_TYPE.CellPoint:
+                    return "CELL_POINT";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "ZERO_LINE";
+                default:
+                    return "SAMPLE_POINT";
+            }
+        }
+
+        return EvaluateRuleTypeSwitch2();
     }
 }

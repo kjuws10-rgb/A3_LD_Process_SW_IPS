@@ -119,13 +119,21 @@ internal sealed class CXpsComm(
         {
             return ExecuteRawCommand(api, function);
         }
-
-        return tokens[1].ToUpperInvariant() switch
+        string EvaluateValueSwitch1()
         {
-            "AXIS" => ExecuteAxisFunction(api, tokens),
-            "IO" => ExecuteIoFunction(api, tokens),
-            _ => ExecuteRawCommand(api, function)
-        };
+            var switchValue = tokens[1].ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "AXIS":
+                    return ExecuteAxisFunction(api, tokens);
+                case "IO":
+                    return ExecuteIoFunction(api, tokens);
+                default:
+                    return ExecuteRawCommand(api, function);
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static string ExecuteAxisFunction(
@@ -241,12 +249,21 @@ internal sealed class CXpsComm(
         XPS api,
         string function)
     {
-        return function.Trim().ToUpperInvariant() switch
+        string EvaluateValueSwitch2()
         {
-            "STATUS" => ExecuteStatus(api),
-            "SOCKETS" => ExecuteSockets(api),
-            _ => throw new InvalidOperationException($"XPS raw command is not supported yet: {function}")
-        };
+            var switchValue = function.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "STATUS":
+                    return ExecuteStatus(api);
+                case "SOCKETS":
+                    return ExecuteSockets(api);
+                default:
+                    throw new InvalidOperationException($"XPS raw command is not supported yet: {function}");
+            }
+        }
+
+        return EvaluateValueSwitch2();
 
         string ExecuteStatus(XPS xps)
         {

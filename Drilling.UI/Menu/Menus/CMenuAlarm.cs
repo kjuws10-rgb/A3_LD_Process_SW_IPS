@@ -9,20 +9,48 @@ using System.Windows.Media;
 namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuAlarm(
-    IInterfaceManager interfaceManager,
-    IMotionManager motionManager,
+    CInterfaceManager interfaceManager,
+    CMotionManager motionManager,
     CAlarmManager alarmManager,
     CInterLockManager interLockManager,
-    IStationManager stationManager,
+    CStationManager stationManager,
     Action<string> setStatusMessage,
     Action refreshShellStatus,
-    Func<Task> refreshCurrentScreen) : IMenu
+    Func<Task> refreshCurrentScreen) : CMenuBase
 {
-    public EN_MENU Menu => EN_MENU.Alarm;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Alarm;
+        }
+    }
 
-    public CButtonCommand AlarmResetCommand => new(async _ => await ResetAlarm());
+    public CButtonCommand AlarmResetCommand
+    {
+        get
+        {
+            async void HandleValueCallback1(object? _)
+            {
+                await ResetAlarm();
+            }
 
-    public CButtonCommand BuzzerOffCommand => new(_ => setStatusMessage("Buzzer off command sent."));
+            return new(HandleValueCallback1);
+        }
+    }
+
+    public CButtonCommand BuzzerOffCommand
+    {
+        get
+        {
+            void HandleValueCallback2(object? _)
+            {
+                setStatusMessage("Buzzer off command sent.");
+            }
+
+            return new(HandleValueCallback2);
+        }
+    }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> CurrentAlarms { get; private set; } = [];
 
@@ -44,11 +72,15 @@ public sealed class CMenuAlarm(
 
     public IReadOnlyList<ST_ALARM_SUMMARY_ITEM> SummaryItems { get; private set; } = [];
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var alarms = await GetCurrentAlarms(cancellationToken);
-        var currentAlarms = alarms.Select(item =>
-            new ST_DISPLAY_ITEM(item.Code.ToString(), item.Message, item.Severity.ToString())).DefaultIfEmpty(
+        ST_DISPLAY_ITEM SelectItem3(ST_ALARM_DATA item)
+        {
+            return new ST_DISPLAY_ITEM(item.Code.ToString(), item.Message, item.Severity.ToString());
+        }
+
+        var currentAlarms = alarms.Select(SelectItem3).DefaultIfEmpty(
             new ST_DISPLAY_ITEM("No Alarm", "Normal")).ToArray();
         var firstAlarm = alarms.FirstOrDefault();
         Apply(
@@ -160,15 +192,20 @@ public sealed class CMenuAlarm(
 
     private static IReadOnlyList<ST_ALARM_CURRENT_ROW> BuildCurrentAlarmRows(IReadOnlyList<ST_ALARM_DATA> alarms)
     {
+        ST_ALARM_CURRENT_ROW SelectAlarm4(ST_ALARM_DATA alarm)
+        {
+            return new ST_ALARM_CURRENT_ROW(
+                            alarm.Code.ToString(),
+                            FormatSeverity(alarm.Severity),
+                            alarm.Device,
+                            alarm.Message,
+                            "Check device state",
+                            alarm.RecoveryAction,
+                            alarm.OccurredAt.ToString("HH:mm:ss"));
+        }
+
         return alarms
-            .Select(alarm => new ST_ALARM_CURRENT_ROW(
-                alarm.Code.ToString(),
-                FormatSeverity(alarm.Severity),
-                alarm.Device,
-                alarm.Message,
-                "Check device state",
-                alarm.RecoveryAction,
-                alarm.OccurredAt.ToString("HH:mm:ss")))
+            .Select(SelectAlarm4)
             .ToArray();
     }
 
@@ -235,8 +272,18 @@ public sealed class CMenuAlarm(
 
     private static IReadOnlyList<ST_ALARM_SUMMARY_ITEM> BuildSummaryItems(IReadOnlyList<ST_ALARM_DATA> alarms)
     {
-        var warningCount = alarms.Count(alarm => alarm.Severity == EN_ALARM_LEVEL.Warning);
-        var criticalCount = alarms.Count(alarm => alarm.Severity == EN_ALARM_LEVEL.Critical);
+        bool HandleWarningCount5(ST_ALARM_DATA alarm)
+        {
+            return alarm.Severity == EN_ALARM_LEVEL.Warning;
+        }
+
+        var warningCount = alarms.Count(HandleWarningCount5);
+        bool HandleCriticalCount6(ST_ALARM_DATA alarm)
+        {
+            return alarm.Severity == EN_ALARM_LEVEL.Critical;
+        }
+
+        var criticalCount = alarms.Count(HandleCriticalCount6);
 
         return
         [
@@ -249,22 +296,40 @@ public sealed class CMenuAlarm(
 
     private static string FormatSeverity(EN_ALARM_LEVEL severity)
     {
-        return severity switch
+        string EvaluateSeveritySwitch1()
         {
-            EN_ALARM_LEVEL.Warning => "WARN",
-            EN_ALARM_LEVEL.Critical => "CRITICAL",
-            _ => "INFO"
-        };
+            var switchValue = severity;
+            switch (switchValue)
+            {
+                case EN_ALARM_LEVEL.Warning:
+                    return "WARN";
+                case EN_ALARM_LEVEL.Critical:
+                    return "CRITICAL";
+                default:
+                    return "INFO";
+            }
+        }
+
+        return EvaluateSeveritySwitch1();
     }
 
     private static string SeverityState(EN_ALARM_LEVEL severity)
     {
-        return severity switch
+        string EvaluateSeveritySwitch2()
         {
-            EN_ALARM_LEVEL.Warning => "Warn",
-            EN_ALARM_LEVEL.Critical => "Critical",
-            _ => "Accent"
-        };
+            var switchValue = severity;
+            switch (switchValue)
+            {
+                case EN_ALARM_LEVEL.Warning:
+                    return "Warn";
+                case EN_ALARM_LEVEL.Critical:
+                    return "Critical";
+                default:
+                    return "Accent";
+            }
+        }
+
+        return EvaluateSeveritySwitch2();
     }
 }
 
@@ -277,13 +342,29 @@ public sealed record ST_ALARM_CURRENT_ROW(
     string Action,
     string Time)
 {
-    public Brush LevelBrush => Level switch
+    public Brush LevelBrush
     {
-        "WARN" => CStatusBrush.Wait,
-        "CRITICAL" or "ERROR" => CStatusBrush.Offline,
-        "INFO" => CStatusBrush.Simul,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateLevelSwitch3()
+            {
+                var switchValue = Level;
+                switch (switchValue)
+                {
+                    case "WARN":
+                        return CStatusBrush.Wait;
+                    case "CRITICAL" or "ERROR":
+                        return CStatusBrush.Offline;
+                    case "INFO":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateLevelSwitch3();
+        }
+    }
 }
 
 public sealed record ST_ALARM_DETAIL_ROW(
@@ -291,14 +372,31 @@ public sealed record ST_ALARM_DETAIL_ROW(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Warn" => CStatusBrush.Wait,
-        "Critical" => CStatusBrush.Offline,
-        "Accent" => CStatusBrush.Simul,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateStateSwitch4()
+            {
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Critical":
+                        return CStatusBrush.Offline;
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch4();
+        }
+    }
 }
 
 public sealed record ST_ALARM_HISTORY_ROW(
@@ -309,13 +407,29 @@ public sealed record ST_ALARM_HISTORY_ROW(
     string Message,
     string ResetUser)
 {
-    public Brush LevelBrush => Level switch
+    public Brush LevelBrush
     {
-        "WARN" => CStatusBrush.Wait,
-        "CRITICAL" or "ERROR" => CStatusBrush.Offline,
-        "INFO" => CStatusBrush.Simul,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateLevelSwitch5()
+            {
+                var switchValue = Level;
+                switch (switchValue)
+                {
+                    case "WARN":
+                        return CStatusBrush.Wait;
+                    case "CRITICAL" or "ERROR":
+                        return CStatusBrush.Offline;
+                    case "INFO":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateLevelSwitch5();
+        }
+    }
 }
 
 public sealed record ST_ALARM_TREND_BAR(
@@ -332,14 +446,31 @@ public sealed record ST_ALARM_SUMMARY_ITEM(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Warn" => CStatusBrush.Wait,
-        "Critical" => CStatusBrush.Offline,
-        "Accent" => CStatusBrush.Simul,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateStateSwitch6()
+            {
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Critical":
+                        return CStatusBrush.Offline;
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch6();
+        }
+    }
 }
 
 

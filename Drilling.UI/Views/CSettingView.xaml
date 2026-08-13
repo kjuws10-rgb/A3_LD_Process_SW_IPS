@@ -1,6 +1,7 @@
 <UserControl x:Class="Drilling.UI.Views.CSettingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menu="clr-namespace:Drilling.UI.Menu"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -300,7 +301,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Button Content="{Binding Name}"
-                                    Command="{Binding DataContext.CurrentScreen.Setting.SelectTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Setting.SelectTabCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding Name}"
                                     Margin="0,0,4,0">
                                 <Button.Style>
@@ -334,7 +335,7 @@
                             <ItemsControl ItemsSource="{Binding CurrentScreen.Setting.GroupItems}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Button Command="{Binding DataContext.CurrentScreen.Setting.SelectGroupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Setting.SelectGroupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding Name}"
                                                 Style="{StaticResource SettingGroupButton}">
                                             <Border Height="58"
@@ -430,7 +431,7 @@
                                             Width="154"
                                             Margin="0,0,10,0"
                                             IsEnabled="{Binding CurrentScreen.Setting.CanOperateSelectedInterface}"
-                                            Command="{Binding CurrentScreen.Setting.ConnectInterfaceCommand}"
+                                            menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Setting.ConnectInterfaceCommand}"
                                             Visibility="{Binding CurrentScreen.Setting.IsInterfaceTab, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -455,7 +456,7 @@
                                             Width="154"
                                             Margin="0,0,10,0"
                                             IsEnabled="{Binding CurrentScreen.Setting.CanOperateSelectedInterface}"
-                                            Command="{Binding CurrentScreen.Setting.DisconnectInterfaceCommand}"
+                                            menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Setting.DisconnectInterfaceCommand}"
                                             Visibility="{Binding CurrentScreen.Setting.IsInterfaceTab, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -481,7 +482,7 @@
                                              Margin="0,0,10,0"
                                              PreviewMouseDown="CommitSettingGridEdits"
                                              Click="CommitSettingGridEdits"
-                                             Command="{Binding CurrentScreen.Setting.SaveCommand}">
+                                             menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Setting.SaveCommand}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="34" />
@@ -500,7 +501,7 @@
                                     <Button Style="{StaticResource SettingCommandButton}"
                                             Width="116"
                                             Margin="0,0,10,0"
-                                            Command="{Binding CurrentScreen.Setting.CancelCommand}">
+                                            menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Setting.CancelCommand}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="34" />
@@ -517,7 +518,7 @@
                                     </Button>
                                     <Button Style="{StaticResource SettingCommandButton}"
                                             Width="116"
-                                            Command="{Binding CurrentScreen.Setting.ReloadCommand}">
+                                            menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Setting.ReloadCommand}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="34" />

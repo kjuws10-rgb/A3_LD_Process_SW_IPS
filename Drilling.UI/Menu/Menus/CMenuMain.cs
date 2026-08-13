@@ -16,17 +16,17 @@ using Drilling.Common.Review;
 namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuMain(
-    IStationManager stationManager,
-    IInterfaceManager interfaceManager,
-    IAutomationManager automationManager,
-    IRecipeManager recipeManager,
-    ISettingManager settingManager,
-    IReviewManager reviewManager,
+    CStationManager stationManager,
+    CInterfaceManager interfaceManager,
+    CAutomationManager automationManager,
+    CRecipeManager recipeManager,
+    CSettingManager settingManager,
+    CReviewManager reviewManager,
     Func<string> selectedRecipeIdProvider,
     Func<IReadOnlySet<int>> selectedPreviewHeadNosProvider,
     CButtonCommand togglePreviewHeadCommand,
     Action<string> statusReporter,
-    Func<Task> refreshCurrentScreen) : CBindingBase, IMenu
+    Func<Task> refreshCurrentScreen) : CMenuBase
 {
     private const string AutoStepPowerCheck = "POWER_CHECK";
     private const string AutoStepAlign = "ALIGN";
@@ -87,7 +87,13 @@ public sealed class CMenuMain(
     private readonly CScannerStatusPollingService _scannerStatusPollingService =
         new(automationManager, settingManager);
 
-    public EN_MENU Menu => EN_MENU.Main;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Main;
+        }
+    }
 
     public IReadOnlyList<ST_HEAD_PREVIEW> HeadPreviews { get; private set; } = [];
 
@@ -108,80 +114,171 @@ public sealed class CMenuMain(
 
     public IReadOnlyList<ST_DISPLAY_ITEM> CycleItems
     {
-        get => _cycleItems;
-        private set => SetProperty(ref _cycleItems, value);
+        get
+        {
+            return _cycleItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _cycleItems, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> ResultItems
     {
-        get => _resultItems;
-        private set => SetProperty(ref _resultItems, value);
+        get
+        {
+            return _resultItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _resultItems, value);
+        }
     }
 
     public IReadOnlyList<ST_MAIN_PROCESS_SEQUENCE_ITEM> ProcessSequenceItems
     {
-        get => _processSequenceItems;
-        private set => SetProperty(ref _processSequenceItems, value);
+        get
+        {
+            return _processSequenceItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _processSequenceItems, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> CurrentStepDetails
     {
-        get => _currentStepDetails;
-        private set => SetProperty(ref _currentStepDetails, value);
+        get
+        {
+            return _currentStepDetails;
+        }
+
+        private set
+        {
+            SetProperty(ref _currentStepDetails, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> ProcessSummaryItems
     {
-        get => _processSummaryItems;
-        private set => SetProperty(ref _processSummaryItems, value);
+        get
+        {
+            return _processSummaryItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _processSummaryItems, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> LifecycleItems
     {
-        get => _lifecycleItems;
-        private set => SetProperty(ref _lifecycleItems, value);
+        get
+        {
+            return _lifecycleItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _lifecycleItems, value);
+        }
     }
 
     public IReadOnlyList<ST_SCRIPT_TASK_STATUS_ITEM> ScriptTaskStatusItems
     {
-        get => _scriptTaskStatusItems;
-        private set => SetProperty(ref _scriptTaskStatusItems, value);
+        get
+        {
+            return _scriptTaskStatusItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _scriptTaskStatusItems, value);
+        }
     }
 
     public IReadOnlyList<ST_INSPECTION_STATUS_ITEM> InspectionStatusItems
     {
-        get => _inspectionStatusItems;
-        private set => SetProperty(ref _inspectionStatusItems, value);
+        get
+        {
+            return _inspectionStatusItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionStatusItems, value);
+        }
     }
 
     public string InspectionSummary
     {
-        get => _inspectionSummary;
-        private set => SetProperty(ref _inspectionSummary, value);
+        get
+        {
+            return _inspectionSummary;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionSummary, value);
+        }
     }
 
     public string InspectionModeText
     {
-        get => _inspectionModeText;
-        private set => SetProperty(ref _inspectionModeText, value);
+        get
+        {
+            return _inspectionModeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionModeText, value);
+        }
     }
 
     public string InspectionRuleText
     {
-        get => _inspectionRuleText;
-        private set => SetProperty(ref _inspectionRuleText, value);
+        get
+        {
+            return _inspectionRuleText;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionRuleText, value);
+        }
     }
 
     public Visibility InspectionRuleVisibility
     {
-        get => _inspectionRuleVisibility;
-        private set => SetProperty(ref _inspectionRuleVisibility, value);
+        get
+        {
+            return _inspectionRuleVisibility;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionRuleVisibility, value);
+        }
     }
 
     public IReadOnlyList<ST_INTERLOCK_ITEM> InterlockItems
     {
-        get => _interlockItems;
-        private set => SetProperty(ref _interlockItems, value);
+        get
+        {
+            return _interlockItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _interlockItems, value);
+        }
     }
 
     public IReadOnlyList<ST_HEAD_PARAMETER> HeadParameters { get; private set; } = [];
@@ -194,8 +291,15 @@ public sealed class CMenuMain(
 
     public IReadOnlyList<ST_SCANNER_AXIS_STATUS_ITEM> ScannerStatusItems
     {
-        get => _scannerStatusItems;
-        private set => SetProperty(ref _scannerStatusItems, value);
+        get
+        {
+            return _scannerStatusItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _scannerStatusItems, value);
+        }
     }
 
     public Visibility HeadParameterVisibility { get; private set; } = Visibility.Visible;
@@ -204,101 +308,225 @@ public sealed class CMenuMain(
 
     public Visibility ScannerStatusVisibility { get; private set; } = Visibility.Collapsed;
 
-    public bool IsScannerStatusSelected => _selectedParameterTabKey.Equals(ParameterTabScanner, StringComparison.OrdinalIgnoreCase);
+    public bool IsScannerStatusSelected
+    {
+        get
+        {
+            return _selectedParameterTabKey.Equals(ParameterTabScanner, StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public string ProcessStep
     {
-        get => _processStep;
-        private set => SetProperty(ref _processStep, value);
+        get
+        {
+            return _processStep;
+        }
+
+        private set
+        {
+            SetProperty(ref _processStep, value);
+        }
     }
 
     public string ScriptStatus
     {
-        get => _scriptStatus;
-        private set => SetProperty(ref _scriptStatus, value);
+        get
+        {
+            return _scriptStatus;
+        }
+
+        private set
+        {
+            SetProperty(ref _scriptStatus, value);
+        }
     }
 
     public string ScriptStatusText
     {
-        get => _scriptStatusText;
-        private set => SetProperty(ref _scriptStatusText, value);
+        get
+        {
+            return _scriptStatusText;
+        }
+
+        private set
+        {
+            SetProperty(ref _scriptStatusText, value);
+        }
     }
 
     public string ResultMessage
     {
-        get => _resultMessage;
-        private set => SetProperty(ref _resultMessage, value);
+        get
+        {
+            return _resultMessage;
+        }
+
+        private set
+        {
+            SetProperty(ref _resultMessage, value);
+        }
     }
 
     public string TotalPointsText
     {
-        get => _totalPointsText;
-        private set => SetProperty(ref _totalPointsText, value);
+        get
+        {
+            return _totalPointsText;
+        }
+
+        private set
+        {
+            SetProperty(ref _totalPointsText, value);
+        }
     }
 
     public string MoveCountText
     {
-        get => _moveCountText;
-        private set => SetProperty(ref _moveCountText, value);
+        get
+        {
+            return _moveCountText;
+        }
+
+        private set
+        {
+            SetProperty(ref _moveCountText, value);
+        }
     }
 
     public string LaserOnSegmentsText
     {
-        get => _laserOnSegmentsText;
-        private set => SetProperty(ref _laserOnSegmentsText, value);
+        get
+        {
+            return _laserOnSegmentsText;
+        }
+
+        private set
+        {
+            SetProperty(ref _laserOnSegmentsText, value);
+        }
     }
 
     public string EstimatedTimeText
     {
-        get => _estimatedTimeText;
-        private set => SetProperty(ref _estimatedTimeText, value);
+        get
+        {
+            return _estimatedTimeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _estimatedTimeText, value);
+        }
     }
 
     public string ElapsedTimeText
     {
-        get => _elapsedTimeText;
-        private set => SetProperty(ref _elapsedTimeText, value);
+        get
+        {
+            return _elapsedTimeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _elapsedTimeText, value);
+        }
     }
 
     public string ProgressText
     {
-        get => _progressText;
-        private set => SetProperty(ref _progressText, value);
+        get
+        {
+            return _progressText;
+        }
+
+        private set
+        {
+            SetProperty(ref _progressText, value);
+        }
     }
 
     public string ProgressPercentText
     {
-        get => _progressPercentText;
-        private set => SetProperty(ref _progressPercentText, value);
+        get
+        {
+            return _progressPercentText;
+        }
+
+        private set
+        {
+            SetProperty(ref _progressPercentText, value);
+        }
     }
 
     public double ProgressPercent
     {
-        get => _progressPercent;
-        private set => SetProperty(ref _progressPercent, value);
+        get
+        {
+            return _progressPercent;
+        }
+
+        private set
+        {
+            SetProperty(ref _progressPercent, value);
+        }
     }
 
     public string ProcessResultValue
     {
-        get => _processResultValue;
-        private set => SetProperty(ref _processResultValue, value);
+        get
+        {
+            return _processResultValue;
+        }
+
+        private set
+        {
+            SetProperty(ref _processResultValue, value);
+        }
     }
 
     public Brush ProcessResultBrush
     {
-        get => _processResultBrush;
-        private set => SetProperty(ref _processResultBrush, value);
+        get
+        {
+            return _processResultBrush;
+        }
+
+        private set
+        {
+            SetProperty(ref _processResultBrush, value);
+        }
     }
 
     public CButtonCommand TogglePreviewHeadCommand { get; private set; } = CButtonCommand.NoOp;
 
-    public CButtonCommand ToggleSequenceStepUseCommand =>
-        _toggleSequenceStepUseCommand ??= new CButtonCommand(async parameter => await ToggleSequenceStepUse(parameter));
+    public CButtonCommand ToggleSequenceStepUseCommand
+    {
+        get
+        {
+            async void HandleToggleSequenceStepUseCommand1(object? parameter)
+            {
+                await ToggleSequenceStepUse(parameter);
+            }
 
-    public CButtonCommand SelectParameterTabCommand =>
-        _selectParameterTabCommand ??= new CButtonCommand(async parameter => await SelectParameterTab(parameter));
+            return _toggleSequenceStepUseCommand ??= new CButtonCommand(HandleToggleSequenceStepUseCommand1);
+        }
+    }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public CButtonCommand SelectParameterTabCommand
+    {
+        get
+        {
+            async void HandleSelectParameterTabCommand2(object? parameter)
+            {
+                await SelectParameterTab(parameter);
+            }
+
+            return _selectParameterTabCommand ??= new CButtonCommand(HandleSelectParameterTabCommand2);
+        }
+    }
+
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var snapshot = await stationManager.GetStatus(cancellationToken);
         var selectedHeadNos = selectedPreviewHeadNosProvider().ToHashSet();
@@ -334,33 +562,61 @@ public sealed class CMenuMain(
 
         var headAssignmentMap = BuildHeadAssignmentMap(snapshot, previewParameters, selectedHeadNos, previewHeadLayout);
         var recipePreview = BuildRecipePreview(previewParameters, selectedHeadNos, previewHeadLayout);
-        var displayedHeadAreas = headAssignmentMap.Areas
-            .Select(area => area with
+        ST_HEAD_ASSIGNMENT_AREA SelectArea3(ST_HEAD_ASSIGNMENT_AREA area)
+        {
+            return area with
             {
                 PointCount = recipePreview.HeadPointCounts.TryGetValue(area.HeadNo, out var count)
-                    ? (int)Math.Min(int.MaxValue, count)
-                    : 0
-            })
+                                ? (int)Math.Min(int.MaxValue, count)
+                                : 0
+            };
+        }
+
+        var displayedHeadAreas = headAssignmentMap.Areas
+            .Select(SelectArea3)
             .ToArray();
         var glassPreviewSummary =
             $"{displayedHeadAreas.Length}H / {recipePreview.TotalPointCount:N0}P / {FormatGlassSizeText(previewParameters)}" +
             (recipePreview.UnassignedPointCount > 0 ? $" / U:{recipePreview.UnassignedPointCount:N0}" : "");
+        int HandleHeadStatusMap4(ST_HEAD_PATH_DATA head)
+        {
+            return head.HeadNo;
+        }
+
+        int HandleHeadStatusMap5(IGrouping<int, ST_HEAD_PATH_DATA> group)
+        {
+            return group.Key;
+        }
+
+        EN_HEAD_PROCESS_STATUS HandleHeadStatusMap6(IGrouping<int, ST_HEAD_PATH_DATA> group)
+        {
+            return group.Last().Status;
+        }
+
         var headStatusMap = snapshot.HeadPreviews
-            .GroupBy(head => head.HeadNo)
-            .ToDictionary(group => group.Key, group => group.Last().Status);
+            .GroupBy(HandleHeadStatusMap4)
+            .ToDictionary(HandleHeadStatusMap5, HandleHeadStatusMap6);
+        ST_DISPLAY_ITEM SelectHead7(ST_HEAD_ASSIGNMENT_AREA head)
+        {
+            return new ST_DISPLAY_ITEM(
+                            $"Head {head.HeadNo:00}",
+                            headStatusMap.TryGetValue(head.HeadNo, out var status) ? status.ToString() : "Ready",
+                            "Head assignment pending");
+        }
 
         var headItems = displayedHeadAreas
-            .Select(head => new ST_DISPLAY_ITEM(
-                $"Head {head.HeadNo:00}",
-                headStatusMap.TryGetValue(head.HeadNo, out var status) ? status.ToString() : "Ready",
-                "Head assignment pending"))
+            .Select(SelectHead7)
             .ToArray();
+        ST_HEAD_PREVIEW SelectHead8(ST_HEAD_ASSIGNMENT_AREA head)
+        {
+            return BuildHeadPreviewItem(
+                            head.HeadNo,
+                            headStatusMap.TryGetValue(head.HeadNo, out var status) ? status : EN_HEAD_PROCESS_STATUS.Ready,
+                            selectedHeadNos);
+        }
 
         var headPreviewItems = displayedHeadAreas
-            .Select(head => BuildHeadPreviewItem(
-                head.HeadNo,
-                headStatusMap.TryGetValue(head.HeadNo, out var status) ? status : EN_HEAD_PROCESS_STATUS.Ready,
-                selectedHeadNos))
+            .Select(SelectHead8)
             .ToArray();
 
         Apply(
@@ -522,13 +778,33 @@ public sealed class CMenuMain(
         CButtonCommand togglePreviewHeadCommand)
     {
         HeadPreviews = headPreviews;
+        bool FilterHead9(ST_HEAD_PREVIEW head)
+        {
+            return head.HeadNo % 2 != 0;
+        }
+
+        int GetHeadSortKey10(ST_HEAD_PREVIEW head)
+        {
+            return head.HeadNo;
+        }
+
         OddHeadPreviews = headPreviews
-            .Where(head => head.HeadNo % 2 != 0)
-            .OrderBy(head => head.HeadNo)
+            .Where(FilterHead9)
+            .OrderBy(GetHeadSortKey10)
             .ToArray();
+        bool FilterHead11(ST_HEAD_PREVIEW head)
+        {
+            return head.HeadNo % 2 == 0;
+        }
+
+        int GetHeadSortKey12(ST_HEAD_PREVIEW head)
+        {
+            return head.HeadNo;
+        }
+
         EvenHeadPreviews = headPreviews
-            .Where(head => head.HeadNo % 2 == 0)
-            .OrderBy(head => head.HeadNo)
+            .Where(FilterHead11)
+            .OrderBy(GetHeadSortKey12)
             .ToArray();
         HeadAssignmentAreas = headAssignmentAreas;
         GlassFrame = glassFrame;
@@ -581,11 +857,19 @@ public sealed class CMenuMain(
 
     public static string FormatScriptStatus(EN_SCRIPT_STATUS status)
     {
-        return status switch
+        string EvaluateStatusSwitch1()
         {
-            EN_SCRIPT_STATUS.NotCreated => "Not Created",
-            _ => status.ToString()
-        };
+            var switchValue = status;
+            switch (switchValue)
+            {
+                case EN_SCRIPT_STATUS.NotCreated:
+                    return "Not Created";
+                default:
+                    return status.ToString();
+            }
+        }
+
+        return EvaluateStatusSwitch1();
     }
 
     private static ST_DISPLAY_ITEM ToDisplayItem(ST_PROCESS_DISPLAY_ITEM item)
@@ -598,54 +882,82 @@ public sealed class CMenuMain(
         IReadOnlyDictionary<string, bool> autoStepOptions,
         bool canToggleAutoStep)
     {
-        return processSequence
-            .Select(item =>
-            {
-                var stepKey = NormalizeAutoStepKey(item.Value);
-                var isOptional = OptionalAutoStepSettingKeys.TryGetValue(stepKey, out var optionSettingKey);
-                var isOptionOn = !isOptional ||
-                    (optionSettingKey is not null &&
-                        autoStepOptions.TryGetValue(optionSettingKey, out var enabled) &&
-                        enabled);
+        ST_MAIN_PROCESS_SEQUENCE_ITEM SelectItem13(ST_PROCESS_DISPLAY_ITEM item)
+        {
+            var stepKey = NormalizeAutoStepKey(item.Value);
+            var isOptional = OptionalAutoStepSettingKeys.TryGetValue(stepKey, out var optionSettingKey);
+            var isOptionOn = !isOptional ||
+                (optionSettingKey is not null &&
+                    autoStepOptions.TryGetValue(optionSettingKey, out var enabled) &&
+                    enabled);
 
-                return new ST_MAIN_PROCESS_SEQUENCE_ITEM(
-                    item.Name,
-                    item.Value,
-                    isOptional && !isOptionOn ? "SKIP" : item.Detail,
-                    stepKey,
-                    optionSettingKey ?? "",
-                    isOptional,
-                    isOptionOn,
-                    isOptional && canToggleAutoStep);
-            })
+            return new ST_MAIN_PROCESS_SEQUENCE_ITEM(
+                item.Name,
+                item.Value,
+                isOptional && !isOptionOn ? "SKIP" : item.Detail,
+                stepKey,
+                optionSettingKey ?? "",
+                isOptional,
+                isOptionOn,
+                isOptional && canToggleAutoStep);
+        }
+        return processSequence
+            .Select(SelectItem13)
             .ToArray();
     }
 
     private static string NormalizeAutoStepKey(string value)
     {
         var normalized = value.Trim().ToUpperInvariant().Replace(" ", "_", StringComparison.Ordinal);
-
-        return normalized switch
+        string EvaluateNormalizedSwitch2()
         {
-            "POWERCHECK" => AutoStepPowerCheck,
-            "POWER_CHECK" => AutoStepPowerCheck,
-            _ => normalized
-        };
+            var switchValue = normalized;
+            switch (switchValue)
+            {
+                case "POWERCHECK":
+                    return AutoStepPowerCheck;
+                case "POWER_CHECK":
+                    return AutoStepPowerCheck;
+                default:
+                    return normalized;
+            }
+        }
+
+        return EvaluateNormalizedSwitch2();
     }
 
     private async Task<IReadOnlyDictionary<string, bool>> LoadAutoStepOptions(CancellationToken cancellationToken)
     {
         var parameters = await settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
+        string HandleValues14(ST_SYSTEM_PARAMETER parameter)
+        {
+            return string.IsNullOrWhiteSpace(parameter.Key) ? parameter.Name : parameter.Key;
+        }
+
+        string HandleValues15(ST_SYSTEM_PARAMETER parameter)
+        {
+            return parameter.Value;
+        }
+
         var values = parameters.ToDictionary(
-            parameter => string.IsNullOrWhiteSpace(parameter.Key) ? parameter.Name : parameter.Key,
-            parameter => parameter.Value,
+HandleValues14,
+HandleValues15,
             StringComparer.OrdinalIgnoreCase);
+        string ToDictionaryKeyCallback16(string key)
+        {
+            return key;
+        }
+
+        bool ToDictionaryKeyCallback17(string key)
+        {
+            return values.TryGetValue(key, out var value) ? ReadBoolOption(value, true) : true;
+        }
 
         return OptionalAutoStepSettingKeys.Values
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                key => key,
-                key => values.TryGetValue(key, out var value) ? ReadBoolOption(value, true) : true,
+ToDictionaryKeyCallback16,
+ToDictionaryKeyCallback17,
                 StringComparer.OrdinalIgnoreCase);
     }
 
@@ -748,16 +1060,21 @@ public sealed class CMenuMain(
         ST_STATION_PROCESS_STATUS snapshot,
         IReadOnlyDictionary<string, string> previewParameters)
     {
+        ST_SCRIPT_TASK_STATUS_ITEM SelectDefinition18(ST_SCRIPT_TASK_DEFINITION definition)
+        {
+            return new ST_SCRIPT_TASK_STATUS_ITEM(
+                            $"TASK {definition.HeadNo}",
+                            $"H{definition.HeadNo:00}",
+                            $"A{definition.AutomationNo}",
+                            $"T{definition.TaskNo}",
+                            "WAIT",
+                            definition.ScriptFileName,
+                            "Waiting for status",
+                            definition.TotalPoints);
+        }
+
         return BuildScriptTaskDefinitions(snapshot, previewParameters)
-            .Select(definition => new ST_SCRIPT_TASK_STATUS_ITEM(
-                $"TASK {definition.HeadNo}",
-                $"H{definition.HeadNo:00}",
-                $"A{definition.AutomationNo}",
-                $"T{definition.TaskNo}",
-                "WAIT",
-                definition.ScriptFileName,
-                "Waiting for status",
-                definition.TotalPoints))
+            .Select(SelectDefinition18)
             .ToArray();
     }
 
@@ -765,31 +1082,46 @@ public sealed class CMenuMain(
         ST_STATION_PROCESS_STATUS snapshot,
         IReadOnlyDictionary<string, string> previewParameters)
     {
+        int GroupByHeadCallback19(ST_HEAD_PROCESS_DATA head)
+        {
+            return head.HeadNo;
+        }
+
+        int HandleHeadMap20(IGrouping<int, ST_HEAD_PROCESS_DATA> group)
+        {
+            return group.Key;
+        }
+
+        ST_HEAD_PROCESS_DATA HandleHeadMap21(IGrouping<int, ST_HEAD_PROCESS_DATA> group)
+        {
+            return group.Last();
+        }
+
         var headMap = snapshot.ProcessModel?.Heads
-            .GroupBy(head => head.HeadNo)
-            .ToDictionary(group => group.Key, group => group.Last())
+            .GroupBy(GroupByHeadCallback19)
+            .ToDictionary(HandleHeadMap20, HandleHeadMap21)
             ?? [];
-
-        return Enumerable.Range(1, 8)
-            .Select(headNo =>
+        ST_SCRIPT_TASK_DEFINITION SelectHeadNo22(int headNo)
+        {
+            if (headMap.TryGetValue(headNo, out var head))
             {
-                if (headMap.TryGetValue(headNo, out var head))
-                {
-                    return new ST_SCRIPT_TASK_DEFINITION(
-                        headNo,
-                        head.AutomationNo,
-                        head.TaskNo,
-                        head.ScriptFileName,
-                        head.ProcessPoints.Count);
-                }
-
                 return new ST_SCRIPT_TASK_DEFINITION(
                     headNo,
-                    ReadMainHeadAutomationNo(previewParameters, headNo),
-                    ReadMainHeadAutomationTaskNo(previewParameters, headNo),
-                    $"PROCESS_H{headNo:00}.ascript",
-                    0);
-            })
+                    head.AutomationNo,
+                    head.TaskNo,
+                    head.ScriptFileName,
+                    head.ProcessPoints.Count);
+            }
+
+            return new ST_SCRIPT_TASK_DEFINITION(
+                headNo,
+                ReadMainHeadAutomationNo(previewParameters, headNo),
+                ReadMainHeadAutomationTaskNo(previewParameters, headNo),
+                $"PROCESS_H{headNo:00}.ascript",
+                0);
+        }
+        return Enumerable.Range(1, 8)
+            .Select(SelectHeadNo22)
             .ToArray();
     }
 
@@ -978,15 +1310,40 @@ public sealed class CMenuMain(
 
     private IReadOnlyDictionary<int, int> BuildOpticDeviceMap(EN_EQP_MODULE module)
     {
+        int GroupByDeviceCallback23(ST_INTERFACE_DATA device)
+        {
+            return Math.Clamp(device.Number + 1, 1, 8);
+        }
+
+        int ToDictionaryGroupCallback24(IGrouping<int, ST_INTERFACE_DATA> group)
+        {
+            return group.Key;
+        }
+
+        int ToDictionaryGroupCallback25(IGrouping<int, ST_INTERFACE_DATA> group)
+        {
+            int GetDeviceSortKey1(ST_INTERFACE_DATA device)
+            {
+                return device.Number;
+            }
+
+            string GetDeviceSortKey2(ST_INTERFACE_DATA device)
+            {
+                return device.NickName;
+            }
+
+            return group
+                                .OrderBy(GetDeviceSortKey1)
+                                .ThenBy(GetDeviceSortKey2, StringComparer.OrdinalIgnoreCase)
+                                .First()
+                                .Number;
+        }
+
         return interfaceManager.GetInterfaceList(module)
-            .GroupBy(device => Math.Clamp(device.Number + 1, 1, 8))
+            .GroupBy(GroupByDeviceCallback23)
             .ToDictionary(
-                group => group.Key,
-                group => group
-                    .OrderBy(device => device.Number)
-                    .ThenBy(device => device.NickName, StringComparer.OrdinalIgnoreCase)
-                    .First()
-                    .Number);
+ToDictionaryGroupCallback24,
+ToDictionaryGroupCallback25);
     }
 
     private async Task<ST_OPTIC_LASER_HEAD_PARAMETER> BuildLaserHeadParameter(
@@ -1200,15 +1557,34 @@ public sealed class CMenuMain(
         {
             return [];
         }
+        string HandleHeadMap26(ST_OPTIC_HEAD_PARAMETER head)
+        {
+            return head.Head;
+        }
+
+        ST_OPTIC_HEAD_PARAMETER HandleHeadMap27(ST_OPTIC_HEAD_PARAMETER head)
+        {
+            return head;
+        }
 
         var headMap = headParameters.ToDictionary(
-            head => head.Head,
-            head => head,
+HandleHeadMap26,
+HandleHeadMap27,
             StringComparer.OrdinalIgnoreCase);
+        string SelectHeadNo28(int headNo)
+        {
+            return $"H{headNo:00}";
+        }
+
+        ST_OPTIC_HEAD_PARAMETER SelectHead29(string head)
+        {
+            return headMap[head];
+        }
+
         var heads = CreateOpticHeadOrder()
-            .Select(headNo => $"H{headNo:00}")
+            .Select(SelectHeadNo28)
             .Where(headMap.ContainsKey)
-            .Select(head => headMap[head])
+            .Select(SelectHead29)
             .ToArray();
 
         return heads;
@@ -1236,32 +1612,57 @@ public sealed class CMenuMain(
 
     private static string FormatOpticGroupState(IReadOnlyList<ST_OPTIC_PARAMETER_ITEM> items)
     {
-        if (items.Count > 0 && items.All(item => IsOpticState(item.State, "N/C")))
+        bool CheckItem30(ST_OPTIC_PARAMETER_ITEM item)
+        {
+            return IsOpticState(item.State, "N/C");
+        }
+
+        if (items.Count > 0 && items.All(CheckItem30))
         {
             return "N/C";
         }
+        bool CheckItem31(ST_OPTIC_PARAMETER_ITEM item)
+        {
+            return IsOpticState(item.State, "ERROR", "ALARM", "NG", "OFFLINE");
+        }
 
-        if (items.Any(item => IsOpticState(item.State, "ERROR", "ALARM", "NG", "OFFLINE")))
+        if (items.Any(CheckItem31))
         {
             return "ALARM";
         }
+        bool CheckItem32(ST_OPTIC_PARAMETER_ITEM item)
+        {
+            return IsOpticState(item.State, "N/C");
+        }
 
-        if (items.Any(item => IsOpticState(item.State, "N/C")))
+        if (items.Any(CheckItem32))
         {
             return "N/C";
         }
+        bool CheckItem33(ST_OPTIC_PARAMETER_ITEM item)
+        {
+            return IsOpticState(item.State, "MOVING", "RUNNING");
+        }
 
-        if (items.Any(item => IsOpticState(item.State, "MOVING", "RUNNING")))
+        if (items.Any(CheckItem33))
         {
             return "MOVING";
         }
+        bool CheckItem34(ST_OPTIC_PARAMETER_ITEM item)
+        {
+            return IsOpticState(item.State, "WARN", "WAIT", "STOP");
+        }
 
-        if (items.Any(item => IsOpticState(item.State, "WARN", "WAIT", "STOP")))
+        if (items.Any(CheckItem34))
         {
             return "WARN";
         }
+        bool CheckItem35(ST_OPTIC_PARAMETER_ITEM item)
+        {
+            return IsOpticState(item.State, "SAFE");
+        }
 
-        if (items.Any(item => IsOpticState(item.State, "SAFE")))
+        if (items.Any(CheckItem35))
         {
             return "SAFE";
         }
@@ -1274,7 +1675,12 @@ public sealed class CMenuMain(
         params string[] expectedStates)
     {
         var normalized = state.Trim().ToUpperInvariant();
-        return expectedStates.Any(expected => normalized.Equals(expected, StringComparison.OrdinalIgnoreCase));
+        bool CheckExpected36(string expected)
+        {
+            return normalized.Equals(expected, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return expectedStates.Any(CheckExpected36);
     }
 
     private static string FormatBetState(
@@ -1333,25 +1739,44 @@ public sealed class CMenuMain(
         {
             return defaultValue;
         }
-
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch3()
         {
-            "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-            "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-            _ => defaultValue
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                    return true;
+                case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch3();
     }
 
     private static string FormatAutoStepOptionName(string settingKey)
     {
-        return settingKey.Trim().ToUpperInvariant() switch
+        string EvaluateValueSwitch4()
         {
-            SettingAutoPowerCheckUse => "POWER CHECK",
-            SettingAutoAlignUse => "ALIGN",
-            SettingAutoProcessUse => "PROCESS",
-            SettingAutoInspectionUse => "INSPECTION",
-            _ => settingKey
-        };
+            var switchValue = settingKey.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case SettingAutoPowerCheckUse:
+                    return "POWER CHECK";
+                case SettingAutoAlignUse:
+                    return "ALIGN";
+                case SettingAutoProcessUse:
+                    return "PROCESS";
+                case SettingAutoInspectionUse:
+                    return "INSPECTION";
+                default:
+                    return settingKey;
+            }
+        }
+
+        return EvaluateValueSwitch4();
     }
 
     private (
@@ -1375,9 +1800,24 @@ public sealed class CMenuMain(
         }
 
         var items = BuildInspectionStatusItems(plan);
-        var completedCount = items.Count(item => item.State is "OK" or "NG");
-        var ngCount = items.Count(item => item.State == "NG");
-        var currentHole = items.FirstOrDefault(item => item.State == "Current")?.Hole ?? "-";
+        bool HandleCompletedCount37(ST_INSPECTION_STATUS_ITEM item)
+        {
+            return item.State is "OK" or "NG";
+        }
+
+        var completedCount = items.Count(HandleCompletedCount37);
+        bool HandleNgCount38(ST_INSPECTION_STATUS_ITEM item)
+        {
+            return item.State == "NG";
+        }
+
+        var ngCount = items.Count(HandleNgCount38);
+        bool MatchItem39(ST_INSPECTION_STATUS_ITEM item)
+        {
+            return item.State == "Current";
+        }
+
+        var currentHole = items.FirstOrDefault(MatchItem39)?.Hole ?? "-";
         var summary = $"State {sequenceState} / Total {items.Count:N0} / Done {completedCount:N0} / NG {ngCount:N0} / Current {currentHole}";
 
         return (
@@ -1402,29 +1842,39 @@ public sealed class CMenuMain(
         {
             return [];
         }
-
-        return points
-            .Select((point, index) =>
+        ST_INSPECTION_STATUS_ITEM SelectPoint40(ST_REVIEW_PLAN_POINT point, int index)
+        {
+            var state = ToInspectionStateText(point.State);
+            string EvaluateStateSwitch1()
             {
-                var state = ToInspectionStateText(point.State);
-                var judge = state switch
+                var switchValue = state;
+                switch (switchValue)
                 {
-                    "OK" => "OK",
-                    "NG" => "NG",
-                    "Current" => "RUN",
-                    _ => point.Judge is "OK" or "NG" ? point.Judge : "WAIT"
-                };
+                    case "OK":
+                        return "OK";
+                    case "NG":
+                        return "NG";
+                    case "Current":
+                        return "RUN";
+                    default:
+                        return point.Judge is "OK" or "NG" ? point.Judge : "WAIT";
+                }
+            }
 
-                return new ST_INSPECTION_STATUS_ITEM(
-                    (index + 1).ToString("00", CultureInfo.InvariantCulture),
-                    point.HeadName,
-                    point.CellName,
-                    point.HoleName,
-                    FormatInspectionErrorValue(point.ErrorX, state),
-                    FormatInspectionErrorValue(point.ErrorY, state),
-                    state,
-                    judge);
-            })
+            var judge = EvaluateStateSwitch1();
+
+            return new ST_INSPECTION_STATUS_ITEM(
+                (index + 1).ToString("00", CultureInfo.InvariantCulture),
+                point.HeadName,
+                point.CellName,
+                point.HoleName,
+                FormatInspectionErrorValue(point.ErrorX, state),
+                FormatInspectionErrorValue(point.ErrorY, state),
+                state,
+                judge);
+        }
+        return points
+            .Select(SelectPoint40)
             .ToArray();
     }
 
@@ -1445,11 +1895,31 @@ public sealed class CMenuMain(
     private static IReadOnlyList<ST_REVIEW_PLAN_POINT> OrderByInspectionSequence(
         IEnumerable<ST_REVIEW_PLAN_POINT> points)
     {
+        double GetPointSortKey41(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignY;
+        }
+
+        double GetPointSortKey42(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.DesignX;
+        }
+
+        int GetPointSortKey43(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.CellNo;
+        }
+
+        int GetPointSortKey44(ST_REVIEW_PLAN_POINT point)
+        {
+            return point.HoleNo;
+        }
+
         var source = points
-            .OrderBy(point => point.DesignY)
-            .ThenBy(point => point.DesignX)
-            .ThenBy(point => point.CellNo)
-            .ThenBy(point => point.HoleNo)
+            .OrderBy(GetPointSortKey41)
+            .ThenBy(GetPointSortKey42)
+            .ThenBy(GetPointSortKey43)
+            .ThenBy(GetPointSortKey44)
             .ToArray();
         var rows = new List<List<ST_REVIEW_PLAN_POINT>>();
 
@@ -1469,15 +1939,45 @@ public sealed class CMenuMain(
         for (var rowIndex = 0; rowIndex < rows.Count; rowIndex++)
         {
             var row = rows[rowIndex];
+            double GetPointSortKey45(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.DesignX;
+            }
+
+            int GetPointSortKey46(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.CellNo;
+            }
+
+            int GetPointSortKey47(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleNo;
+            }
+
+            double GetPointSortKey48(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.DesignX;
+            }
+
+            int GetPointSortKey49(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.CellNo;
+            }
+
+            int GetPointSortKey50(ST_REVIEW_PLAN_POINT point)
+            {
+                return point.HoleNo;
+            }
+
             var orderedRow = rowIndex % 2 == 0
                 ? row
-                    .OrderBy(point => point.DesignX)
-                    .ThenBy(point => point.CellNo)
-                    .ThenBy(point => point.HoleNo)
+                    .OrderBy(GetPointSortKey45)
+                    .ThenBy(GetPointSortKey46)
+                    .ThenBy(GetPointSortKey47)
                 : row
-                    .OrderByDescending(point => point.DesignX)
-                    .ThenBy(point => point.CellNo)
-                    .ThenBy(point => point.HoleNo);
+                    .OrderByDescending(GetPointSortKey48)
+                    .ThenBy(GetPointSortKey49)
+                    .ThenBy(GetPointSortKey50);
 
             orderedPoints.AddRange(orderedRow);
         }
@@ -1487,14 +1987,25 @@ public sealed class CMenuMain(
 
     private static string ToInspectionStateText(EN_REVIEW_POINT_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch5()
         {
-            EN_REVIEW_POINT_STATE.Current => "Current",
-            EN_REVIEW_POINT_STATE.Ok => "OK",
-            EN_REVIEW_POINT_STATE.Ng => "NG",
-            EN_REVIEW_POINT_STATE.Skip => "Skip",
-            _ => "Ready"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Current:
+                    return "Current";
+                case EN_REVIEW_POINT_STATE.Ok:
+                    return "OK";
+                case EN_REVIEW_POINT_STATE.Ng:
+                    return "NG";
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return "Skip";
+                default:
+                    return "Ready";
+            }
+        }
+
+        return EvaluateStateSwitch5();
     }
 
     private static ST_INTERLOCK_ITEM ToInterlockItem(Drilling.Common.InterLock.ST_INTERLOCK_ITEM item)
@@ -1508,13 +2019,23 @@ public sealed class CMenuMain(
 
     private static string FormatInterLockState(Drilling.Common.InterLock.ST_INTERLOCK_ITEM item)
     {
-        return item.Level switch
+        string EvaluateLevelSwitch6()
         {
-            EN_INTERLOCK_LEVEL.Ok => item.State,
-            EN_INTERLOCK_LEVEL.Warn => "WARN",
-            EN_INTERLOCK_LEVEL.Error => "ERROR",
-            _ => item.State
-        };
+            var switchValue = item.Level;
+            switch (switchValue)
+            {
+                case EN_INTERLOCK_LEVEL.Ok:
+                    return item.State;
+                case EN_INTERLOCK_LEVEL.Warn:
+                    return "WARN";
+                case EN_INTERLOCK_LEVEL.Error:
+                    return "ERROR";
+                default:
+                    return item.State;
+            }
+        }
+
+        return EvaluateLevelSwitch6();
     }
 
     private static string FormatProcessResult(ST_STATION_PROCESS_STATUS snapshot)
@@ -1558,12 +2079,17 @@ public sealed class CMenuMain(
         var glassHeight = ReadDoubleAny(parameters, 0.0, "GLASS_SIZE_Y");
         var akMarginX = ReadDoubleAny(parameters, 55.0, "AK_MARGIN_X");
         var akMarginY = ReadDoubleAny(parameters, 45.0, "AK_MARGIN_Y");
+        double? HandleDistortionKeys51(string key)
+        {
+            return ReadNullableDoubleAny(parameters, key);
+        }
+
         var distortionKeys = CCellPreviewDrawing.CreateDistortionKeyPreviews(
             glassWidth,
             glassHeight,
             akMarginX,
             akMarginY,
-            key => ReadNullableDoubleAny(parameters, key));
+HandleDistortionKeys51);
         if (glassWidth <= 0 || glassHeight <= 0)
         {
             return new ST_MAIN_RECIPE_PREVIEW(
@@ -1582,10 +2108,30 @@ public sealed class CMenuMain(
         var outsideGeometry = new StreamGeometry();
         var outsidePixels = new HashSet<long>();
         var unassignedPixels = new HashSet<long>();
+        int HandleHeadPixels52(int headNo)
+        {
+            return headNo;
+        }
+
+        Dictionary<long, double> HandleHeadPixels53(int _)
+        {
+            return new Dictionary<long, double>();
+        }
+
         var headPixels = Enumerable.Range(1, headCount)
-            .ToDictionary(headNo => headNo, _ => new Dictionary<long, double>());
+            .ToDictionary(HandleHeadPixels52, HandleHeadPixels53);
+        int HandleHeadPointCounts54(int headNo)
+        {
+            return headNo;
+        }
+
+        long HandleHeadPointCounts55(int _)
+        {
+            return 0L;
+        }
+
         var headPointCounts = Enumerable.Range(1, headCount)
-            .ToDictionary(headNo => headNo, _ => 0L);
+            .ToDictionary(HandleHeadPointCounts54, HandleHeadPointCounts55);
         var labels = new List<ST_CELL_PREVIEW_LABEL>();
         long unassignedPointCount = 0;
         long totalPoints = 0;
@@ -1757,32 +2303,56 @@ public sealed class CMenuMain(
         {
             return 0;
         }
+        ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE? SelectHeadNo56(int headNo)
+        {
+            var range = GetPreviewHeadRange(headNo, headLayout, akMarginX);
+            if (x < range.StartX || x > range.EndX)
+            {
+                return (ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE?)null;
+            }
+
+            return new ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE(
+                headNo,
+                Math.Abs(x - range.CenterX));
+        }
+        bool FilterCandidate57(ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE? candidate)
+        {
+            return candidate.HasValue;
+        }
+
+        ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE SelectCandidate58(ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE? candidate)
+        {
+            return candidate!.Value;
+        }
 
         var candidates = Enumerable.Range(1, headCount)
-            .Select(headNo =>
-            {
-                var range = GetPreviewHeadRange(headNo, headLayout, akMarginX);
-                if (x < range.StartX || x > range.EndX)
-                {
-                    return (ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE?)null;
-                }
-
-                return new ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE(
-                    headNo,
-                    Math.Abs(x - range.CenterX));
-            })
-            .Where(candidate => candidate.HasValue)
-            .Select(candidate => candidate!.Value)
+            .Select(SelectHeadNo56)
+            .Where(FilterCandidate57)
+            .Select(SelectCandidate58)
             .ToArray();
+        double GetCandidateSortKey59(ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE candidate)
+        {
+            return candidate.Distance;
+        }
+
+        long GetCandidateSortKey60(ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE candidate)
+        {
+            return assignedHeadCounts.TryGetValue(candidate.HeadNo, out var count)
+                                ? count
+                                : 0;
+        }
+
+        int GetCandidateSortKey61(ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE candidate)
+        {
+            return candidate.HeadNo;
+        }
 
         return candidates.Length == 0
             ? 0
             : candidates
-                .OrderBy(candidate => candidate.Distance)
-                .ThenBy(candidate => assignedHeadCounts.TryGetValue(candidate.HeadNo, out var count)
-                    ? count
-                    : 0)
-                .ThenBy(candidate => candidate.HeadNo)
+                .OrderBy(GetCandidateSortKey59)
+                .ThenBy(GetCandidateSortKey60)
+                .ThenBy(GetCandidateSortKey61)
                 .First()
                 .HeadNo;
     }
@@ -1812,12 +2382,13 @@ public sealed class CMenuMain(
             new Point(-padding, -padding), new Point(maxX, -padding),
             new Point(maxX, maxY), new Point(-padding, maxY)
         };
-        var corners = localCorners.Select(local =>
+        Point SelectLocal62(Point local)
         {
             var x = firstX + (local.X * cos) - (local.Y * sin);
             var y = firstY + (local.X * sin) + (local.Y * cos);
             return new Point(frame.CanvasLeft + (x * scale), frame.CanvasTop + (y * scale));
-        }).ToArray();
+        }
+        var corners = localCorners.Select(SelectLocal62).ToArray();
         var geometry = new StreamGeometry();
         using (var context = geometry.Open())
         {
@@ -1922,15 +2493,25 @@ public sealed class CMenuMain(
         {
             recipeId = snapshot.ProcessPlan?.RecipeId ?? "DRILL_A01";
         }
+        bool MatchItem63(ST_RECIPE_DATA item)
+        {
+            return item.Id.Equals(recipeId, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var recipe = recipes.FirstOrDefault(item =>
-                item.Id.Equals(recipeId, StringComparison.OrdinalIgnoreCase))
-            ?? recipes.FirstOrDefault(item =>
-                item.Id.Equals("DRILL_A01", StringComparison.OrdinalIgnoreCase))
+        bool MatchItem64(ST_RECIPE_DATA item)
+        {
+            return item.Id.Equals("DRILL_A01", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var recipe = recipes.FirstOrDefault(MatchItem63)
+            ?? recipes.FirstOrDefault(MatchItem64)
             ?? recipes[0];
+        bool FilterParameter65(ST_RECIPE_PARAM parameter)
+        {
+            return !string.IsNullOrWhiteSpace(parameter.Key);
+        }
 
-        foreach (var parameter in recipe.Parameters.Where(parameter =>
-            !string.IsNullOrWhiteSpace(parameter.Key)))
+        foreach (var parameter in recipe.Parameters.Where(FilterParameter65))
         {
             parameters[parameter.Key] = parameter.Value;
         }
@@ -1941,18 +2522,19 @@ public sealed class CMenuMain(
     private async Task<ST_PREVIEW_HEAD_LAYOUT> LoadPreviewHeadLayout(CancellationToken cancellationToken)
     {
         var settings = await settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
+        ST_PREVIEW_HEAD_FIELD SelectHeadNo66(int headNo)
+        {
+            var position = ReadHeadPositionX(settings, headNo);
+            const double fallbackWidthX = 110.0;
+            var widthX = ReadSettingDouble(
+                settings,
+                fallbackWidthX,
+                $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
+                $"H{headNo:00}_HEAD_FIELD_WIDTH_X");
+            return new ST_PREVIEW_HEAD_FIELD(headNo, position, widthX > 0.0 ? widthX : fallbackWidthX);
+        }
         var fields = Enumerable.Range(1, 8)
-            .Select(headNo =>
-            {
-                var position = ReadHeadPositionX(settings, headNo);
-                const double fallbackWidthX = 110.0;
-                var widthX = ReadSettingDouble(
-                    settings,
-                    fallbackWidthX,
-                    $"H{headNo:00}_SCAN_FIELD_WIDTH_X",
-                    $"H{headNo:00}_HEAD_FIELD_WIDTH_X");
-                return new ST_PREVIEW_HEAD_FIELD(headNo, position, widthX > 0.0 ? widthX : fallbackWidthX);
-            })
+            .Select(SelectHeadNo66)
             .ToArray();
 
         return new ST_PREVIEW_HEAD_LAYOUT(fields);
@@ -1982,9 +2564,13 @@ public sealed class CMenuMain(
     {
         foreach (var setting in settings)
         {
-            if (!keys.Any(key =>
-                    key.Equals(setting.Key, StringComparison.OrdinalIgnoreCase) ||
-                    key.Equals(setting.Name, StringComparison.OrdinalIgnoreCase)))
+            bool CheckKey67(string key)
+            {
+                return key.Equals(setting.Key, StringComparison.OrdinalIgnoreCase) ||
+                                    key.Equals(setting.Name, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!keys.Any(CheckKey67))
             {
                 continue;
             }
@@ -2114,20 +2700,20 @@ public sealed class CMenuMain(
         IReadOnlyDictionary<string, string> parameters)
     {
         const int headCount = 8;
+        ST_HEAD_PARAMETER SelectHeadNo68(int headNo)
+        {
+            var prefix = $"H{headNo:00}";
 
+            return new ST_HEAD_PARAMETER(
+                prefix,
+                ReadDoubleAny(parameters, 1.2, $"{prefix}_LASER_POWER"),
+                ReadDoubleAny(parameters, 20.0, $"{prefix}_LASER_FREQUENCY"),
+                ReadIntAny(parameters, 10, $"{prefix}_SHOT_COUNT"),
+                ReadDoubleAny(parameters, 0.0, $"{prefix}_SCANNER_JUMP_SPEED"),
+                ReadDoubleAny(parameters, 0.0, $"{prefix}_DOE_Z_POSITION"));
+        }
         return Enumerable.Range(1, headCount)
-            .Select(headNo =>
-            {
-                var prefix = $"H{headNo:00}";
-
-                return new ST_HEAD_PARAMETER(
-                    prefix,
-                    ReadDoubleAny(parameters, 1.2, $"{prefix}_LASER_POWER"),
-                    ReadDoubleAny(parameters, 20.0, $"{prefix}_LASER_FREQUENCY"),
-                    ReadIntAny(parameters, 10, $"{prefix}_SHOT_COUNT"),
-                    ReadDoubleAny(parameters, 0.0, $"{prefix}_SCANNER_JUMP_SPEED"),
-                    ReadDoubleAny(parameters, 0.0, $"{prefix}_DOE_Z_POSITION"));
-            })
+            .Select(SelectHeadNo68)
             .ToArray();
     }
 }
@@ -2149,7 +2735,12 @@ internal sealed record ST_PREVIEW_HEAD_LAYOUT(
     public ST_PREVIEW_HEAD_FIELD GetField(int headNo)
     {
         var normalizedHeadNo = Math.Clamp(headNo, 1, 8);
-        return Fields.First(field => field.HeadNo == normalizedHeadNo);
+        bool MatchField69(ST_PREVIEW_HEAD_FIELD field)
+        {
+            return field.HeadNo == normalizedHeadNo;
+        }
+
+        return Fields.First(MatchField69);
     }
 }
 
@@ -2170,7 +2761,13 @@ public sealed record ST_HEAD_PREVIEW(
     string Status,
     bool IsSelected)
 {
-    public Brush StatusBrush => CStatusBrush.ForHeadStatus(Status);
+    public Brush StatusBrush
+    {
+        get
+        {
+            return CStatusBrush.ForHeadStatus(Status);
+        }
+    }
 }
 
 public sealed record ST_MAIN_PROCESS_SEQUENCE_ITEM(
@@ -2183,17 +2780,53 @@ public sealed record ST_MAIN_PROCESS_SEQUENCE_ITEM(
     bool IsOptionOn,
     bool CanToggleOption)
 {
-    public string OptionText => IsOptional ? IsOptionOn ? "ON" : "OFF" : "";
+    public string OptionText
+    {
+        get
+        {
+            return IsOptional ? IsOptionOn ? "ON" : "OFF" : "";
+        }
+    }
 
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 
-    public Brush OptionBrush => IsOptionOn ? CStatusBrush.CommandGreen : CStatusBrush.CommandDark;
+    public Brush OptionBrush
+    {
+        get
+        {
+            return IsOptionOn ? CStatusBrush.CommandGreen : CStatusBrush.CommandDark;
+        }
+    }
 
-    public Brush OptionBorderBrush => IsOptionOn ? CStatusBrush.CommandGreenBorder : CStatusBrush.CommandDarkBorder;
+    public Brush OptionBorderBrush
+    {
+        get
+        {
+            return IsOptionOn ? CStatusBrush.CommandGreenBorder : CStatusBrush.CommandDarkBorder;
+        }
+    }
 
-    public Visibility OptionVisibility => IsOptional ? Visibility.Visible : Visibility.Hidden;
+    public Visibility OptionVisibility
+    {
+        get
+        {
+            return IsOptional ? Visibility.Visible : Visibility.Hidden;
+        }
+    }
 
-    public double OptionOpacity => CanToggleOption ? 1.0 : 0.45;
+    public double OptionOpacity
+    {
+        get
+        {
+            return CanToggleOption ? 1.0 : 0.45;
+        }
+    }
 }
 
 public sealed record ST_HEAD_ASSIGNMENT_AREA(
@@ -2212,11 +2845,29 @@ public sealed record ST_HEAD_ASSIGNMENT_AREA(
     Thickness BorderThicknessValue,
     double Opacity)
 {
-    public double LabelCanvasTop => CanvasTop - 24.0;
+    public double LabelCanvasTop
+    {
+        get
+        {
+            return CanvasTop - 24.0;
+        }
+    }
 
-    public Visibility RangeVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RangeVisibility
+    {
+        get
+        {
+            return IsSelected ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
 
-    public string DisplayLabel => $"H{HeadNo:00}";
+    public string DisplayLabel
+    {
+        get
+        {
+            return $"H{HeadNo:00}";
+        }
+    }
 }
 
 internal readonly record struct ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE(
@@ -2251,26 +2902,67 @@ public sealed record ST_SCRIPT_TASK_STATUS_ITEM(
     string Detail,
     int Points)
 {
-    public string ControllerTaskText => $"{Automation} / {TaskNo}";
+    public string ControllerTaskText
+    {
+        get
+        {
+            return $"{Automation} / {TaskNo}";
+        }
+    }
 
-    public string FileText => string.IsNullOrWhiteSpace(File) ? "-" : File;
+    public string FileText
+    {
+        get
+        {
+            return string.IsNullOrWhiteSpace(File) ? "-" : File;
+        }
+    }
 
-    public string DetailText => string.IsNullOrWhiteSpace(Detail) ? "-" : Detail;
+    public string DetailText
+    {
+        get
+        {
+            return string.IsNullOrWhiteSpace(Detail) ? "-" : Detail;
+        }
+    }
 
-    public string PointText => $"{Points.ToString("N0", CultureInfo.InvariantCulture)}P";
+    public string PointText
+    {
+        get
+        {
+            return $"{Points.ToString("N0", CultureInfo.InvariantCulture)}P";
+        }
+    }
 
-    public Brush StateBrush => TaskStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return TaskStateBrush(State);
+        }
+    }
 
     private static Brush TaskStateBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch7()
         {
-            "RUNNING" => CStatusBrush.Wait,
-            "OK" or "DONE" or "READY" => CStatusBrush.Online,
-            "IDLE" or "SIM" or "UNKNOWN" => CStatusBrush.Muted,
-            "STOP" or "STOPPED" or "ERROR" or "FAULT" or "OFFLINE" => CStatusBrush.Offline,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "RUNNING":
+                    return CStatusBrush.Wait;
+                case "OK" or "DONE" or "READY":
+                    return CStatusBrush.Online;
+                case "IDLE" or "SIM" or "UNKNOWN":
+                    return CStatusBrush.Muted;
+                case "STOP" or "STOPPED" or "ERROR" or "FAULT" or "OFFLINE":
+                    return CStatusBrush.Offline;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch7();
     }
 }
 
@@ -2284,9 +2976,21 @@ public sealed record ST_INSPECTION_STATUS_ITEM(
     string State,
     string Judge)
 {
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 
-    public Brush JudgeBrush => CStatusBrush.ForDisplayState(Judge);
+    public Brush JudgeBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Judge);
+        }
+    }
 }
 
 public sealed record ST_INTERLOCK_ITEM(
@@ -2300,11 +3004,29 @@ public sealed record ST_MAIN_PARAMETER_TAB_ITEM(
     string Name,
     bool IsSelected)
 {
-    public Brush BackgroundBrush => IsSelected ? CStatusBrush.CommandBlue : CStatusBrush.CommandDark;
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.CommandBlue : CStatusBrush.CommandDark;
+        }
+    }
 
-    public Brush BorderBrush => IsSelected ? CStatusBrush.CommandBlueBorder : CStatusBrush.CommandDarkBorder;
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.CommandBlueBorder : CStatusBrush.CommandDarkBorder;
+        }
+    }
 
-    public Brush TextBrush => IsSelected ? CStatusBrush.PrimaryText : CStatusBrush.Muted;
+    public Brush TextBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.PrimaryText : CStatusBrush.Muted;
+        }
+    }
 }
 
 public sealed record ST_HEAD_PARAMETER(
@@ -2331,31 +3053,109 @@ public sealed record ST_OPTIC_HEAD_PARAMETER(
     string BetDivergenceTargetStep,
     string BetState)
 {
-    public string LaserPowerText => $"P {LaserPower}";
+    public string LaserPowerText
+    {
+        get
+        {
+            return $"P {LaserPower}";
+        }
+    }
 
-    public string LaserGateText => $"G {LaserGate}";
+    public string LaserGateText
+    {
+        get
+        {
+            return $"G {LaserGate}";
+        }
+    }
 
-    public string LaserShutterText => $"S {LaserShutter}";
+    public string LaserShutterText
+    {
+        get
+        {
+            return $"S {LaserShutter}";
+        }
+    }
 
-    public string AttenuatorText => $"{AttenuatorCurrent} / {AttenuatorTarget}";
+    public string AttenuatorText
+    {
+        get
+        {
+            return $"{AttenuatorCurrent} / {AttenuatorTarget}";
+        }
+    }
 
-    public string BetMagnificationText => $"MAG {BetMagnificationCurrentStep} / {BetMagnificationTargetStep}";
+    public string BetMagnificationText
+    {
+        get
+        {
+            return $"MAG {BetMagnificationCurrentStep} / {BetMagnificationTargetStep}";
+        }
+    }
 
-    public string BetDivergenceText => $"DIV {BetDivergenceCurrentStep} / {BetDivergenceTargetStep}";
+    public string BetDivergenceText
+    {
+        get
+        {
+            return $"DIV {BetDivergenceCurrentStep} / {BetDivergenceTargetStep}";
+        }
+    }
 
-    public Brush StateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+        }
+    }
 
-    public Brush LaserStateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserState);
+    public Brush LaserStateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserState);
+        }
+    }
 
-    public Brush LaserPowerBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserPower);
+    public Brush LaserPowerBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserPower);
+        }
+    }
 
-    public Brush LaserGateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserGate);
+    public Brush LaserGateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserGate);
+        }
+    }
 
-    public Brush LaserShutterBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserShutter);
+    public Brush LaserShutterBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserShutter);
+        }
+    }
 
-    public Brush AttenuatorStateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(AttenuatorState);
+    public Brush AttenuatorStateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(AttenuatorState);
+        }
+    }
 
-    public Brush BetStateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(BetState);
+    public Brush BetStateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(BetState);
+        }
+    }
 }
 
 public sealed record ST_OPTIC_PARAMETER_GROUP(
@@ -2363,7 +3163,13 @@ public sealed record ST_OPTIC_PARAMETER_GROUP(
     string State,
     IReadOnlyList<ST_OPTIC_PARAMETER_ITEM> Items)
 {
-    public Brush StateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+        }
+    }
 }
 
 public sealed record ST_OPTIC_PARAMETER_ITEM(
@@ -2372,18 +3178,35 @@ public sealed record ST_OPTIC_PARAMETER_ITEM(
     string RecipeTarget,
     string State)
 {
-    public Brush StateBrush => OpticStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return OpticStateBrush(State);
+        }
+    }
 
     public static Brush OpticStateBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch8()
         {
-            "OK" or "ON" or "OPEN" or "RUN" or "READY" or "SAFE" or "CLOSE" or "DONE" => CStatusBrush.Online,
-            "MOVING" or "WARN" or "WAIT" or "STOP" => CStatusBrush.Wait,
-            "ALARM" or "ERROR" or "NG" or "OFFLINE" => CStatusBrush.Offline,
-            "N/C" => CStatusBrush.Muted,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "OK" or "ON" or "OPEN" or "RUN" or "READY" or "SAFE" or "CLOSE" or "DONE":
+                    return CStatusBrush.Online;
+                case "MOVING" or "WARN" or "WAIT" or "STOP":
+                    return CStatusBrush.Wait;
+                case "ALARM" or "ERROR" or "NG" or "OFFLINE":
+                    return CStatusBrush.Offline;
+                case "N/C":
+                    return CStatusBrush.Muted;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch8();
     }
 }
 
@@ -2417,20 +3240,48 @@ public sealed record ST_SCANNER_AXIS_STATUS_ITEM(
     string Error,
     string Detail)
 {
-    public Brush AbleBrush => ScannerStateBrush(Able);
+    public Brush AbleBrush
+    {
+        get
+        {
+            return ScannerStateBrush(Able);
+        }
+    }
 
-    public Brush HomeBrush => ScannerStateBrush(Home);
+    public Brush HomeBrush
+    {
+        get
+        {
+            return ScannerStateBrush(Home);
+        }
+    }
 
-    public Brush ErrorBrush => ScannerStateBrush(Error);
+    public Brush ErrorBrush
+    {
+        get
+        {
+            return ScannerStateBrush(Error);
+        }
+    }
 
     private static Brush ScannerStateBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch9()
         {
-            "ABLE" or "HOME" or "OK" => CStatusBrush.Online,
-            "DISABLE" or "WAIT" => CStatusBrush.Wait,
-            "ERROR" or "OFFLINE" => CStatusBrush.Offline,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "ABLE" or "HOME" or "OK":
+                    return CStatusBrush.Online;
+                case "DISABLE" or "WAIT":
+                    return CStatusBrush.Wait;
+                case "ERROR" or "OFFLINE":
+                    return CStatusBrush.Offline;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch9();
     }
 }

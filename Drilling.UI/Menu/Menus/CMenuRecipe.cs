@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO;
-using System.ComponentModel;
 using System.Windows;
 using Drilling.UI.Popup;
 using Drilling.Common.Managers;
@@ -15,7 +14,7 @@ using System.Windows.Media;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuRecipe : CBindingBase, IMenu
+public sealed class CMenuRecipe : CMenuBase
 {
     private static readonly string[] CellParameterKeys =
     [
@@ -52,8 +51,8 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         "DISTORTION_KEY6_Y"
     ];
 
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _selectedRecipeIdSetter;
     private readonly Func<string> _selectedCategoryProvider;
@@ -73,8 +72,8 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     private readonly Func<Task> _refreshCurrentScreen;
 
     public CMenuRecipe(
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> selectedRecipeIdSetter,
         Func<string> selectedCategoryProvider,
@@ -97,25 +96,110 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         _refreshShellStatus = refreshShellStatus;
         _refreshCurrentScreen = refreshCurrentScreen;
 
-        SelectCommand = new CButtonCommand(async parameter => await Select(parameter));
-        SelectCategoryCommand = new CButtonCommand(async parameter => await SelectCategory(parameter));
-        SelectGroupCommand = new CButtonCommand(async parameter => await SelectGroup(parameter));
-        SelectCellCommand = new CButtonCommand(async parameter => await SelectCell(parameter));
-        SelectPreviewCellCommand = new CButtonCommand(async parameter => await SelectPreviewCell(parameter));
-        BackToCellPreviewCommand = new CButtonCommand(_ => SetCellDetailVisible(false));
+        async void HandleSelectCommand1(object? parameter)
+        {
+            await Select(parameter);
+        }
+
+        SelectCommand = new CButtonCommand(HandleSelectCommand1);
+
+        async void HandleSelectCategoryCommand2(object? parameter)
+        {
+            await SelectCategory(parameter);
+        }
+
+        SelectCategoryCommand = new CButtonCommand(HandleSelectCategoryCommand2);
+
+        async void HandleSelectGroupCommand3(object? parameter)
+        {
+            await SelectGroup(parameter);
+        }
+
+        SelectGroupCommand = new CButtonCommand(HandleSelectGroupCommand3);
+
+        async void HandleSelectCellCommand4(object? parameter)
+        {
+            await SelectCell(parameter);
+        }
+
+        SelectCellCommand = new CButtonCommand(HandleSelectCellCommand4);
+
+        async void HandleSelectPreviewCellCommand5(object? parameter)
+        {
+            await SelectPreviewCell(parameter);
+        }
+
+        SelectPreviewCellCommand = new CButtonCommand(HandleSelectPreviewCellCommand5);
+        void HandleBackToCellPreviewCommand6(object? _)
+        {
+            SetCellDetailVisible(false);
+        }
+
+        BackToCellPreviewCommand = new CButtonCommand(HandleBackToCellPreviewCommand6);
         SelectHoleCommand = new CButtonCommand(SelectHole);
-        SelectAllCellsCommand = new CButtonCommand(_ => SetAllOverviewCellsSelected(true));
-        ClearCellSelectionCommand = new CButtonCommand(_ => SetAllOverviewCellsSelected(false));
+        void HandleSelectAllCellsCommand7(object? _)
+        {
+            SetAllOverviewCellsSelected(true);
+        }
+
+        SelectAllCellsCommand = new CButtonCommand(HandleSelectAllCellsCommand7);
+        void HandleClearCellSelectionCommand8(object? _)
+        {
+            SetAllOverviewCellsSelected(false);
+        }
+
+        ClearCellSelectionCommand = new CButtonCommand(HandleClearCellSelectionCommand8);
+
+        async void HandleApplyPointPatternCommand9(object? _)
+        {
+            await ApplyPointPatternToSelectedCells();
+        }
+
+        bool HandleApplyPointPatternCommand10(object? _)
+        {
+            return CanApplyPointPattern;
+        }
+
         ApplyPointPatternCommand = new CButtonCommand(
-            async _ => await ApplyPointPatternToSelectedCells(),
-            _ => CanApplyPointPattern);
-        CreateCommand = new CButtonCommand(async _ => await Create());
-        ModifyCommand = new CButtonCommand(async _ => await Modify());
-        SaveCommand = new CButtonCommand(async _ => await Save());
-        DeleteCommand = new CButtonCommand(async _ => await Delete());
+HandleApplyPointPatternCommand9,
+HandleApplyPointPatternCommand10);
+
+        async void HandleCreateCommand11(object? _)
+        {
+            await Create();
+        }
+
+        CreateCommand = new CButtonCommand(HandleCreateCommand11);
+
+        async void HandleModifyCommand12(object? _)
+        {
+            await Modify();
+        }
+
+        ModifyCommand = new CButtonCommand(HandleModifyCommand12);
+
+        async void HandleSaveCommand13(object? _)
+        {
+            await Save();
+        }
+
+        SaveCommand = new CButtonCommand(HandleSaveCommand13);
+
+        async void HandleDeleteCommand14(object? _)
+        {
+            await Delete();
+        }
+
+        DeleteCommand = new CButtonCommand(HandleDeleteCommand14);
     }
 
-    public EN_MENU Menu => EN_MENU.Recipe;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Recipe;
+        }
+    }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> RecipeList { get; private set; } = [];
 
@@ -143,7 +227,11 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     public ST_RECIPE_HOLE_ROW? SelectedHole
     {
-        get => _selectedHole;
+        get
+        {
+            return _selectedHole;
+        }
+
         set
         {
             if (!SetProperty(ref _selectedHole, value))
@@ -182,8 +270,21 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     public bool IsHeadCategory { get; private set; }
 
     private bool _isCellDetailVisible;
-    public bool IsCellDetailVisible => _isCellDetailVisible;
-    public bool IsCellPreviewVisible => !_isCellDetailVisible;
+    public bool IsCellDetailVisible
+    {
+        get
+        {
+            return _isCellDetailVisible;
+        }
+    }
+
+    public bool IsCellPreviewVisible
+    {
+        get
+        {
+            return !_isCellDetailVisible;
+        }
+    }
 
     public ImageSource? CellPreviewImage { get; private set; }
 
@@ -195,18 +296,50 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     public string HeadPreviewSummaryText { get; private set; } = "";
 
-    public string CurrentCellIndicatorText => $"CURRENT: Cell{_selectedCellNo}";
+    public string CurrentCellIndicatorText
+    {
+        get
+        {
+            return $"CURRENT: Cell{_selectedCellNo}";
+        }
+    }
 
-    public string SelectedCellHoleTitle =>
-        $"SELECTED CELL HOLES - Cell{_selectedCellNo} / {HoleRows.Count:N0} HOLES";
+    public string SelectedCellHoleTitle
+    {
+        get
+        {
+            return $"SELECTED CELL HOLES - Cell{_selectedCellNo} / {HoleRows.Count:N0} HOLES";
+        }
+    }
 
-    public string SelectedHoleIndicatorText =>
-        SelectedHole is null ? "NO HOLE SELECTED" : SelectedHole.MatrixPointName;
+    public string SelectedHoleIndicatorText
+    {
+        get
+        {
+            return SelectedHole is null ? "NO HOLE SELECTED" : SelectedHole.MatrixPointName;
+        }
+    }
 
-    private int PointPatternTargetCount =>
-        CellOverviewRows.Count(row => row.CellNo != _selectedCellNo && row.IsSelected);
+    private int PointPatternTargetCount
+    {
+        get
+        {
+            bool CountRowCallback15(ST_RECIPE_CELL_OVERVIEW_ROW row)
+            {
+                return row.CellNo != _selectedCellNo && row.IsSelected;
+            }
 
-    private bool CanApplyPointPattern => PointPatternTargetCount > 0;
+            return CellOverviewRows.Count(CountRowCallback15);
+        }
+    }
+
+    private bool CanApplyPointPattern
+    {
+        get
+        {
+            return PointPatternTargetCount > 0;
+        }
+    }
 
     public string SelectedGroup { get; private set; } = "ALL";
 
@@ -246,7 +379,7 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     public CButtonCommand DeleteCommand { get; }
 
-    public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public async override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         var recipes = await _recipeManager.LoadRecipes(cancellationToken);
         var optionSettings = await _settingManager.LoadSection(EN_SETTING_TAB.Option, cancellationToken);
@@ -262,27 +395,59 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         var cellCount = GetCellCount(allManagedItems);
         var cells = BuildCells(allManagedItems, cellCount);
         _selectedCellNo = Math.Clamp(_selectedCellNo, 1, cellCount);
-        _selectedOverviewCells.RemoveWhere(cellNo => cellNo < 1 || cellNo > cellCount);
+        bool RemoveWhereCellNoCallback16(int cellNo)
+        {
+            return cellNo < 1 || cellNo > cellCount;
+        }
+
+        _selectedOverviewCells.RemoveWhere(RemoveWhereCellNoCallback16);
+        bool MatchCell17(ST_RECIPE_CELL cell)
+        {
+            return cell.CellNo == _selectedCellNo;
+        }
+
+        bool FilterItem18(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase) &&
+                                    !IsMovedToCellTab(item);
+        }
+
         var categoryFilteredItems = isCellCategory
-            ? cells.First(cell => cell.CellNo == _selectedCellNo).Items
+            ? cells.First(MatchCell17).Items
             : string.IsNullOrWhiteSpace(selectedCategory)
                 ? []
                 : allManagedItems
-                    .Where(item =>
-                        item.Category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase) &&
-                        !IsMovedToCellTab(item))
+                    .Where(FilterItem18)
                     .ToArray();
         var groups = BuildGroups(categoryFilteredItems);
         var selectedGroup = isCellCategory ? "ALL" : NormalizeGroup(_selectedGroup, groups);
+        bool FilterItem19(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.SourceGroup.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase);
+        }
+
         var filteredManagedItems = isCellCategory || selectedGroup == "ALL"
             ? categoryFilteredItems
-            : categoryFilteredItems.Where(item => item.SourceGroup.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase)).ToArray();
+            : categoryFilteredItems.Where(FilterItem19).ToArray();
+        ST_DISPLAY_ITEM SelectItem20(ST_RECIPE_DATA item)
+        {
+            return new ST_DISPLAY_ITEM(item.Id, item.Name);
+        }
+
+        ST_DISPLAY_ITEM SelectItem21(ST_RECIPE_PARAM item)
+        {
+            return new ST_DISPLAY_ITEM(item.Name, item.Value, $"{item.Unit} / {item.Range}");
+        }
+
+        ST_DISPLAY_ITEM SelectItem22(ST_RECIPE_HISTORY item)
+        {
+            return new ST_DISPLAY_ITEM(item.ChangedAt.ToString("yyyy-MM-dd HH:mm"), item.ItemName, $"{item.OldValue} -> {item.NewValue} / {item.OperatorId}");
+        }
+
         Apply(
-            recipes.Select(item => new ST_DISPLAY_ITEM(item.Id, item.Name)).ToArray(),
-            recipe?.Parameters.Select(item =>
-                new ST_DISPLAY_ITEM(item.Name, item.Value, $"{item.Unit} / {item.Range}")).ToArray() ?? [],
-            recipe?.History.Select(item =>
-                new ST_DISPLAY_ITEM(item.ChangedAt.ToString("yyyy-MM-dd HH:mm"), item.ItemName, $"{item.OldValue} -> {item.NewValue} / {item.OperatorId}")).ToArray() ?? [],
+            recipes.Select(SelectItem20).ToArray(),
+            recipe?.Parameters.Select(SelectItem21).ToArray() ?? [],
+            recipe?.History.Select(SelectItem22).ToArray() ?? [],
             BuildActions(),
             selectedRecipeFile,
             BuildRecipeFiles(recipes, recipe),
@@ -303,11 +468,25 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             filteredManagedItems,
             BuildChangeHistory(recipe),
             BuildStateRows(recipe, selectedRecipeFile, allManagedItems));
+        bool MatchCell23(ST_RECIPE_CELL cell)
+        {
+            return cell.CellNo == _selectedCellNo;
+        }
+
         UpdateHoleRows(isCellCategory
             ? BuildHoleRows(
                 allManagedItems,
-                cells.First(cell => cell.CellNo == _selectedCellNo))
+                cells.First(MatchCell23))
             : []);
+        ST_DISPLAY_ITEM SelectItem24(ST_RECIPE_PARAM item)
+        {
+            return new ST_DISPLAY_ITEM(item.Name, $"{item.Value} {item.Unit}".Trim(), item.Range);
+        }
+
+        ST_DISPLAY_ITEM SelectItem25(ST_RECIPE_HISTORY item)
+        {
+            return new ST_DISPLAY_ITEM(item.ItemName, $"{item.OldValue} -> {item.NewValue}", item.OperatorId);
+        }
 
         return new CScreenViewModel(
             EN_MENU.Recipe,
@@ -318,10 +497,8 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
                 new("Selected", selectedRecipeFile)
             ],
             [
-                new("Managed Items", recipe?.Parameters.Select(item =>
-                    new ST_DISPLAY_ITEM(item.Name, $"{item.Value} {item.Unit}".Trim(), item.Range)).ToArray() ?? []),
-                new("Change History", recipe?.History.Select(item =>
-                new ST_DISPLAY_ITEM(item.ItemName, $"{item.OldValue} -> {item.NewValue}", item.OperatorId)).ToArray() ?? [])
+                new("Managed Items", recipe?.Parameters.Select(SelectItem24).ToArray() ?? []),
+                new("Change History", recipe?.History.Select(SelectItem25).ToArray() ?? [])
             ],
             recipe: this);
     }
@@ -370,12 +547,21 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private async Task SelectCell(object? parameter)
     {
-        var cellNo = parameter switch
+        int EvaluateParameterSwitch1()
         {
-            int number => number,
-            string text when int.TryParse(text, out var number) => number,
-            _ => 0
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case int number:
+                    return number;
+                case string text when int.TryParse(text, out var number):
+                    return number;
+                default:
+                    return 0;
+            }
+        }
+
+        var cellNo = EvaluateParameterSwitch1();
 
         if (cellNo <= 0)
         {
@@ -429,7 +615,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private async Task ApplyPointPatternToSelectedCells()
     {
-        var targetCellNos = _selectedOverviewCells.Where(cellNo => cellNo != _selectedCellNo).ToArray();
+        bool FilterCellNo26(int cellNo)
+        {
+            return cellNo != _selectedCellNo;
+        }
+
+        var targetCellNos = _selectedOverviewCells.Where(FilterCellNo26).ToArray();
         if (targetCellNos.Length == 0)
         {
             _setStatusMessage("Select one or more target Cells. The current Cell is the pattern source.");
@@ -437,10 +628,15 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         }
 
         var sourcePrefix = $"CELL{_selectedCellNo}_";
+        bool FilterItem27(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.SourceGroup.Equals("POINT", StringComparison.OrdinalIgnoreCase) &&
+                            item.Key.StartsWith(sourcePrefix, StringComparison.OrdinalIgnoreCase) &&
+                            !IsCellPlacementParameter(item.Key[sourcePrefix.Length..]);
+        }
+
         var sourceItems = AllManagedItems
-            .Where(item => item.SourceGroup.Equals("POINT", StringComparison.OrdinalIgnoreCase) &&
-                item.Key.StartsWith(sourcePrefix, StringComparison.OrdinalIgnoreCase) &&
-                !IsCellPlacementParameter(item.Key[sourcePrefix.Length..]))
+            .Where(FilterItem27)
             .ToArray();
 
         foreach (var targetCellNo in targetCellNos)
@@ -449,8 +645,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             {
                 var parameterName = sourceItem.Key[sourcePrefix.Length..];
                 var targetKey = $"CELL{targetCellNo}_{parameterName}";
-                var targetItem = AllManagedItems.FirstOrDefault(item =>
-                    item.Key.Equals(targetKey, StringComparison.OrdinalIgnoreCase));
+                bool MatchItem28(ST_RECIPE_MANAGED_ITEM item)
+                {
+                    return item.Key.Equals(targetKey, StringComparison.OrdinalIgnoreCase);
+                }
+
+                var targetItem = AllManagedItems.FirstOrDefault(MatchItem28);
                 if (targetItem is not null)
                 {
                     targetItem.Value = sourceItem.Value;
@@ -503,11 +703,16 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         }
 
         var recipes = await _recipeManager.LoadRecipes();
+        string HandleNewRecipeId29(string value)
+        {
+            return ValidateRecipeId(NormalizeRecipeIdInput(value), recipes, oldRecipeId);
+        }
+
         var newRecipeId = ShowRecipeNameDialog(
             "Modify Recipe Name",
             "Enter the new recipe name.",
             oldRecipeId,
-            value => ValidateRecipeId(NormalizeRecipeIdInput(value), recipes, oldRecipeId));
+HandleNewRecipeId29);
 
         if (newRecipeId is null)
         {
@@ -537,8 +742,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             _setStatusMessage(validationMessage);
             return;
         }
+        bool CheckItem30(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.IsEdited;
+        }
 
-        if (AllManagedItems.Any(item => item.IsEdited))
+        if (AllManagedItems.Any(CheckItem30))
         {
             await _recipeManager.SaveRecipe(new ST_RECIPE_DATA(oldRecipeId, oldRecipeId, recipeParameters, []));
         }
@@ -563,11 +772,16 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         }
 
         var recipes = await _recipeManager.LoadRecipes();
+        string HandleRecipeId31(string value)
+        {
+            return ValidateRecipeId(NormalizeRecipeIdInput(value), recipes);
+        }
+
         var recipeId = ShowRecipeNameDialog(
             "Create Recipe",
             "Enter the new recipe name.",
             "",
-            value => ValidateRecipeId(NormalizeRecipeIdInput(value), recipes));
+HandleRecipeId31);
 
         if (recipeId is null)
         {
@@ -695,23 +909,18 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     {
         foreach (var item in _previewTrackedItems)
         {
-            item.PropertyChanged -= OnPreviewItemPropertyChanged;
+            item.ValueChanged -= OnPreviewItemValueChanged;
         }
 
         _previewTrackedItems = items;
         foreach (var item in _previewTrackedItems)
         {
-            item.PropertyChanged += OnPreviewItemPropertyChanged;
+            item.ValueChanged += OnPreviewItemValueChanged;
         }
     }
 
-    private void OnPreviewItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void OnPreviewItemValueChanged(object? sender, EventArgs eventArgs)
     {
-        if (e.PropertyName != nameof(ST_RECIPE_MANAGED_ITEM.Value))
-        {
-            return;
-        }
-
         if (IsHeadCategory)
         {
             ScheduleHeadPreviewRefresh();
@@ -771,9 +980,14 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             var preview = BuildLayoutPreview(AllManagedItems, cells, _selectedCellNo);
             CellPreviewImage = preview.CellImage;
             CellPreviewLabels = preview.CellLabels;
+            bool MatchCell32(ST_RECIPE_CELL cell)
+            {
+                return cell.CellNo == _selectedCellNo;
+            }
+
             UpdateHoleRows(BuildHoleRows(
                 AllManagedItems,
-                cells.First(cell => cell.CellNo == _selectedCellNo)));
+                cells.First(MatchCell32)));
             OnPropertyChanged(nameof(CellPreviewImage));
             OnPropertyChanged(nameof(CellPreviewLabels));
         }
@@ -813,8 +1027,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     {
         if (!string.IsNullOrWhiteSpace(selectedRecipeId))
         {
-            var selectedRecipe = recipes.FirstOrDefault(recipe =>
-                recipe.Id.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase));
+            bool MatchRecipe33(ST_RECIPE_DATA recipe)
+            {
+                return recipe.Id.Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+            }
+
+            var selectedRecipe = recipes.FirstOrDefault(MatchRecipe33);
 
             if (selectedRecipe is not null)
             {
@@ -857,11 +1075,16 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         IReadOnlyList<ST_RECIPE_DATA> recipes,
         ST_RECIPE_DATA? selectedRecipe)
     {
+        ST_RECIPE_FILE SelectRecipe34(ST_RECIPE_DATA recipe, int index)
+        {
+            return new ST_RECIPE_FILE(
+                            (index + 1).ToString("00"),
+                            GetRecipeFileName(recipe),
+                            selectedRecipe is not null && recipe.Id.Equals(selectedRecipe.Id, StringComparison.OrdinalIgnoreCase));
+        }
+
         return recipes
-            .Select((recipe, index) => new ST_RECIPE_FILE(
-                (index + 1).ToString("00"),
-                GetRecipeFileName(recipe),
-                selectedRecipe is not null && recipe.Id.Equals(selectedRecipe.Id, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectRecipe34)
             .ToArray();
     }
 
@@ -871,46 +1094,77 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         {
             return [];
         }
+        bool FilterParameter35(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Use && parameter.Show;
+        }
 
-        return recipe.Parameters
-            .Where(parameter => parameter.Use && parameter.Show)
-            .Select((parameter, index) => new { Parameter = parameter, Index = index })
-            .OrderBy(item => item.Parameter.DisplayOrder <= 0 ? int.MaxValue : item.Parameter.DisplayOrder)
-            .ThenBy(item => item.Index)
-            .Select(item =>
+        List<CIndexedRecipeParameter> sortedParameters = new List<CIndexedRecipeParameter>();
+        int filteredIndex = 0;
+        foreach (ST_RECIPE_PARAM parameter in recipe.Parameters)
+        {
+            if (!FilterParameter35(parameter))
             {
-                var parameter = item.Parameter;
-                var category = NormalizeRecipeText(parameter.Tab, "COMMON");
-                var group = NormalizeRecipeText(parameter.Group, category);
+                continue;
+            }
 
-                return new ST_RECIPE_MANAGED_ITEM(
-                    category,
-                    group,
-                    parameter.Name,
-                    parameter.Value,
-                    NormalizeUnit(parameter.Unit),
-                    parameter.Description,
-                    GetValueState(parameter),
-                    parameter.Key,
-                    group,
-                    parameter.DataType,
-                    parameter.ChangeLimit,
-                    parameter.Min,
-                    parameter.Max);
-            })
-            .ToArray();
+            sortedParameters.Add(new CIndexedRecipeParameter(parameter, filteredIndex));
+            filteredIndex++;
+        }
+
+        sortedParameters.Sort(CompareIndexedRecipeParameters);
+
+        List<ST_RECIPE_MANAGED_ITEM> managedItems = new List<ST_RECIPE_MANAGED_ITEM>();
+        foreach (CIndexedRecipeParameter indexedParameter in sortedParameters)
+        {
+            ST_RECIPE_PARAM parameter = indexedParameter.Parameter;
+            string category = NormalizeRecipeText(parameter.Tab, "COMMON");
+            string group = NormalizeRecipeText(parameter.Group, category);
+
+            managedItems.Add(new ST_RECIPE_MANAGED_ITEM(
+                category,
+                group,
+                parameter.Name,
+                parameter.Value,
+                NormalizeUnit(parameter.Unit),
+                parameter.Description,
+                GetValueState(parameter),
+                parameter.Key,
+                group,
+                parameter.DataType,
+                parameter.ChangeLimit,
+                parameter.Min,
+                parameter.Max));
+        }
+
+        return managedItems.ToArray();
     }
 
     private static IReadOnlyList<string> BuildCategories(IReadOnlyList<ST_RECIPE_MANAGED_ITEM> managedItems)
     {
+        string SelectItem36(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Category;
+        }
+
+        bool FilterCategory37(string category)
+        {
+            return !string.IsNullOrWhiteSpace(category);
+        }
+
         var categories = managedItems
-            .Select(item => item.Category)
-            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Select(SelectItem36)
+            .Where(FilterCategory37)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         var result = categories.ToList();
-        if (!result.Any(category => category.Equals("CELL", StringComparison.OrdinalIgnoreCase)))
+        bool CheckCategory38(string category)
+        {
+            return category.Equals("CELL", StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (!result.Any(CheckCategory38))
         {
             result.Add("CELL");
         }
@@ -920,8 +1174,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private static int GetCellCount(IReadOnlyList<ST_RECIPE_MANAGED_ITEM> managedItems)
     {
-        var countItem = managedItems.FirstOrDefault(item =>
-            item.Key.Equals("CELL_COUNT", StringComparison.OrdinalIgnoreCase));
+        bool MatchItem39(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals("CELL_COUNT", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var countItem = managedItems.FirstOrDefault(MatchItem39);
 
         return countItem is not null &&
             int.TryParse(countItem.Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var count)
@@ -935,38 +1193,94 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     {
         var akMarginX = ReadManagedDouble(managedItems, "AK_MARGIN_X", 55.0);
         var akMarginY = ReadManagedDouble(managedItems, "AK_MARGIN_Y", 45.0);
-        var itemsByCellNo = managedItems
-            .Select(item => new { Item = item, CellNo = TryGetCellNo(item.Key) })
-            .Where(item => item.CellNo > 0)
-            .GroupBy(item => item.CellNo)
-            .ToDictionary(
-                group => group.Key,
-                group => (IReadOnlyList<ST_RECIPE_MANAGED_ITEM>)group.Select(item => item.Item).ToArray());
+        Dictionary<int, IReadOnlyList<ST_RECIPE_MANAGED_ITEM>> itemsByCellNo =
+            new Dictionary<int, IReadOnlyList<ST_RECIPE_MANAGED_ITEM>>();
+        Dictionary<int, List<ST_RECIPE_MANAGED_ITEM>> itemListsByCellNo =
+            new Dictionary<int, List<ST_RECIPE_MANAGED_ITEM>>();
 
-        return Enumerable.Range(1, cellCount)
-            .Select(cellNo =>
+        foreach (ST_RECIPE_MANAGED_ITEM item in managedItems)
+        {
+            int cellNo = TryGetCellNo(item.Key);
+            if (cellNo <= 0)
             {
-                var items = (itemsByCellNo.GetValueOrDefault(cellNo) ?? [])
-                    .OrderBy(item => GetCellItemGroupOrder(item.SourceGroup))
-                    .ToArray();
-                var result = CCellPointCalculator.Calculate(new ST_CELL_POINT_INPUT(
-                    cellNo,
-                    ReadCellDouble(items, $"CELL{cellNo}_ALIGN_TO_1ST_PIXEL_X"),
-                    ReadCellDouble(items, $"CELL{cellNo}_ALIGN_TO_1ST_PIXEL_Y"),
-                    ReadCellDouble(items, $"CELL{cellNo}_ROTATION"),
-                    ReadCellInt(items, $"CELL{cellNo}_NUM_OF_PIXEL_X"),
-                    ReadCellInt(items, $"CELL{cellNo}_NUM_OF_PIXEL_Y"),
-                    ReadCellDouble(items, $"CELL{cellNo}_PITCH_X"),
-                    ReadCellDouble(items, $"CELL{cellNo}_PITCH_Y"),
-                    akMarginX,
-                    akMarginY));
+                continue;
+            }
 
-                return new ST_RECIPE_CELL(
-                    cellNo,
-                    items,
-                    result.Points);
-            })
+            if (!itemListsByCellNo.TryGetValue(cellNo, out List<ST_RECIPE_MANAGED_ITEM>? cellItems))
+            {
+                cellItems = new List<ST_RECIPE_MANAGED_ITEM>();
+                itemListsByCellNo.Add(cellNo, cellItems);
+            }
+
+            cellItems.Add(item);
+        }
+
+        foreach (KeyValuePair<int, List<ST_RECIPE_MANAGED_ITEM>> entry in itemListsByCellNo)
+        {
+            itemsByCellNo.Add(entry.Key, entry.Value.ToArray());
+        }
+        ST_RECIPE_CELL SelectCellNo40(int cellNo)
+        {
+            int GetItemSortKey1(ST_RECIPE_MANAGED_ITEM item)
+            {
+                return GetCellItemGroupOrder(item.SourceGroup);
+            }
+
+            var items = (itemsByCellNo.GetValueOrDefault(cellNo) ?? [])
+                .OrderBy(GetItemSortKey1)
+                .ToArray();
+            var result = CCellPointCalculator.Calculate(new ST_CELL_POINT_INPUT(
+                cellNo,
+                ReadCellDouble(items, $"CELL{cellNo}_ALIGN_TO_1ST_PIXEL_X"),
+                ReadCellDouble(items, $"CELL{cellNo}_ALIGN_TO_1ST_PIXEL_Y"),
+                ReadCellDouble(items, $"CELL{cellNo}_ROTATION"),
+                ReadCellInt(items, $"CELL{cellNo}_NUM_OF_PIXEL_X"),
+                ReadCellInt(items, $"CELL{cellNo}_NUM_OF_PIXEL_Y"),
+                ReadCellDouble(items, $"CELL{cellNo}_PITCH_X"),
+                ReadCellDouble(items, $"CELL{cellNo}_PITCH_Y"),
+                akMarginX,
+                akMarginY));
+
+            return new ST_RECIPE_CELL(
+                cellNo,
+                items,
+                result.Points);
+        }
+        return Enumerable.Range(1, cellCount)
+            .Select(SelectCellNo40)
             .ToArray();
+    }
+
+    private static int CompareIndexedRecipeParameters(
+        CIndexedRecipeParameter left,
+        CIndexedRecipeParameter right)
+    {
+        int leftOrder = left.Parameter.DisplayOrder <= 0
+            ? int.MaxValue
+            : left.Parameter.DisplayOrder;
+        int rightOrder = right.Parameter.DisplayOrder <= 0
+            ? int.MaxValue
+            : right.Parameter.DisplayOrder;
+
+        int orderComparison = leftOrder.CompareTo(rightOrder);
+        if (orderComparison != 0)
+        {
+            return orderComparison;
+        }
+
+        return left.Index.CompareTo(right.Index);
+    }
+
+    private sealed class CIndexedRecipeParameter
+    {
+        public CIndexedRecipeParameter(ST_RECIPE_PARAM parameter, int index)
+        {
+            Parameter = parameter;
+            Index = index;
+        }
+
+        public ST_RECIPE_PARAM Parameter { get; }
+        public int Index { get; }
     }
 
     private static int GetCellItemGroupOrder(string group)
@@ -986,7 +1300,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private static int ReadCellInt(IReadOnlyList<ST_RECIPE_MANAGED_ITEM> items, string key)
     {
-        var value = items.FirstOrDefault(item => item.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem41(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var value = items.FirstOrDefault(MatchItem41)?.Value;
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : 0;
@@ -994,7 +1313,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private static double ReadCellDouble(IReadOnlyList<ST_RECIPE_MANAGED_ITEM> items, string key)
     {
-        var value = items.FirstOrDefault(item => item.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem42(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var value = items.FirstOrDefault(MatchItem42)?.Value;
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : 0.0;
@@ -1025,18 +1349,27 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         IReadOnlyList<ST_RECIPE_MANAGED_ITEM> managedItems,
         string key)
     {
-        return managedItems.FirstOrDefault(item =>
-            item.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem43(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return managedItems.FirstOrDefault(MatchItem43);
     }
 
     private static IReadOnlyList<ST_RECIPE_DISTORTION_KEY_ITEM> BuildDistortionKeyItems(
         IReadOnlyList<ST_RECIPE_MANAGED_ITEM> managedItems)
     {
+        ST_RECIPE_DISTORTION_KEY_ITEM SelectKeyNo44(int keyNo)
+        {
+            return new ST_RECIPE_DISTORTION_KEY_ITEM(
+                            keyNo,
+                            FindManagedItem(managedItems, $"DISTORTION_KEY{keyNo}_X"),
+                            FindManagedItem(managedItems, $"DISTORTION_KEY{keyNo}_Y"));
+        }
+
         return Enumerable.Range(1, 6)
-            .Select(keyNo => new ST_RECIPE_DISTORTION_KEY_ITEM(
-                keyNo,
-                FindManagedItem(managedItems, $"DISTORTION_KEY{keyNo}_X"),
-                FindManagedItem(managedItems, $"DISTORTION_KEY{keyNo}_Y")))
+            .Select(SelectKeyNo44)
             .ToArray();
     }
 
@@ -1045,19 +1378,43 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         int cellCount)
     {
         var result = managedItems.ToList();
+        ST_RECIPE_MANAGED_ITEM? SelectKey45(string key)
+        {
+            bool MatchItem2(ST_RECIPE_MANAGED_ITEM item)
+            {
+                return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return managedItems.FirstOrDefault(MatchItem2);
+        }
+
+        bool FilterItem46(ST_RECIPE_MANAGED_ITEM? item)
+        {
+            return item is not null;
+        }
+
+        string HandleTemplates47(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key;
+        }
+
         var templates = CellParameterKeys
-            .Select(key => managedItems.FirstOrDefault(item =>
-                item.Key.Equals(key, StringComparison.OrdinalIgnoreCase)))
-            .Where(item => item is not null)
+            .Select(SelectKey45)
+            .Where(FilterItem46)
             .Cast<ST_RECIPE_MANAGED_ITEM>()
-            .ToDictionary(item => item.Key, StringComparer.OrdinalIgnoreCase);
+            .ToDictionary(HandleTemplates47, StringComparer.OrdinalIgnoreCase);
 
         foreach (var cellNo in Enumerable.Range(1, cellCount))
         {
             foreach (var parameterKey in CellParameterKeys)
             {
                 var scopedKey = $"CELL{cellNo}_{GetCellScopedParameterName(parameterKey)}";
-                if (result.Any(item => item.Key.Equals(scopedKey, StringComparison.OrdinalIgnoreCase)) ||
+                bool CheckItem48(ST_RECIPE_MANAGED_ITEM item)
+                {
+                    return item.Key.Equals(scopedKey, StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (result.Any(CheckItem48) ||
                     !templates.TryGetValue(parameterKey, out var template))
                 {
                     continue;
@@ -1106,11 +1463,9 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private IReadOnlyList<ST_RECIPE_CELL_OVERVIEW_ROW> BuildCellOverviewRows(IReadOnlyList<ST_RECIPE_CELL> cells)
     {
-        return cells.Select(cell => new ST_RECIPE_CELL_OVERVIEW_ROW(
-            cell,
-            cell.CellNo == _selectedCellNo,
-            _selectedOverviewCells.Contains(cell.CellNo),
-            (cellNo, selected) =>
+        ST_RECIPE_CELL_OVERVIEW_ROW SelectCell49(ST_RECIPE_CELL cell)
+        {
+            void HandleCellNoCallback3(int cellNo, bool selected)
             {
                 if (selected)
                 {
@@ -1121,7 +1476,15 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
                     _selectedOverviewCells.Remove(cellNo);
                 }
                 ApplyPointPatternCommand.NotifyCanExecuteChanged();
-            })).ToArray();
+            }
+            return new ST_RECIPE_CELL_OVERVIEW_ROW(
+                        cell,
+                        cell.CellNo == _selectedCellNo,
+                        _selectedOverviewCells.Contains(cell.CellNo),
+HandleCellNoCallback3);
+        }
+
+        return cells.Select(SelectCell49).ToArray();
     }
 
     private static ST_RECIPE_LAYOUT_PREVIEW BuildLayoutPreview(
@@ -1139,12 +1502,17 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         var glassHeight = ReadManagedDouble(managedItems, "GLASS_SIZE_Y", 300.0);
         var akMarginX = ReadManagedDouble(managedItems, "AK_MARGIN_X", 55.0);
         var akMarginY = ReadManagedDouble(managedItems, "AK_MARGIN_Y", 45.0);
+        double? HandleDistortionKeys50(string key)
+        {
+            return ReadManagedNullableDouble(managedItems, key);
+        }
+
         var distortionKeys = CCellPreviewDrawing.CreateDistortionKeyPreviews(
             glassWidth,
             glassHeight,
             akMarginX,
             akMarginY,
-            key => ReadManagedNullableDouble(managedItems, key));
+HandleDistortionKeys50);
 
         if (glassWidth <= 0 || glassHeight <= 0)
         {
@@ -1277,14 +1645,19 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         var paddingY = Math.Max(22.0, frameHeight * 0.03);
         var cellRect = new Rect(0, 0, frameWidth + (paddingX * 2.0), frameHeight + (paddingY * 2.0));
         var glassRect = new Rect(paddingX, paddingY, frameWidth, frameHeight);
-        var translatedCellLabels = cellLabels
-            .Select(label => label with
+        ST_CELL_PREVIEW_LABEL SelectLabel51(ST_CELL_PREVIEW_LABEL label)
+        {
+            return label with
             {
                 CanvasCenterX = label.CanvasCenterX - frameLeft + paddingX,
                 CanvasCenterY = label.CanvasCenterY - frameTop + paddingY,
                 DesignWidth = cellRect.Width,
                 DesignHeight = cellRect.Height
-            })
+            };
+        }
+
+        var translatedCellLabels = cellLabels
+            .Select(SelectLabel51)
             .ToArray();
         var cellDrawing = new DrawingGroup();
         using (var cellContext = cellDrawing.Open())
@@ -1328,12 +1701,17 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         var glassHeight = ReadManagedDouble(managedItems, "GLASS_SIZE_Y", 300.0);
         var akMarginX = ReadManagedDouble(managedItems, "AK_MARGIN_X", 55.0);
         var akMarginY = ReadManagedDouble(managedItems, "AK_MARGIN_Y", 45.0);
+        double? HandleDistortionKeys52(string key)
+        {
+            return ReadManagedNullableDouble(managedItems, key);
+        }
+
         var distortionKeys = CCellPreviewDrawing.CreateDistortionKeyPreviews(
             glassWidth,
             glassHeight,
             akMarginX,
             akMarginY,
-            key => ReadManagedNullableDouble(managedItems, key));
+HandleDistortionKeys52);
         var headCount = Math.Clamp(ReadManagedInt(managedItems, "HEAD_COUNT", 8), 1, 8);
         var head1AkPositionX = ReadSettingDouble(settings, "H01_AK_POSITION_X", -5.0);
         var headGapX = ReadSettingDouble(settings, "HeadGapX", 200.0);
@@ -1656,12 +2034,13 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             new Point(localMaxX, localMaxY),
             new Point(-boundaryPadding, localMaxY)
         };
-        var canvasCorners = localCorners.Select(local =>
+        Point SelectLocal53(Point local)
         {
             var x = firstX + (local.X * cos) - (local.Y * sin);
             var y = firstY + (local.X * sin) + (local.Y * cos);
             return new Point(frameLeft + (x * scale), frameTop + (y * scale));
-        }).ToArray();
+        }
+        var canvasCorners = localCorners.Select(SelectLocal53).ToArray();
 
         var geometry = new StreamGeometry();
         using (var geometryContext = geometry.Open())
@@ -1705,60 +2084,118 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         var holeRadius = Math.Max(
             0.0,
             ReadCellDouble(cell.Items, $"CELL{cell.CellNo}_PIXEL_SIZE")) / 2.0;
+        bool FilterItem54(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return TryGetCellNo(item.Key) == cell.CellNo &&
+                            IsHoleOverrideKey(item.Key);
+        }
+
+        string HandleOverrideValues55(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key;
+        }
+
+        string HandleOverrideValues56(IGrouping<string, ST_RECIPE_MANAGED_ITEM> group)
+        {
+            return group.Key;
+        }
+
+        string HandleOverrideValues57(IGrouping<string, ST_RECIPE_MANAGED_ITEM> group)
+        {
+            return group.Last().Value;
+        }
+
         var overrideValues = managedItems
-            .Where(item =>
-                TryGetCellNo(item.Key) == cell.CellNo &&
-                IsHoleOverrideKey(item.Key))
-            .GroupBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterItem54)
+            .GroupBy(HandleOverrideValues55, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last().Value,
+HandleOverrideValues56,
+HandleOverrideValues57,
                 StringComparer.OrdinalIgnoreCase);
-
-        return cell.Points
-            .Select(point =>
+        ST_RECIPE_HOLE_ROW SelectPoint58(ST_CELL_DRILL_POINT point)
+        {
+            var isInsideGlass = point.X - holeRadius >= 0.0 &&
+                point.X + holeRadius <= glassWidth &&
+                point.Y - holeRadius >= 0.0 &&
+                point.Y + holeRadius <= glassHeight;
+            int MaxCandidateCallback4(ST_CELL_DRILL_POINT candidate)
             {
-                var isInsideGlass = point.X - holeRadius >= 0.0 &&
-                    point.X + holeRadius <= glassWidth &&
-                    point.Y - holeRadius >= 0.0 &&
-                    point.Y + holeRadius <= glassHeight;
-                var holeName = CReviewHoleNameFormatter.ToMatrixName(
-                    point.PointNo,
-                    Math.Max(1, cell.Points.Max(candidate => candidate.Column) + 1));
-                var recipeKeyPrefix = $"CELL{cell.CellNo}_{holeName}_RECIPE_OFFSET_";
+                return candidate.Column;
+            }
 
-                return new ST_RECIPE_HOLE_ROW(
-                    point.PointNo,
-                    point.Row + 1,
-                    point.Column + 1,
-                    isInsideGlass,
-                    overrideValues.GetValueOrDefault($"{recipeKeyPrefix}X", "0"),
-                    overrideValues.GetValueOrDefault($"{recipeKeyPrefix}Y", "0"),
-                    (parameterName, value) => SetHoleOverrideValue(
-                        cell.CellNo,
-                        point.PointNo,
-                        holeName,
-                        parameterName,
-                        value));
-            })
+            var holeName = CReviewHoleNameFormatter.ToMatrixName(
+                point.PointNo,
+                Math.Max(1, cell.Points.Max(MaxCandidateCallback4) + 1));
+            var recipeKeyPrefix = $"CELL{cell.CellNo}_{holeName}_RECIPE_OFFSET_";
+            void HandleParameterNameCallback5(string parameterName, string value)
+            {
+                SetHoleOverrideValue(
+                                    cell.CellNo,
+                                    point.PointNo,
+                                    holeName,
+                                    parameterName,
+                                    value);
+            }
+
+            return new ST_RECIPE_HOLE_ROW(
+                point.PointNo,
+                point.Row + 1,
+                point.Column + 1,
+                isInsideGlass,
+                overrideValues.GetValueOrDefault($"{recipeKeyPrefix}X", "0"),
+                overrideValues.GetValueOrDefault($"{recipeKeyPrefix}Y", "0"),
+HandleParameterNameCallback5);
+        }
+        return cell.Points
+            .Select(SelectPoint58)
             .ToArray();
     }
 
     private void UpdateHoleRows(IReadOnlyList<ST_RECIPE_HOLE_ROW> rows)
     {
         HoleRows = rows;
+        int SelectRow59(ST_RECIPE_HOLE_ROW row)
+        {
+            return row.Column;
+        }
+
+        int GetColumnSortKey60(int column)
+        {
+            return column;
+        }
+
         HoleMatrixColumnHeaders = rows
-            .Select(row => row.Column)
+            .Select(SelectRow59)
             .Distinct()
-            .OrderBy(column => column)
+            .OrderBy(GetColumnSortKey60)
             .Select(ToColumnLetter)
             .ToArray();
+        int GroupByRowCallback61(ST_RECIPE_HOLE_ROW row)
+        {
+            return row.Row;
+        }
+
+        int GetGroupSortKey62(IGrouping<int, ST_RECIPE_HOLE_ROW> group)
+        {
+            return group.Key;
+        }
+
+        ST_RECIPE_HOLE_MATRIX_ROW SelectGroup63(IGrouping<int, ST_RECIPE_HOLE_ROW> group)
+        {
+            int GetRowSortKey6(ST_RECIPE_HOLE_ROW row)
+            {
+                return row.Column;
+            }
+
+            return new ST_RECIPE_HOLE_MATRIX_ROW(
+                            group.Key,
+                            group.OrderBy(GetRowSortKey6).ToArray());
+        }
+
         HoleMatrixRows = rows
-            .GroupBy(row => row.Row)
-            .OrderBy(group => group.Key)
-            .Select(group => new ST_RECIPE_HOLE_MATRIX_ROW(
-                group.Key,
-                group.OrderBy(row => row.Column).ToArray()))
+            .GroupBy(GroupByRowCallback61)
+            .OrderBy(GetGroupSortKey62)
+            .Select(SelectGroup63)
             .ToArray();
         OnPropertyChanged(nameof(HoleRows));
         OnPropertyChanged(nameof(HoleMatrixColumnHeaders));
@@ -1773,7 +2210,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         }
 
         _selectedHoleNo = Math.Clamp(_selectedHoleNo, 1, rows.Count);
-        SelectedHole = rows.FirstOrDefault(row => row.HoleNo == _selectedHoleNo) ?? rows[0];
+        bool MatchRow64(ST_RECIPE_HOLE_ROW row)
+        {
+            return row.HoleNo == _selectedHoleNo;
+        }
+
+        SelectedHole = rows.FirstOrDefault(MatchRow64) ?? rows[0];
     }
 
     private static string ToColumnLetter(int oneBasedColumn)
@@ -1805,8 +2247,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
         var axis = normalizedParameter.EndsWith("_Y", StringComparison.OrdinalIgnoreCase) ? "Y" : "X";
         var key = $"CELL{cellNo}_{holeName}_RECIPE_OFFSET_{axis}";
-        var item = AllManagedItems.FirstOrDefault(candidate =>
-            candidate.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        bool MatchCandidate65(ST_RECIPE_MANAGED_ITEM candidate)
+        {
+            return candidate.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var item = AllManagedItems.FirstOrDefault(MatchCandidate65);
         if (item is null)
         {
             var displayName = $"Hole {holeName} Recipe Offset {axis}";
@@ -1850,8 +2296,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         string key,
         double defaultValue)
     {
-        var value = managedItems.FirstOrDefault(item =>
-            item.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem66(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var value = managedItems.FirstOrDefault(MatchItem66)?.Value;
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : defaultValue;
@@ -1861,8 +2311,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         IReadOnlyList<ST_RECIPE_MANAGED_ITEM> managedItems,
         string key)
     {
-        var value = managedItems.FirstOrDefault(item =>
-            item.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem67(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var value = managedItems.FirstOrDefault(MatchItem67)?.Value;
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : null;
@@ -1873,8 +2327,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         string key,
         int defaultValue)
     {
-        var value = managedItems.FirstOrDefault(item =>
-            item.Key.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem68(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var value = managedItems.FirstOrDefault(MatchItem68)?.Value;
         return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : defaultValue;
@@ -1885,9 +2343,13 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         string key,
         double defaultValue)
     {
-        var value = settings.FirstOrDefault(item =>
-            item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
-            item.Name.Equals(key, StringComparison.OrdinalIgnoreCase))?.Value;
+        bool MatchItem69(ST_SYSTEM_PARAMETER item)
+        {
+            return item.Key.Equals(key, StringComparison.OrdinalIgnoreCase) ||
+                        item.Name.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var value = settings.FirstOrDefault(MatchItem69)?.Value;
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
             ? parsed
             : defaultValue;
@@ -1902,18 +2364,33 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         IReadOnlyList<string> categories,
         string selectedCategory)
     {
+        ST_RECIPE_CATEGORY_TAB SelectCategory70(string category)
+        {
+            return new ST_RECIPE_CATEGORY_TAB(
+                            category,
+                            category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase));
+        }
+
         return categories
-            .Select(category => new ST_RECIPE_CATEGORY_TAB(
-                category,
-                category.Equals(selectedCategory, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectCategory70)
             .ToArray();
     }
 
     private static IReadOnlyList<string> BuildGroups(IReadOnlyList<ST_RECIPE_MANAGED_ITEM> managedItems)
     {
+        string SelectItem71(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.SourceGroup;
+        }
+
+        bool FilterGroup72(string group)
+        {
+            return !string.IsNullOrWhiteSpace(group);
+        }
+
         var groups = managedItems
-            .Select(item => item.SourceGroup)
-            .Where(group => !string.IsNullOrWhiteSpace(group))
+            .Select(SelectItem71)
+            .Where(FilterGroup72)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
@@ -1924,23 +2401,33 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         IReadOnlyList<string> groups,
         string selectedGroup)
     {
+        ST_RECIPE_GROUP_TAB SelectGroup73(string group)
+        {
+            return new ST_RECIPE_GROUP_TAB(
+                            group,
+                            group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase));
+        }
+
         return groups
-            .Select(group => new ST_RECIPE_GROUP_TAB(
-                group,
-                group.Equals(selectedGroup, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectGroup73)
             .ToArray();
     }
 
     private static IReadOnlyList<ST_RECIPE_HISTORY_ROW> BuildChangeHistory(ST_RECIPE_DATA? recipe)
     {
-        return recipe?.History.Select(item => new ST_RECIPE_HISTORY_ROW(
-            item.ChangedAt.ToString("HH:mm:ss"),
-            string.IsNullOrWhiteSpace(item.Action) ? item.OperatorId : item.Action,
-            item.Tab,
-            item.Group,
-            item.ItemName,
-            item.OldValue,
-            item.NewValue)).ToArray() ?? [];
+        ST_RECIPE_HISTORY_ROW SelectItem74(ST_RECIPE_HISTORY item)
+        {
+            return new ST_RECIPE_HISTORY_ROW(
+                        item.ChangedAt.ToString("HH:mm:ss"),
+                        string.IsNullOrWhiteSpace(item.Action) ? item.OperatorId : item.Action,
+                        item.Tab,
+                        item.Group,
+                        item.ItemName,
+                        item.OldValue,
+                        item.NewValue);
+        }
+
+        return recipe?.History.Select(SelectItem74).ToArray() ?? [];
     }
 
     private static IReadOnlyList<ST_RECIPE_STATE_ROW> BuildStateRows(
@@ -1957,8 +2444,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
                 new("Edit State", "No Recipe")
             ];
         }
+        bool HandleModifiedCount75(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.IsEdited;
+        }
 
-        var modifiedCount = managedItems.Count(item => item.IsEdited);
+        var modifiedCount = managedItems.Count(HandleModifiedCount75);
 
         return
         [
@@ -1976,7 +2467,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         }
 
         var normalized = NormalizeRecipeText(category, categories[0]);
-        return categories.Any(item => item.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+        bool CheckItem76(string item)
+        {
+            return item.Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return categories.Any(CheckItem76)
             ? normalized
             : categories[0];
     }
@@ -1984,7 +2480,12 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     private static string NormalizeGroup(string group, IReadOnlyList<string> groups)
     {
         var normalized = NormalizeRecipeText(group, "ALL");
-        return groups.Any(item => item.Equals(normalized, StringComparison.OrdinalIgnoreCase))
+        bool CheckItem77(string item)
+        {
+            return item.Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return groups.Any(CheckItem77)
             ? normalized
             : "ALL";
     }
@@ -2035,12 +2536,21 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private static string GetRecipeIdFromParameter(object? parameter)
     {
-        var value = parameter switch
+        string EvaluateParameterSwitch2()
         {
-            ST_RECIPE_FILE recipeFile => recipeFile.FileName,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_RECIPE_FILE recipeFile:
+                    return recipeFile.FileName;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        var value = EvaluateParameterSwitch2();
 
         return Path.GetFileNameWithoutExtension(value.Trim());
     }
@@ -2074,8 +2584,13 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private IReadOnlyList<ST_RECIPE_PARAM> BuildRecipeParameters(string recipeId)
     {
+        ST_RECIPE_PARAM SelectItem78(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return CreateRecipeParameterFromRow(item, recipeId);
+        }
+
         return AllManagedItems
-            .Select(item => CreateRecipeParameterFromRow(item, recipeId))
+            .Select(SelectItem78)
             .ToArray();
     }
 
@@ -2110,9 +2625,14 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private static Window? GetActiveWindow()
     {
+        bool MatchWindow79(Window window)
+        {
+            return window.IsActive;
+        }
+
         return Application.Current?.Windows
             .OfType<Window>()
-            .FirstOrDefault(window => window.IsActive);
+            .FirstOrDefault(MatchWindow79);
     }
 
     private static string NormalizeRecipeIdInput(string value)
@@ -2161,10 +2681,13 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         {
             return "Recipe name is reserved by Windows.";
         }
+        bool CheckRecipe80(ST_RECIPE_DATA recipe)
+        {
+            return recipe.Id.Equals(recipeId, StringComparison.OrdinalIgnoreCase) &&
+                        !recipe.Id.Equals(currentRecipeId, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var exists = recipes.Any(recipe =>
-            recipe.Id.Equals(recipeId, StringComparison.OrdinalIgnoreCase) &&
-            !recipe.Id.Equals(currentRecipeId, StringComparison.OrdinalIgnoreCase));
+        var exists = recipes.Any(CheckRecipe80);
 
         return exists
             ? $"Recipe {recipeId}.csv already exists."
@@ -2182,14 +2705,23 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             {
                 return "Recipe save blocked. Recipe Name cannot be empty.";
             }
-
-            var validationMessage = parameter.DataType switch
+            string EvaluateDataTypeSwitch3()
             {
-                EN_RECIPE_DATA_TYPE.Int => ValidateIntParameter(parameter, value),
-                EN_RECIPE_DATA_TYPE.Double => ValidateDoubleParameter(parameter, value),
-                EN_RECIPE_DATA_TYPE.Bool => ValidateBoolParameter(parameter, value),
-                _ => ""
-            };
+                var switchValue = parameter.DataType;
+                switch (switchValue)
+                {
+                    case EN_RECIPE_DATA_TYPE.Int:
+                        return ValidateIntParameter(parameter, value);
+                    case EN_RECIPE_DATA_TYPE.Double:
+                        return ValidateDoubleParameter(parameter, value);
+                    case EN_RECIPE_DATA_TYPE.Bool:
+                        return ValidateBoolParameter(parameter, value);
+                    default:
+                        return "";
+                }
+            }
+
+            var validationMessage = EvaluateDataTypeSwitch3();
 
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
@@ -2251,9 +2783,13 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         IReadOnlyList<ST_RECIPE_PARAM> parameters,
         string fallbackRecipeId)
     {
-        return parameters.FirstOrDefault(item =>
-                item.Key.Equals("RECIPE_NAME", StringComparison.OrdinalIgnoreCase) ||
-                item.Name.Equals("Recipe Name", StringComparison.OrdinalIgnoreCase))?.Value
+        bool MatchItem81(ST_RECIPE_PARAM item)
+        {
+            return item.Key.Equals("RECIPE_NAME", StringComparison.OrdinalIgnoreCase) ||
+                            item.Name.Equals("Recipe Name", StringComparison.OrdinalIgnoreCase);
+        }
+
+        return parameters.FirstOrDefault(MatchItem81)?.Value
             ?? fallbackRecipeId;
     }
 
@@ -2281,11 +2817,29 @@ public sealed record ST_RECIPE_DISTORTION_KEY_ITEM(
     ST_RECIPE_MANAGED_ITEM? XItem,
     ST_RECIPE_MANAGED_ITEM? YItem)
 {
-    public string DisplayText => $"DK{KeyNo}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"DK{KeyNo}";
+        }
+    }
 
-    public string XLabel => $"AK1 To DK{KeyNo} X";
+    public string XLabel
+    {
+        get
+        {
+            return $"AK1 To DK{KeyNo} X";
+        }
+    }
 
-    public string YLabel => $"AK1 To DK{KeyNo} Y";
+    public string YLabel
+    {
+        get
+        {
+            return $"AK1 To DK{KeyNo} Y";
+        }
+    }
 }
 
 public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
@@ -2305,11 +2859,26 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
         _isSelected = isSelected;
         _selectionChanged = selectionChanged;
         var keyPrefix = $"CELL{CellNo}_";
+        bool FilterItem82(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key.StartsWith(keyPrefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        string HandleItems83(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item.Key[keyPrefix.Length..];
+        }
+
+        ST_RECIPE_MANAGED_ITEM HandleItems84(ST_RECIPE_MANAGED_ITEM item)
+        {
+            return item;
+        }
+
         _items = cell.Items
-            .Where(item => item.Key.StartsWith(keyPrefix, StringComparison.OrdinalIgnoreCase))
+            .Where(FilterItem82)
             .ToDictionary(
-                item => item.Key[keyPrefix.Length..],
-                item => item,
+HandleItems83,
+HandleItems84,
                 StringComparer.OrdinalIgnoreCase);
     }
 
@@ -2319,7 +2888,11 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
 
     public bool IsSelected
     {
-        get => _isSelected;
+        get
+        {
+            return _isSelected;
+        }
+
         set
         {
             if (SetProperty(ref _isSelected, value))
@@ -2329,14 +2902,94 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
         }
     }
 
-    public string FirstX { get => Get("ALIGN_TO_1ST_PIXEL_X"); set => Set("ALIGN_TO_1ST_PIXEL_X", value); }
-    public string FirstY { get => Get("ALIGN_TO_1ST_PIXEL_Y"); set => Set("ALIGN_TO_1ST_PIXEL_Y", value); }
-    public string Rotation { get => Get("ROTATION"); set => Set("ROTATION", value); }
-    public string CountX { get => Get("NUM_OF_PIXEL_X"); set => Set("NUM_OF_PIXEL_X", value); }
-    public string CountY { get => Get("NUM_OF_PIXEL_Y"); set => Set("NUM_OF_PIXEL_Y", value); }
-    public string PitchX { get => Get("PITCH_X"); set => Set("PITCH_X", value); }
-    public string PitchY { get => Get("PITCH_Y"); set => Set("PITCH_Y", value); }
-    public string PixelSize { get => Get("PIXEL_SIZE"); set => Set("PIXEL_SIZE", value); }
+    public string FirstX {
+        get
+        {
+            return Get("ALIGN_TO_1ST_PIXEL_X");
+        }
+
+        set
+        {
+            Set("ALIGN_TO_1ST_PIXEL_X", value);
+        }
+    }
+    public string FirstY {
+        get
+        {
+            return Get("ALIGN_TO_1ST_PIXEL_Y");
+        }
+
+        set
+        {
+            Set("ALIGN_TO_1ST_PIXEL_Y", value);
+        }
+    }
+    public string Rotation {
+        get
+        {
+            return Get("ROTATION");
+        }
+
+        set
+        {
+            Set("ROTATION", value);
+        }
+    }
+    public string CountX {
+        get
+        {
+            return Get("NUM_OF_PIXEL_X");
+        }
+
+        set
+        {
+            Set("NUM_OF_PIXEL_X", value);
+        }
+    }
+    public string CountY {
+        get
+        {
+            return Get("NUM_OF_PIXEL_Y");
+        }
+
+        set
+        {
+            Set("NUM_OF_PIXEL_Y", value);
+        }
+    }
+    public string PitchX {
+        get
+        {
+            return Get("PITCH_X");
+        }
+
+        set
+        {
+            Set("PITCH_X", value);
+        }
+    }
+    public string PitchY {
+        get
+        {
+            return Get("PITCH_Y");
+        }
+
+        set
+        {
+            Set("PITCH_Y", value);
+        }
+    }
+    public string PixelSize {
+        get
+        {
+            return Get("PIXEL_SIZE");
+        }
+
+        set
+        {
+            Set("PIXEL_SIZE", value);
+        }
+    }
 
     private string Get(string parameterName)
     {
@@ -2351,18 +3004,33 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
         }
 
         item.Value = value;
-        OnPropertyChanged(parameterName switch
+        string EvaluateParameterNameSwitch4()
         {
-            "ALIGN_TO_1ST_PIXEL_X" => nameof(FirstX),
-            "ALIGN_TO_1ST_PIXEL_Y" => nameof(FirstY),
-            "ROTATION" => nameof(Rotation),
-            "NUM_OF_PIXEL_X" => nameof(CountX),
-            "NUM_OF_PIXEL_Y" => nameof(CountY),
-            "PITCH_X" => nameof(PitchX),
-            "PITCH_Y" => nameof(PitchY),
-            "PIXEL_SIZE" => nameof(PixelSize),
-            _ => parameterName
-        });
+            var switchValue = parameterName;
+            switch (switchValue)
+            {
+                case "ALIGN_TO_1ST_PIXEL_X":
+                    return nameof(FirstX);
+                case "ALIGN_TO_1ST_PIXEL_Y":
+                    return nameof(FirstY);
+                case "ROTATION":
+                    return nameof(Rotation);
+                case "NUM_OF_PIXEL_X":
+                    return nameof(CountX);
+                case "NUM_OF_PIXEL_Y":
+                    return nameof(CountY);
+                case "PITCH_X":
+                    return nameof(PitchX);
+                case "PITCH_Y":
+                    return nameof(PitchY);
+                case "PIXEL_SIZE":
+                    return nameof(PixelSize);
+                default:
+                    return parameterName;
+            }
+        }
+
+        OnPropertyChanged(EvaluateParameterNameSwitch4());
     }
 }
 
@@ -2397,31 +3065,69 @@ public sealed class ST_RECIPE_HOLE_ROW : CBindingBase
 
     public int Column { get; }
 
-    public string MatrixPointName => $"{ToColumnLetter(Column)}{Row}";
+    public string MatrixPointName
+    {
+        get
+        {
+            return $"{ToColumnLetter(Column)}{Row}";
+        }
+    }
 
-    public string OffsetCoordinateText =>
-        $"({NormalizeOffsetText(OffsetX)}, {NormalizeOffsetText(OffsetY)})";
+    public string OffsetCoordinateText
+    {
+        get
+        {
+            return $"({NormalizeOffsetText(OffsetX)}, {NormalizeOffsetText(OffsetY)})";
+        }
+    }
 
     public bool IsInsideGlass { get; }
 
-    public string PlacementState => IsInsideGlass ? "IN GLASS" : "OUTSIDE";
+    public string PlacementState
+    {
+        get
+        {
+            return IsInsideGlass ? "IN GLASS" : "OUTSIDE";
+        }
+    }
 
     public bool IsSelected
     {
-        get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
+        get
+        {
+            return _isSelected;
+        }
+
+        set
+        {
+            SetProperty(ref _isSelected, value);
+        }
     }
 
     public string OffsetX
     {
-        get => _offsetX;
-        set => SetOverride(ref _offsetX, value, "OFFSET_X");
+        get
+        {
+            return _offsetX;
+        }
+
+        set
+        {
+            SetOverride(ref _offsetX, value, "OFFSET_X");
+        }
     }
 
     public string OffsetY
     {
-        get => _offsetY;
-        set => SetOverride(ref _offsetY, value, "OFFSET_Y");
+        get
+        {
+            return _offsetY;
+        }
+
+        set
+        {
+            SetOverride(ref _offsetY, value, "OFFSET_Y");
+        }
     }
 
     private void SetOverride(ref string field, string value, string parameterName)
@@ -2476,21 +3182,51 @@ public sealed record ST_HEAD_COVERAGE_PREVIEW_LABEL(
     double DesignHeight,
     bool IsSelected)
 {
-    public string DisplayText => $"H{HeadNo:00}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"H{HeadNo:00}";
+        }
+    }
 
-    public double Height => 24.0;
+    public double Height
+    {
+        get
+        {
+            return 24.0;
+        }
+    }
 
-    public Brush BackgroundBrush => IsSelected
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected
         ? CMenuMain.CreateHeadBrush(HeadNo, 230)
         : new SolidColorBrush(Color.FromRgb(31, 41, 55));
+        }
+    }
 
-    public Brush BorderBrush => IsSelected
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected
         ? CMenuMain.CreateHeadBrush(HeadNo, 255)
         : new SolidColorBrush(Color.FromRgb(102, 136, 164));
+        }
+    }
 
-    public Brush TextBrush => IsSelected
+    public Brush TextBrush
+    {
+        get
+        {
+            return IsSelected
         ? Brushes.White
         : new SolidColorBrush(Color.FromRgb(226, 232, 240));
+        }
+    }
 }
 
 public sealed record ST_RECIPE_FILE(
@@ -2545,7 +3281,11 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             if (!SetProperty(ref _value, value))
@@ -2566,15 +3306,33 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
 
     public string SourceGroup { get; }
 
-    public string OriginalValue => _initialValue;
+    public string OriginalValue
+    {
+        get
+        {
+            return _initialValue;
+        }
+    }
 
     public EN_RECIPE_DATA_TYPE DataType { get; }
 
-    public bool UsesSelectionEditor => DataType == EN_RECIPE_DATA_TYPE.Bool;
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return DataType == EN_RECIPE_DATA_TYPE.Bool;
+        }
+    }
 
-    public IReadOnlyList<string> ValueOptions => Value.Trim() is "0" or "1"
+    public IReadOnlyList<string> ValueOptions
+    {
+        get
+        {
+            return Value.Trim() is "0" or "1"
         ? ["0", "1"]
         : ["OFF", "ON"];
+        }
+    }
 
     public double ChangeLimit { get; }
 
@@ -2582,11 +3340,21 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
 
     public double Max { get; }
 
-    public bool IsEdited => !NormalizeValue(Value).Equals(NormalizeValue(_initialValue), StringComparison.OrdinalIgnoreCase);
+    public bool IsEdited
+    {
+        get
+        {
+            return !NormalizeValue(Value).Equals(NormalizeValue(_initialValue), StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public string ValueState
     {
-        get => _valueState;
+        get
+        {
+            return _valueState;
+        }
+
         private set
         {
             if (SetProperty(ref _valueState, value))
@@ -2596,12 +3364,27 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
         }
     }
 
-    public Brush ValueBrush => ValueState switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateValueStateSwitch5()
+            {
+                var switchValue = ValueState;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueStateSwitch5();
+        }
+    }
 
     private static string NormalizeValue(string value)
     {
@@ -2618,7 +3401,13 @@ public sealed record ST_RECIPE_HISTORY_ROW(
     string Before,
     string After)
 {
-    public Brush AfterBrush => CStatusBrush.Wait;
+    public Brush AfterBrush
+    {
+        get
+        {
+            return CStatusBrush.Wait;
+        }
+    }
 }
 
 public sealed record ST_RECIPE_STATE_ROW(
@@ -2626,13 +3415,29 @@ public sealed record ST_RECIPE_STATE_ROW(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            Brush EvaluateStateSwitch6()
+            {
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch6();
+        }
+    }
 }
 
 

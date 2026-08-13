@@ -8,7 +8,7 @@ namespace Drilling.Common.Interface;
 [CCommType("SocketServer")]
 internal sealed class CSocketServerComm(
     ST_INTERFACE_DATA data,
-    ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option), ICommMessageSource
+    ST_INTERFACE_CONNECT_OPTION option) : CCommBase(data, option)
 {
     private const int MaxMessageLength = 8192;
 
@@ -51,8 +51,13 @@ internal sealed class CSocketServerComm(
 
             _listener = listener;
             _serverCts = new CancellationTokenSource();
+            Task? RunTask1()
+            {
+                return AcceptLoop(listener, _serverCts.Token);
+            }
+
             _acceptTask = Task.Run(
-                () => AcceptLoop(listener, _serverCts.Token),
+RunTask1,
                 CancellationToken.None);
 
             LastSent = "";
@@ -162,13 +167,22 @@ internal sealed class CSocketServerComm(
                 _clients[clientId] = client;
                 LastError = "";
                 SetState(EN_COMM_STATE.Online);
+                Task? RunTask2()
+                {
+                    return ReceiveLoop(clientId, client, cancellationToken);
+                }
 
                 var receiveTask = Task.Run(
-                    () => ReceiveLoop(clientId, client, cancellationToken),
+RunTask2,
                     CancellationToken.None);
                 _clientTasks[clientId] = receiveTask;
+                void HandleValue3(Task task)
+                {
+                    CleanupClientTask(clientId, task);
+                }
+
                 _ = receiveTask.ContinueWith(
-                    task => CleanupClientTask(clientId, task),
+HandleValue3,
                     CancellationToken.None,
                     TaskContinuationOptions.ExecuteSynchronously,
                     TaskScheduler.Default);

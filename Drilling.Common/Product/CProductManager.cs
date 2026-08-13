@@ -63,97 +63,37 @@ public sealed record ST_PRODUCT_HISTORY(
     string Result,
     string Detail);
 
-public interface IProductFile
+public abstract class CProductFileBase
 {
-    Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
-
-    Task SaveActive(
-        ST_PRODUCT_DATA product,
-        CancellationToken cancellationToken = default);
-
-    Task ClearActive(CancellationToken cancellationToken = default);
-
-    Task AppendHistory(
-        ST_PRODUCT_HISTORY history,
-        CancellationToken cancellationToken = default);
-
-    Task AppendHeadResults(
-        ST_PRODUCT_DATA product,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
-        int maxRows = 100,
-        int days = 14,
-        CancellationToken cancellationToken = default);
-}
-
-public interface IProductManager
-{
-    Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
-
-    ST_PRODUCT_DATA? Current { get; }
-
-    Task<ST_PRODUCT_DATA> CreateProduct(
-        string processId,
-        string productId,
-        string panelId,
-        string lotId,
-        string recipeId,
-        IReadOnlyDictionary<string, string> parameters,
-        IReadOnlyDictionary<int, int> headPointCounts,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> StartProduct(
-        string productId,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> SetHeadRunning(
-        string productId,
-        int headNo,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> SetHeadResult(
-        string productId,
-        int headNo,
-        bool isOk,
-        string errorCode = "",
-        string message = "",
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> CompleteProduct(
-        string productId,
-        bool isOk,
-        string message,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> StopProduct(
-        string productId,
-        string message,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> SetError(
-        string productId,
-        string message,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> ScrapProduct(
-        string productId,
-        string reason,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
-        int maxRows = 100,
-        int days = 14,
-        CancellationToken cancellationToken = default);
+    public abstract Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
+    public abstract Task SaveActive(
+            ST_PRODUCT_DATA product,
+            CancellationToken cancellationToken = default);
+    public abstract Task ClearActive(CancellationToken cancellationToken = default);
+    public abstract Task AppendHistory(
+            ST_PRODUCT_HISTORY history,
+            CancellationToken cancellationToken = default);
+    public abstract Task AppendHeadResults(
+            ST_PRODUCT_DATA product,
+            CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
+            int maxRows = 100,
+            int days = 14,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed class CProductManager(
-    IProductFile productFile,
-    ILogManager? logManager = null) : IProductManager
-{
+    CProductFileBase productFile,
+    CLogManager? logManager = null) {
     private ST_PRODUCT_DATA? _current;
 
-    public ST_PRODUCT_DATA? Current => _current;
+    public ST_PRODUCT_DATA? Current
+    {
+        get
+        {
+            return _current;
+        }
+    }
 
     public async Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
     {
@@ -177,18 +117,28 @@ public sealed class CProductManager(
 
         var resolvedProductId = ChooseProductId(processId, productId, panelId, parameters);
         var now = DateTimeOffset.Now;
+        int GetItemSortKey1(KeyValuePair<int, int> item)
+        {
+            return item.Key;
+        }
+
+        ST_PRODUCT_HEAD_RESULT SelectItem2(KeyValuePair<int, int> item)
+        {
+            return new ST_PRODUCT_HEAD_RESULT(
+                            item.Key,
+                            EN_PRODUCT_HEAD_STATE.Ready,
+                            Math.Max(0, item.Value),
+                            0,
+                            EN_PRODUCT_RESULT.Pending,
+                            "",
+                            "",
+                            null,
+                            null);
+        }
+
         var heads = headPointCounts
-            .OrderBy(item => item.Key)
-            .Select(item => new ST_PRODUCT_HEAD_RESULT(
-                item.Key,
-                EN_PRODUCT_HEAD_STATE.Ready,
-                Math.Max(0, item.Value),
-                0,
-                EN_PRODUCT_RESULT.Pending,
-                "",
-                "",
-                null,
-                null))
+            .OrderBy(GetItemSortKey1)
+            .Select(SelectItem2)
             .ToArray();
 
         _current = new ST_PRODUCT_DATA(
@@ -237,16 +187,21 @@ public sealed class CProductManager(
 
         var product = GetCurrent(productId);
         var now = DateTimeOffset.Now;
+        ST_PRODUCT_HEAD_RESULT SelectHead3(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo == headNo
+                                ? head with
+                                {
+                                    State = EN_PRODUCT_HEAD_STATE.Running,
+                                    StartedAt = head.StartedAt ?? now
+                                }
+                                : head;
+        }
+
         _current = product with
         {
             Heads = product.Heads
-                .Select(head => head.HeadNo == headNo
-                    ? head with
-                    {
-                        State = EN_PRODUCT_HEAD_STATE.Running,
-                        StartedAt = head.StartedAt ?? now
-                    }
-                    : head)
+                .Select(SelectHead3)
                 .ToArray()
         };
 
@@ -266,21 +221,26 @@ public sealed class CProductManager(
 
         var product = GetCurrent(productId);
         var now = DateTimeOffset.Now;
+        ST_PRODUCT_HEAD_RESULT SelectHead4(ST_PRODUCT_HEAD_RESULT head)
+        {
+            return head.HeadNo == headNo
+                                ? head with
+                                {
+                                    State = isOk ? EN_PRODUCT_HEAD_STATE.Completed : EN_PRODUCT_HEAD_STATE.Error,
+                                    CompletedPoints = isOk ? head.TotalPoints : head.CompletedPoints,
+                                    Result = isOk ? EN_PRODUCT_RESULT.OK : EN_PRODUCT_RESULT.NG,
+                                    ErrorCode = errorCode,
+                                    Message = message,
+                                    StartedAt = head.StartedAt ?? now,
+                                    CompletedAt = now
+                                }
+                                : head;
+        }
+
         _current = product with
         {
             Heads = product.Heads
-                .Select(head => head.HeadNo == headNo
-                    ? head with
-                    {
-                        State = isOk ? EN_PRODUCT_HEAD_STATE.Completed : EN_PRODUCT_HEAD_STATE.Error,
-                        CompletedPoints = isOk ? head.TotalPoints : head.CompletedPoints,
-                        Result = isOk ? EN_PRODUCT_RESULT.OK : EN_PRODUCT_RESULT.NG,
-                        ErrorCode = errorCode,
-                        Message = message,
-                        StartedAt = head.StartedAt ?? now,
-                        CompletedAt = now
-                    }
-                    : head)
+                .Select(SelectHead4)
                 .ToArray()
         };
 

@@ -4,121 +4,6 @@ using Drilling.Common.Managers;
 
 namespace Drilling.Common.Automation;
 
-public interface IAutomationManager
-{
-    Task Connect(
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task Disconnect(
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    bool IsConnect(int number = 0);
-
-    bool IsSimul(int number = 0);
-
-    Task<string> ReadStatus(
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> Move(
-        string axisName,
-        double targetPosition,
-        double velocity = 100.0,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> MoveRel(
-        string axisName,
-        double distance,
-        double velocity = 100.0,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> Stop(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ServoOn(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ServoOff(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> Home(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ResetAlarm(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ReadAxis(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_AUTOMATION_AXIS_STATUS> ReadAxisStatus(
-        string axisName,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> RunLocalScript(
-        string localScriptPath,
-        string controllerFileName = "",
-        int taskIndex = 1,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> UploadScript(
-        string localScriptPath,
-        string scriptFileName = "",
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> RunScript(
-        string scriptFileName,
-        int taskIndex = 1,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> RunBufferedScript(
-        string localScriptPath,
-        string scriptFileName = "",
-        int taskIndex = 1,
-        int number = 0,
-        int queueSize = 100,
-        int linesPerCommand = 1000,
-        int timeoutMs = 600000,
-        CancellationToken cancellationToken = default);
-
-    Task<string> RunBufferedScripts(
-        IReadOnlyList<ST_BUFFERED_SCRIPT_RUN_ITEM> scripts,
-        int number = 0,
-        int queueSize = 100,
-        int linesPerCommand = 1000,
-        int timeoutMs = 600000,
-        CancellationToken cancellationToken = default);
-
-    Task<string> StopTask(
-        int taskIndex = 1,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ReadTaskStatus(
-        int taskIndex = 1,
-        int number = 0,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed record ST_BUFFERED_SCRIPT_RUN_ITEM(
     string LocalScriptPath,
     string ScriptFileName,
@@ -140,8 +25,7 @@ public sealed record ST_AUTOMATION_AXIS_STATUS(
     string RawResponse,
     DateTimeOffset UpdatedAt);
 
-public sealed class CAutomationManager : IAutomationManager
-{
+public sealed class CAutomationManager {
     private const string LocalScriptPathKey = "LocalScriptPath";
     private const string AutomationScriptPathKey = "AutomationScriptPath";
 
@@ -152,14 +36,14 @@ public sealed class CAutomationManager : IAutomationManager
             ["GY"] = 1
         };
 
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly ISettingManager? _settingManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CSettingManager? _settingManager;
     private readonly string _projectRoot;
     private readonly string _defaultLocalScriptDirectory;
 
     public CAutomationManager(
-        IInterfaceManager interfaceManager,
-        ISettingManager? settingManager = null,
+        CInterfaceManager interfaceManager,
+        CSettingManager? settingManager = null,
         string projectRoot = "",
         string defaultLocalScriptDirectory = "")
     {

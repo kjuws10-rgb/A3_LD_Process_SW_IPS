@@ -43,85 +43,32 @@ public sealed record ST_SETTING_HISTORY(
     string OperatorId,
     string Action);
 
-public interface ISettingFile
+public abstract class CSettingFileBase
 {
-    Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
-
-    Task Save(
-        EN_SETTING_TAB section,
-        IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> Load(
+            EN_SETTING_TAB section,
+            CancellationToken cancellationToken = default);
+    public abstract Task Save(
+            EN_SETTING_TAB section,
+            IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
+            CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
+            EN_SETTING_TAB section,
+            CancellationToken cancellationToken = default);
 }
 
-public interface IInterfaceFile
+public abstract class CInterfaceFileBase
 {
-    Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default);
-
-    Task SaveAll(
-        IReadOnlyList<ST_INTERFACE_DATA> interfaces,
-        CancellationToken cancellationToken = default);
-}
-public interface ISettingManager
-{
-    Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> LoadSection(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
-
-    Task<string> GetValue(
-        EN_SETTING_TAB section,
-        string name,
-        string defaultValue = "",
-        CancellationToken cancellationToken = default);
-
-    Task SetValue(
-        EN_SETTING_TAB section,
-        string name,
-        string value,
-        CancellationToken cancellationToken = default);
-
-    Task SaveSection(
-        EN_SETTING_TAB section,
-        IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadInterfaceList(
-        CancellationToken cancellationToken = default);
-
-    Task SaveInterfaceList(
-        IReadOnlyList<ST_INTERFACE_DATA> interfaces,
-        CancellationToken cancellationToken = default);
-
-    Task ConnectInterface(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task DisconnectInterface(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task ReconnectInterface(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
+    public abstract Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadAll(CancellationToken cancellationToken = default);
+    public abstract Task SaveAll(
+            IReadOnlyList<ST_INTERFACE_DATA> interfaces,
+            CancellationToken cancellationToken = default);
 }
 
 public sealed class CSettingManager(
-    ISettingFile settingFile,
-    IInterfaceFile interfaceFile,
-    IInterfaceManager interfaceManager) : ISettingManager
-{
+    CSettingFileBase settingFile,
+    CInterfaceFileBase interfaceFile,
+    CInterfaceManager interfaceManager) {
     public Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> LoadSection(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)
@@ -138,9 +85,13 @@ public sealed class CSettingManager(
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
         var parameters = await LoadSection(section, cancellationToken);
-        var parameter = parameters.FirstOrDefault(item =>
-            item.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-            item.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        bool MatchItem1(ST_SYSTEM_PARAMETER item)
+        {
+            return item.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                        item.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var parameter = parameters.FirstOrDefault(MatchItem1);
 
         return parameter is null || string.IsNullOrWhiteSpace(parameter.Value)
             ? defaultValue
@@ -157,21 +108,22 @@ public sealed class CSettingManager(
 
         var parameters = await LoadSection(section, cancellationToken);
         var found = false;
-        var editedParameters = parameters
-            .Select(parameter =>
+        ST_SYSTEM_PARAMETER SelectParameter2(ST_SYSTEM_PARAMETER parameter)
+        {
+            var isTarget =
+                parameter.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                parameter.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+
+            if (!isTarget)
             {
-                var isTarget =
-                    parameter.Key.Equals(name, StringComparison.OrdinalIgnoreCase) ||
-                    parameter.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+                return parameter;
+            }
 
-                if (!isTarget)
-                {
-                    return parameter;
-                }
-
-                found = true;
-                return parameter with { Value = value };
-            })
+            found = true;
+            return parameter with { Value = value };
+        }
+        var editedParameters = parameters
+            .Select(SelectParameter2)
             .ToArray();
 
         if (!found)

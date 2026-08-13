@@ -119,13 +119,23 @@ public partial class CMonitorView : UserControl
         }
 
         e.Handled = true;
-        var currentValue = field switch
+        string EvaluateFieldSwitch1()
         {
-            "DESCRIPTION" => row.Description,
-            "DIV" => row.Div,
-            "MAG" => row.Mag,
-            _ => ""
-        };
+            var switchValue = field;
+            switch (switchValue)
+            {
+                case "DESCRIPTION":
+                    return row.Description;
+                case "DIV":
+                    return row.Div;
+                case "MAG":
+                    return row.Mag;
+                default:
+                    return "";
+            }
+        }
+
+        var currentValue = EvaluateFieldSwitch1();
         var dataType = field == "DESCRIPTION"
             ? EN_RECIPE_DATA_TYPE.String
             : EN_RECIPE_DATA_TYPE.Int;

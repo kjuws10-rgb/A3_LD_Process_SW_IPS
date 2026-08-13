@@ -30,23 +30,44 @@ public partial class CValueInputDialog : Window
             : dataType == EN_RECIPE_DATA_TYPE.String ? "String input" : "Numeric input";
         DataObject.AddPastingHandler(ValueTextBox, ValueTextBoxPasting);
         BuildKeys();
-        Loaded += (_, _) =>
+        void LoadedHandler1(object unusedParameter1, RoutedEventArgs unusedParameter2)
         {
             ValueTextBox.Focus();
             ValueTextBox.CaretIndex = ValueTextBox.Text.Length;
-        };
+        }
+        Loaded += LoadedHandler1;
     }
 
-    public string ResultValue => ValueTextBox.Text;
+    public string ResultValue
+    {
+        get
+        {
+            return ValueTextBox.Text;
+        }
+    }
 
     private void BuildKeys()
     {
-        var keys = _dataType switch
+        string[] Evaluate_dataTypeSwitch1()
         {
-            EN_RECIPE_DATA_TYPE.Int => ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", "-"],
-            EN_RECIPE_DATA_TYPE.Double => ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "-"],
-            _ => "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(value => value.ToString()).ToArray()
-        };
+            var switchValue = _dataType;
+            switch (switchValue)
+            {
+                case EN_RECIPE_DATA_TYPE.Int:
+                    return ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", "-"];
+                case EN_RECIPE_DATA_TYPE.Double:
+                    return ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "-"];
+                default:
+                    string SelectValue2(char value)
+                    {
+                        return value.ToString();
+                    }
+
+                    return "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(SelectValue2).ToArray();
+            }
+        }
+
+        var keys = Evaluate_dataTypeSwitch1();
 
         KeyGrid.Columns = _dataType == EN_RECIPE_DATA_TYPE.String ? 10 : 3;
         foreach (var key in keys)
@@ -103,7 +124,10 @@ public partial class CValueInputDialog : Window
         }
     }
 
-    private void ClearClick(object sender, RoutedEventArgs e) => ValueTextBox.Clear();
+    private void ClearClick(object sender, RoutedEventArgs e)
+    {
+        ValueTextBox.Clear();
+    }
 
     private void ValueTextBoxPreviewTextInput(object sender, TextCompositionEventArgs e)
     {
@@ -152,7 +176,10 @@ public partial class CValueInputDialog : Window
         return true;
     }
 
-    private void CancelClick(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void CancelClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+    }
 
     private void WindowKeyDown(object sender, KeyEventArgs e)
     {

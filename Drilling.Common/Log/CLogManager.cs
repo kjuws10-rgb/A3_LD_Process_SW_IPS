@@ -9,50 +9,7 @@ using Drilling.Common.Station;
 
 namespace Drilling.Common.Log;
 
-public interface ILogManager
-{
-    void WriteStationState(
-        string stationName,
-        string stateName,
-        string action,
-        string detail);
-
-    void WriteInterfaceConnection(
-        EN_EQP_MODULE module,
-        string action,
-        string nickName,
-        string oldState,
-        string newState);
-
-    void WriteInterfaceCommand(
-        EN_EQP_MODULE module,
-        string nickName,
-        string command,
-        string response,
-        string detail = "");
-
-    void WriteInterfaceError(
-        EN_EQP_MODULE module,
-        string nickName,
-        string command,
-        string detail);
-
-    void WriteProductEvent(
-        string productId,
-        string action,
-        string state,
-        string result,
-        string detail);
-
-    IReadOnlyList<ST_INTERFACE_HISTORY> ReadInterfaceRecent(
-        EN_EQP_MODULE? module = null,
-        string nickName = "",
-        int maxRows = 100,
-        int days = 14);
-}
-
-public sealed class CLogManager : ILogManager
-{
+public sealed class CLogManager {
     private const int DefaultReadDays = 14;
     private const int DefaultRecipeReadRows = 10;
     private const int DefaultSettingReadRows = 20;
@@ -101,14 +58,28 @@ public sealed class CLogManager : ILogManager
             recipeName,
             recipeId
         };
+        bool FilterItem1(ST_RECIPE_HISTORY? item)
+        {
+            return item is not null;
+        }
+
+        bool FilterItem2(ST_RECIPE_HISTORY item)
+        {
+            return names.Contains(item.RecipeName);
+        }
+
+        DateTimeOffset GetItemSortKey3(ST_RECIPE_HISTORY item)
+        {
+            return item.ChangedAt;
+        }
 
         return EnumerateRecentLogFiles(_recipeLogRoot, days)
             .SelectMany(ReadLogFile)
             .Select(ParseRecipeLine)
-            .Where(item => item is not null)
+            .Where(FilterItem1)
             .Cast<ST_RECIPE_HISTORY>()
-            .Where(item => names.Contains(item.RecipeName))
-            .OrderByDescending(item => item.ChangedAt)
+            .Where(FilterItem2)
+            .OrderByDescending(GetItemSortKey3)
             .Take(maxRows)
             .ToArray();
     }
@@ -158,13 +129,28 @@ public sealed class CLogManager : ILogManager
         int maxRows = DefaultSettingReadRows,
         int days = DefaultReadDays)
     {
+        bool FilterItem4(ST_SETTING_HISTORY? item)
+        {
+            return item is not null;
+        }
+
+        bool FilterItem5(ST_SETTING_HISTORY item)
+        {
+            return item.Section == section;
+        }
+
+        DateTimeOffset GetItemSortKey6(ST_SETTING_HISTORY item)
+        {
+            return item.ChangedAt;
+        }
+
         return EnumerateRecentLogFiles(_settingLogRoot, days)
             .SelectMany(ReadLogFile)
             .Select(ParseSettingLine)
-            .Where(item => item is not null)
+            .Where(FilterItem4)
             .Cast<ST_SETTING_HISTORY>()
-            .Where(item => item.Section == section)
-            .OrderByDescending(item => item.ChangedAt)
+            .Where(FilterItem5)
+            .OrderByDescending(GetItemSortKey6)
             .Take(maxRows)
             .ToArray();
     }
@@ -239,15 +225,29 @@ public sealed class CLogManager : ILogManager
         int days = DefaultReadDays)
     {
         var normalizedNickName = nickName.Trim();
+        bool FilterItem7(ST_INTERFACE_HISTORY? item)
+        {
+            return item is not null;
+        }
+
+        bool FilterItem8(ST_INTERFACE_HISTORY item)
+        {
+            return string.IsNullOrWhiteSpace(normalizedNickName) ||
+                            item.NickName.Equals(normalizedNickName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        DateTimeOffset GetItemSortKey9(ST_INTERFACE_HISTORY item)
+        {
+            return item.OccurredAt;
+        }
 
         return EnumerateInterfaceLogFiles(module, days)
             .SelectMany(ReadLogFile)
             .Select(ParseInterfaceLine)
-            .Where(item => item is not null)
+            .Where(FilterItem7)
             .Cast<ST_INTERFACE_HISTORY>()
-            .Where(item => string.IsNullOrWhiteSpace(normalizedNickName) ||
-                item.NickName.Equals(normalizedNickName, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(item => item.OccurredAt)
+            .Where(FilterItem8)
+            .OrderByDescending(GetItemSortKey9)
             .Take(Math.Max(1, maxRows))
             .ToArray();
     }
@@ -383,10 +383,14 @@ public sealed class CLogManager : ILogManager
         {
             return [];
         }
+        IEnumerable<string> SelectDirectory10(string directory)
+        {
+            return EnumerateRecentLogFiles(directory, days);
+        }
 
         return Directory
             .EnumerateDirectories(_interfaceLogRoot)
-            .SelectMany(directory => EnumerateRecentLogFiles(directory, days))
+            .SelectMany(SelectDirectory10)
             .ToArray();
     }
 
@@ -412,44 +416,49 @@ public sealed class CLogManager : ILogManager
         {
             return null;
         }
-
-        return action.ToUpperInvariant() switch
+        ST_RECIPE_HISTORY EvaluateValueSwitch1()
         {
-            "MODIFY" when parts.Length >= 8 =>
-                CreateRecipeHistory(
-                    changedAt,
-                    recipeName,
-                    action,
-                    UnescapeField(parts[5]),
-                    UnescapeField(parts[6]),
-                    UnescapeField(parts[7]),
-                    UnescapeField(parts[3]),
-                    UnescapeField(parts[4])),
-            "MODIFY" when parts.Length >= 6 =>
-                CreateRecipeHistory(changedAt, recipeName, action, UnescapeField(parts[3]), UnescapeField(parts[4]), UnescapeField(parts[5])),
-            "PARAM CHANGE" when parts.Length >= 7 =>
-                CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]),
-            "PARAM CHANGE OFFSET X" when parts.Length >= 7 =>
-                CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]),
-            "PARAM CHANGE OFFSET Y" when parts.Length >= 7 =>
-                CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]),
-            "CREATE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            "HOST RECIPE CREATE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            "DELETE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", recipeName, "-"),
-            "RENAME" when parts.Length >= 6 =>
-                CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]),
-            "CHANGE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            "SAVE" =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName),
-            _ when parts.Length >= 6 =>
-                CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]),
-            _ =>
-                CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", "-")
-        };
+            var switchValue = action.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "MODIFY" when parts.Length >= 8:
+                    return CreateRecipeHistory(
+                            changedAt,
+                            recipeName,
+                            action,
+                            UnescapeField(parts[5]),
+                            UnescapeField(parts[6]),
+                            UnescapeField(parts[7]),
+                            UnescapeField(parts[3]),
+                            UnescapeField(parts[4]));
+                case "MODIFY" when parts.Length >= 6:
+                    return CreateRecipeHistory(changedAt, recipeName, action, UnescapeField(parts[3]), UnescapeField(parts[4]), UnescapeField(parts[5]));
+                case "PARAM CHANGE" when parts.Length >= 7:
+                    return CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]);
+                case "PARAM CHANGE OFFSET X" when parts.Length >= 7:
+                    return CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]);
+                case "PARAM CHANGE OFFSET Y" when parts.Length >= 7:
+                    return CreateRecipeHistory(changedAt, recipeName, action, $"{parts[3]} / {parts[4]}", parts[5], parts[6]);
+                case "CREATE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case "HOST RECIPE CREATE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case "DELETE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", recipeName, "-");
+                case "RENAME" when parts.Length >= 6:
+                    return CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]);
+                case "CHANGE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case "SAVE":
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", recipeName);
+                case var _ when parts.Length >= 6:
+                    return CreateRecipeHistory(changedAt, recipeName, action, parts[3], parts[4], parts[5]);
+                default:
+                    return CreateRecipeHistory(changedAt, recipeName, action, "Recipe", "-", "-");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static ST_INTERFACE_HISTORY? ParseInterfaceLine(string line)
@@ -576,13 +585,23 @@ public sealed class CLogManager : ILogManager
 
     private static string ModuleLogName(EN_EQP_MODULE module)
     {
-        return module switch
+        string EvaluateModuleSwitch2()
         {
-            EN_EQP_MODULE.WonikCtrl => "WONIK_CTRL",
-            EN_EQP_MODULE.TalonLaser => "TALON_LASER",
-            EN_EQP_MODULE.PowerMeter => "POWER_METER",
-            _ => module.ToString().ToUpperInvariant()
-        };
+            var switchValue = module;
+            switch (switchValue)
+            {
+                case EN_EQP_MODULE.WonikCtrl:
+                    return "WONIK_CTRL";
+                case EN_EQP_MODULE.TalonLaser:
+                    return "TALON_LASER";
+                case EN_EQP_MODULE.PowerMeter:
+                    return "POWER_METER";
+                default:
+                    return module.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateModuleSwitch2();
     }
 
     private static bool TryReadModuleLogName(string value, out EN_EQP_MODULE module)
@@ -618,16 +637,29 @@ public sealed class CLogManager : ILogManager
 
     private static bool TryReadSection(string value, out EN_SETTING_TAB section)
     {
-        section = value.Trim().ToUpperInvariant() switch
+        EN_SETTING_TAB EvaluateValueSwitch3()
         {
-            "OPTION" => EN_SETTING_TAB.Option,
-            "INTERFACE" => EN_SETTING_TAB.Interface,
-            "IO" => EN_SETTING_TAB.Io,
-            "MOTOR" => EN_SETTING_TAB.Motor,
-            "POSITION" => EN_SETTING_TAB.Option,
-            "ALARM" => EN_SETTING_TAB.Alarm,
-            _ => EN_SETTING_TAB.Option
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "OPTION":
+                    return EN_SETTING_TAB.Option;
+                case "INTERFACE":
+                    return EN_SETTING_TAB.Interface;
+                case "IO":
+                    return EN_SETTING_TAB.Io;
+                case "MOTOR":
+                    return EN_SETTING_TAB.Motor;
+                case "POSITION":
+                    return EN_SETTING_TAB.Option;
+                case "ALARM":
+                    return EN_SETTING_TAB.Alarm;
+                default:
+                    return EN_SETTING_TAB.Option;
+            }
+        }
+
+        section = EvaluateValueSwitch3();
 
         return value.Trim().ToUpperInvariant() is "OPTION" or "INTERFACE" or "IO" or "MOTOR" or "POSITION" or "ALARM";
     }

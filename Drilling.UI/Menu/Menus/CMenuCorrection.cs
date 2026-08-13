@@ -8,7 +8,7 @@ using Microsoft.Win32;
 
 namespace Drilling.UI.Menu.Menus;
 
-public sealed class CMenuCorrection : IMenu
+public sealed class CMenuCorrection : CMenuBase
 {
     private static readonly string[] CorrectionTabs =
     [
@@ -20,9 +20,9 @@ public sealed class CMenuCorrection : IMenu
         "OUTPUT / HISTORY"
     ];
 
-    private readonly IReviewResultFile _reviewResultFile;
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
+    private readonly CReviewResultFileBase _reviewResultFile;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _statusReporter;
     private readonly Func<Task> _refreshCurrentScreen;
@@ -38,9 +38,9 @@ public sealed class CMenuCorrection : IMenu
     private string _selectedTab = "REVIEW DATA";
 
     public CMenuCorrection(
-        IReviewResultFile reviewResultFile,
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
+        CReviewResultFileBase reviewResultFile,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> statusReporter,
         Func<Task> refreshCurrentScreen)
@@ -53,21 +53,62 @@ public sealed class CMenuCorrection : IMenu
         _refreshCurrentScreen = refreshCurrentScreen;
 
         SelectTabCommand = new CButtonCommand(SelectTab);
-        ExecuteCommand = new CButtonCommand(async parameter => await Execute(parameter));
+
+        async void HandleExecuteCommand1(object? parameter)
+        {
+            await Execute(parameter);
+        }
+
+        ExecuteCommand = new CButtonCommand(HandleExecuteCommand1);
     }
 
-    public EN_MENU Menu => EN_MENU.Correction;
+    public override EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Correction;
+        }
+    }
 
-    public string Title => $"CORRECTION / {_selectedTab}";
+    public string Title
+    {
+        get
+        {
+            return $"CORRECTION / {_selectedTab}";
+        }
+    }
 
-    public string Subtitle => GetSubtitle(_selectedTab);
+    public string Subtitle
+    {
+        get
+        {
+            return GetSubtitle(_selectedTab);
+        }
+    }
 
-    public string SelectedTab => _selectedTab;
+    public string SelectedTab
+    {
+        get
+        {
+            return _selectedTab;
+        }
+    }
 
-    public bool IsReviewDataTab =>
-        _selectedTab.Equals("REVIEW DATA", StringComparison.OrdinalIgnoreCase);
+    public bool IsReviewDataTab
+    {
+        get
+        {
+            return _selectedTab.Equals("REVIEW DATA", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsOtherCorrectionTab => !IsReviewDataTab;
+    public bool IsOtherCorrectionTab
+    {
+        get
+        {
+            return !IsReviewDataTab;
+        }
+    }
 
     public IReadOnlyList<ST_CORRECTION_TAB> Tabs { get; private set; } = [];
 
@@ -91,21 +132,51 @@ public sealed class CMenuCorrection : IMenu
 
     public IReadOnlyList<ST_CORRECTION_REVIEW_OFFSET_ROW> ApplyPreviewRows { get; private set; } = [];
 
-    public string LoadedReviewFileName => _loadedReviewResult?.FileName ?? "Not loaded";
+    public string LoadedReviewFileName
+    {
+        get
+        {
+            return _loadedReviewResult?.FileName ?? "Not loaded";
+        }
+    }
 
-    public string ReviewLoadStatus => _reviewLoadStatus;
+    public string ReviewLoadStatus
+    {
+        get
+        {
+            return _reviewLoadStatus;
+        }
+    }
 
-    public Brush ReviewLoadStatusBrush => CStatusBrush.ForDisplayState(_reviewLoadState);
+    public Brush ReviewLoadStatusBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(_reviewLoadState);
+        }
+    }
 
-    public string CurrentSettingState => _currentSettingState;
+    public string CurrentSettingState
+    {
+        get
+        {
+            return _currentSettingState;
+        }
+    }
 
-    public string CurrentReviewOffsetRecipeName => _currentReviewOffsetRecipeName;
+    public string CurrentReviewOffsetRecipeName
+    {
+        get
+        {
+            return _currentReviewOffsetRecipeName;
+        }
+    }
 
     public CButtonCommand SelectTabCommand { get; }
 
     public CButtonCommand ExecuteCommand { get; }
 
-    public Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
+    public override Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -137,9 +208,12 @@ public sealed class CMenuCorrection : IMenu
         {
             return;
         }
+        bool MatchTab2(string tab)
+        {
+            return tab.Equals(tabName, StringComparison.OrdinalIgnoreCase);
+        }
 
-        var normalizedTab = CorrectionTabs.FirstOrDefault(tab =>
-            tab.Equals(tabName, StringComparison.OrdinalIgnoreCase));
+        var normalizedTab = CorrectionTabs.FirstOrDefault(MatchTab2);
 
         if (normalizedTab is null)
         {
@@ -188,19 +262,35 @@ public sealed class CMenuCorrection : IMenu
 
     private void ApplyTabData(string selectedTab)
     {
-        Tabs = CorrectionTabs
-            .Select(tab => new ST_CORRECTION_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase)))
-            .ToArray();
-
-        (SummaryItems, SourceRows, CandidateRows, ApplyRows, DetailItems, HistoryRows) = selectedTab switch
+        ST_CORRECTION_TAB SelectTab3(string tab)
         {
-            "ALIGN COMP" => CreateAlignCompData(),
-            "OFFSET COMP" => CreateOffsetCompData(),
-            "APC / ICR" => CreateApcIcrData(),
-            "ZERO DEFENSE" => CreateZeroDefenseData(),
-            "OUTPUT / HISTORY" => CreateOutputHistoryData(),
-            _ => CreateReviewData()
-        };
+            return new ST_CORRECTION_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase));
+        }
+
+        Tabs = CorrectionTabs
+            .Select(SelectTab3)
+            .ToArray();
+        (IReadOnlyList<ST_DISPLAY_ITEM> Summary, IReadOnlyList<ST_CORRECTION_SOURCE_ROW> Source, IReadOnlyList<ST_CORRECTION_VALUE_ROW> Candidate, IReadOnlyList<ST_CORRECTION_VALUE_ROW> Apply, IReadOnlyList<ST_DISPLAY_ITEM> Detail, IReadOnlyList<ST_CORRECTION_HISTORY_ROW> History) EvaluateSelectedTabSwitch1()
+        {
+            var switchValue = selectedTab;
+            switch (switchValue)
+            {
+                case "ALIGN COMP":
+                    return CreateAlignCompData();
+                case "OFFSET COMP":
+                    return CreateOffsetCompData();
+                case "APC / ICR":
+                    return CreateApcIcrData();
+                case "ZERO DEFENSE":
+                    return CreateZeroDefenseData();
+                case "OUTPUT / HISTORY":
+                    return CreateOutputHistoryData();
+                default:
+                    return CreateReviewData();
+            }
+        }
+
+        (SummaryItems, SourceRows, CandidateRows, ApplyRows, DetailItems, HistoryRows) = EvaluateSelectedTabSwitch1();
     }
 
     private async Task LoadReviewResult()
@@ -232,14 +322,19 @@ public sealed class CMenuCorrection : IMenu
                 GetReviewResultIdentity(result));
             _currentSettingState = await LoadCurrentSettingState();
             _currentReviewOffsetRecipeName = "Recipe: -";
+            ST_CORRECTION_REVIEW_RESULT_ROW SelectRow4(ST_REVIEW_RESULT_FILE_ROW row)
+            {
+                return new ST_CORRECTION_REVIEW_RESULT_ROW(
+                                    row.HoleKey,
+                                    $"H{row.HeadNo:00}",
+                                    row.CellNo,
+                                    row.ErrorX,
+                                    row.ErrorY,
+                                    row.Judge);
+            }
+
             ReviewResultRows = result.Rows
-                .Select(row => new ST_CORRECTION_REVIEW_RESULT_ROW(
-                    row.HoleKey,
-                    $"H{row.HeadNo:00}",
-                    row.CellNo,
-                    row.ErrorX,
-                    row.ErrorY,
-                    row.Judge))
+                .Select(SelectRow4)
                 .ToArray();
 
             string? offsetLoadWarning = null;
@@ -419,11 +514,20 @@ public sealed class CMenuCorrection : IMenu
                 "NG");
             return;
         }
+        string SelectRow5(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.HoleKey;
+        }
 
         var currentKeys = CurrentOffsetRows
-            .Select(row => row.HoleKey)
+            .Select(SelectRow5)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (CalculatedOffsetRows.Any(row => !currentKeys.Contains(row.HoleKey)))
+        bool CheckRow6(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return !currentKeys.Contains(row.HoleKey);
+        }
+
+        if (CalculatedOffsetRows.Any(CheckRow6))
         {
             await ReportReviewDataCommand(
                 "Apply",
@@ -431,30 +535,49 @@ public sealed class CMenuCorrection : IMenu
                 "NG");
             return;
         }
+        string HandleCurrentOffsets7(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.HoleKey;
+        }
+
+        string HandleCurrentOffsets8(IGrouping<string, ST_CORRECTION_REVIEW_OFFSET_ROW> group)
+        {
+            return group.Key;
+        }
+
+        ST_CORRECTION_REVIEW_OFFSET_ROW HandleCurrentOffsets9(IGrouping<string, ST_CORRECTION_REVIEW_OFFSET_ROW> group)
+        {
+            return group.Last();
+        }
 
         var currentOffsets = CurrentOffsetRows
-            .GroupBy(row => row.HoleKey, StringComparer.OrdinalIgnoreCase)
+            .GroupBy(HandleCurrentOffsets7, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
-                group => group.Key,
-                group => group.Last(),
+HandleCurrentOffsets8,
+HandleCurrentOffsets9,
                 StringComparer.OrdinalIgnoreCase);
-        ApplyPreviewRows = CalculatedOffsetRows
-            .Select(row =>
+        ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow10(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            var current = currentOffsets[row.HoleKey];
+            var preview = row with
             {
-                var current = currentOffsets[row.HoleKey];
-                var preview = row with
-                {
-                    OffsetXValue = current.OffsetXValue + row.OffsetXValue,
-                    OffsetYValue = current.OffsetYValue + row.OffsetYValue
-                };
-                return preview with
-                {
-                    State = HasOffsetChanged(current, preview) ? "PENDING" : "CURRENT"
-                };
-            })
+                OffsetXValue = current.OffsetXValue + row.OffsetXValue,
+                OffsetYValue = current.OffsetYValue + row.OffsetYValue
+            };
+            return preview with
+            {
+                State = HasOffsetChanged(current, preview) ? "PENDING" : "CURRENT"
+            };
+        }
+        ApplyPreviewRows = CalculatedOffsetRows
+            .Select(SelectRow10)
             .ToArray();
-        _hasPendingReviewOffsetApply = ApplyPreviewRows.Any(row =>
-            row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase));
+        bool CheckRow11(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        }
+
+        _hasPendingReviewOffsetApply = ApplyPreviewRows.Any(CheckRow11);
 
         if (!_hasPendingReviewOffsetApply)
         {
@@ -465,12 +588,21 @@ public sealed class CMenuCorrection : IMenu
                 "0 Rows / No Change");
             return;
         }
+        bool CountRowCallback12(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        }
+
+        bool CountRowCallback13(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+        {
+            return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+        }
 
         await ReportReviewDataCommand(
             "Apply",
-            $"{ApplyPreviewRows.Count(row => row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase))} calculated values are shown in Apply Preview. Save is required.",
+            $"{ApplyPreviewRows.Count(CountRowCallback12)} calculated values are shown in Apply Preview. Save is required.",
             "WARN",
-            $"{ApplyPreviewRows.Count(row => row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase))} Rows / Pending Save");
+            $"{ApplyPreviewRows.Count(CountRowCallback13)} Rows / Pending Save");
     }
 
     private async Task SaveAppliedReviewOffsets()
@@ -491,18 +623,24 @@ public sealed class CMenuCorrection : IMenu
             {
                 selectedRecipeId = NormalizeRecipeId(_loadedReviewResult.RecipeId);
             }
+            bool MatchItem14(ST_RECIPE_DATA item)
+            {
+                return NormalizeRecipeId(item.Id).Equals(
+                                        selectedRecipeId,
+                                        StringComparison.OrdinalIgnoreCase);
+            }
 
             var recipe = (await _recipeManager.LoadRecipes())
-                .FirstOrDefault(item =>
-                    NormalizeRecipeId(item.Id).Equals(
-                        selectedRecipeId,
-                        StringComparison.OrdinalIgnoreCase))
+                .FirstOrDefault(MatchItem14)
                 ?? throw new InvalidOperationException(
                     $"Selected recipe could not be loaded: {selectedRecipeId}.");
             var parameters = recipe.Parameters.ToList();
+            bool HandleSavedCount15(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+            {
+                return row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase);
+            }
 
-            var savedCount = ApplyPreviewRows.Count(row =>
-                row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase));
+            var savedCount = ApplyPreviewRows.Count(HandleSavedCount15);
             foreach (var row in ApplyPreviewRows)
             {
                 UpsertReviewOffsetParameter(parameters, row, "X", row.OffsetXValue);
@@ -510,17 +648,26 @@ public sealed class CMenuCorrection : IMenu
             }
 
             await _recipeManager.SaveRecipe(recipe with { Parameters = parameters });
-
-            ApplyPreviewRows = ApplyPreviewRows
-                .Select(row => row with
+            ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow16(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+            {
+                return row with
                 {
                     State = row.State.Equals("PENDING", StringComparison.OrdinalIgnoreCase)
-                        ? "SAVED"
-                        : row.State
-                })
+                                        ? "SAVED"
+                                        : row.State
+                };
+            }
+
+            ApplyPreviewRows = ApplyPreviewRows
+                .Select(SelectRow16)
                 .ToArray();
+            ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow17(ST_CORRECTION_REVIEW_OFFSET_ROW row)
+            {
+                return row with { State = "CURRENT" };
+            }
+
             CurrentOffsetRows = ApplyPreviewRows
-                .Select(row => row with { State = "CURRENT" })
+                .Select(SelectRow17)
                 .ToArray();
             _hasPendingReviewOffsetApply = false;
             _isLoadedReviewResultApplied = true;
@@ -551,8 +698,12 @@ public sealed class CMenuCorrection : IMenu
         var normalizedAxis = axis.Equals("Y", StringComparison.OrdinalIgnoreCase) ? "Y" : "X";
         var key = $"{row.HoleKey}_REVIEW_OFFSET_{normalizedAxis}";
         var valueText = value.ToString("0.000000", CultureInfo.InvariantCulture);
-        var parameterIndex = parameters.FindIndex(parameter =>
-            parameter.Key.Equals(key, StringComparison.OrdinalIgnoreCase));
+        bool HandleParameterIndex18(ST_RECIPE_PARAM parameter)
+        {
+            return parameter.Key.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
+        var parameterIndex = parameters.FindIndex(HandleParameterIndex18);
 
         if (parameterIndex >= 0)
         {
@@ -629,10 +780,13 @@ public sealed class CMenuCorrection : IMenu
         {
             selectedRecipeId = NormalizeRecipeId(result.RecipeId);
         }
+        bool MatchItem19(ST_RECIPE_DATA item)
+        {
+            return NormalizeRecipeId(item.Id).Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase);
+        }
 
         var recipe = (await _recipeManager.LoadRecipes())
-            .FirstOrDefault(item =>
-                NormalizeRecipeId(item.Id).Equals(selectedRecipeId, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(MatchItem19);
         if (recipe is null)
         {
             throw new InvalidOperationException(
@@ -640,26 +794,27 @@ public sealed class CMenuCorrection : IMenu
         }
 
         _currentReviewOffsetRecipeName = $"Recipe: {recipe.Id}.csv";
-        return result.Rows
-            .Select(row =>
-            {
-                var holeKey = NormalizeReviewHoleKey(row.HoleKey, row.CellNo);
-                var offsetX = ReadRecipeDouble(
-                    recipe,
-                    0.0,
-                    $"{holeKey}_REVIEW_OFFSET_X");
-                var offsetY = ReadRecipeDouble(
-                    recipe,
-                    0.0,
-                    $"{holeKey}_REVIEW_OFFSET_Y");
+        ST_CORRECTION_REVIEW_OFFSET_ROW SelectRow20(ST_REVIEW_RESULT_FILE_ROW row)
+        {
+            var holeKey = NormalizeReviewHoleKey(row.HoleKey, row.CellNo);
+            var offsetX = ReadRecipeDouble(
+                recipe,
+                0.0,
+                $"{holeKey}_REVIEW_OFFSET_X");
+            var offsetY = ReadRecipeDouble(
+                recipe,
+                0.0,
+                $"{holeKey}_REVIEW_OFFSET_Y");
 
-                return new ST_CORRECTION_REVIEW_OFFSET_ROW(
-                    holeKey,
-                    $"H{row.HeadNo:00}",
-                    offsetX,
-                    offsetY,
-                    "CURRENT");
-            })
+            return new ST_CORRECTION_REVIEW_OFFSET_ROW(
+                holeKey,
+                $"H{row.HeadNo:00}",
+                offsetX,
+                offsetY,
+                "CURRENT");
+        }
+        return result.Rows
+            .Select(SelectRow20)
             .ToArray();
     }
 
@@ -716,8 +871,12 @@ public sealed class CMenuCorrection : IMenu
         IReadOnlyList<ST_CORRECTION_HISTORY_ROW> History) CreateReviewData()
     {
         var result = _loadedReviewResult;
-        var ngCount = result?.Rows.Count(row =>
-            row.Judge.Equals("NG", StringComparison.OrdinalIgnoreCase)) ?? 0;
+        bool HandleNgCount21(ST_REVIEW_RESULT_FILE_ROW row)
+        {
+            return row.Judge.Equals("NG", StringComparison.OrdinalIgnoreCase);
+        }
+
+        var ngCount = result?.Rows.Count(HandleNgCount21) ?? 0;
 
         return (
             [
@@ -758,9 +917,13 @@ public sealed class CMenuCorrection : IMenu
     {
         foreach (var parameter in recipe.Parameters)
         {
-            if (!keys.Any(key =>
-                    key.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase) ||
-                    key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase)))
+            bool CheckKey22(string key)
+            {
+                return key.Equals(parameter.Key, StringComparison.OrdinalIgnoreCase) ||
+                                    key.Equals(parameter.Name, StringComparison.OrdinalIgnoreCase);
+            }
+
+            if (!keys.Any(CheckKey22))
             {
                 continue;
             }
@@ -988,29 +1151,54 @@ public sealed class CMenuCorrection : IMenu
 
     private static string GetSubtitle(string selectedTab)
     {
-        return selectedTab switch
+        string EvaluateSelectedTabSwitch2()
         {
-            "REVIEW DATA" => "Review result load, measurement error review and compensation point selection",
-            "ALIGN COMP" => "Align X/Y/Theta and distortion key compensation",
-            "OFFSET COMP" => "Recipe offset, head offset, cell shift and scanner default offset",
-            "APC / ICR" => "External APC / ICR precision correction file apply",
-            "ZERO DEFENSE" => "0-line review point check and defense offset apply",
-            "OUTPUT / HISTORY" => "Final correction output preview and apply history",
-            _ => "Correction operation"
-        };
+            var switchValue = selectedTab;
+            switch (switchValue)
+            {
+                case "REVIEW DATA":
+                    return "Review result load, measurement error review and compensation point selection";
+                case "ALIGN COMP":
+                    return "Align X/Y/Theta and distortion key compensation";
+                case "OFFSET COMP":
+                    return "Recipe offset, head offset, cell shift and scanner default offset";
+                case "APC / ICR":
+                    return "External APC / ICR precision correction file apply";
+                case "ZERO DEFENSE":
+                    return "0-line review point check and defense offset apply";
+                case "OUTPUT / HISTORY":
+                    return "Final correction output preview and apply history";
+                default:
+                    return "Correction operation";
+            }
+        }
+
+        return EvaluateSelectedTabSwitch2();
     }
 
     private static string GetSourceName(string selectedTab)
     {
-        return selectedTab switch
+        string EvaluateSelectedTabSwitch3()
         {
-            "APC / ICR" => "External",
-            "ALIGN COMP" => "Vision",
-            "OFFSET COMP" => "Recipe",
-            "ZERO DEFENSE" => "Review",
-            "OUTPUT / HISTORY" => "Mixed",
-            _ => "Review"
-        };
+            var switchValue = selectedTab;
+            switch (switchValue)
+            {
+                case "APC / ICR":
+                    return "External";
+                case "ALIGN COMP":
+                    return "Vision";
+                case "OFFSET COMP":
+                    return "Recipe";
+                case "ZERO DEFENSE":
+                    return "Review";
+                case "OUTPUT / HISTORY":
+                    return "Mixed";
+                default:
+                    return "Review";
+            }
+        }
+
+        return EvaluateSelectedTabSwitch3();
     }
 
     private static string GetStateName(string selectedTab)
@@ -1032,7 +1220,13 @@ public sealed record ST_CORRECTION_SOURCE_ROW(
     string State,
     string Source)
 {
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 }
 
 public sealed record ST_CORRECTION_VALUE_ROW(
@@ -1042,9 +1236,21 @@ public sealed record ST_CORRECTION_VALUE_ROW(
     string Unit,
     string State)
 {
-    public Brush ValueBrush => CStatusBrush.ForDisplayState(State);
+    public Brush ValueBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 }
 
 public sealed record ST_CORRECTION_HISTORY_ROW(
@@ -1056,7 +1262,13 @@ public sealed record ST_CORRECTION_HISTORY_ROW(
     string After,
     string Result)
 {
-    public Brush ResultBrush => CStatusBrush.ForDisplayState(Result);
+    public Brush ResultBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Result);
+        }
+    }
 }
 
 public sealed record ST_CORRECTION_REVIEW_RESULT_ROW(
@@ -1067,11 +1279,29 @@ public sealed record ST_CORRECTION_REVIEW_RESULT_ROW(
     double ErrorYValue,
     string Judge)
 {
-    public string ErrorX => FormatDisplayValue(ErrorXValue);
+    public string ErrorX
+    {
+        get
+        {
+            return FormatDisplayValue(ErrorXValue);
+        }
+    }
 
-    public string ErrorY => FormatDisplayValue(ErrorYValue);
+    public string ErrorY
+    {
+        get
+        {
+            return FormatDisplayValue(ErrorYValue);
+        }
+    }
 
-    public Brush JudgeBrush => CStatusBrush.ForDisplayState(Judge);
+    public Brush JudgeBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Judge);
+        }
+    }
 
     private static string FormatDisplayValue(double value)
     {
@@ -1086,18 +1316,51 @@ public sealed record ST_CORRECTION_REVIEW_OFFSET_ROW(
     double OffsetYValue,
     string State)
 {
-    public string OffsetX => FormatDisplayValue(OffsetXValue);
-
-    public string OffsetY => FormatDisplayValue(OffsetYValue);
-
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
-
-    public Brush OffsetValueBrush => State.Trim().ToUpperInvariant() switch
+    public string OffsetX
     {
-        "PENDING" => CStatusBrush.Wait,
-        "SAVED" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return FormatDisplayValue(OffsetXValue);
+        }
+    }
+
+    public string OffsetY
+    {
+        get
+        {
+            return FormatDisplayValue(OffsetYValue);
+        }
+    }
+
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
+
+    public Brush OffsetValueBrush
+    {
+        get
+        {
+            Brush EvaluateValueSwitch4()
+            {
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "PENDING":
+                        return CStatusBrush.Wait;
+                    case "SAVED":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueSwitch4();
+        }
+    }
 
     private static string FormatDisplayValue(double value)
     {

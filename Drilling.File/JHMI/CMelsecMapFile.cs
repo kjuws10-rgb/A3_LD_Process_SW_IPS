@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
+public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
 {
     private const string TableName = "JHMI_MELSEC_MAP";
 
@@ -41,18 +41,42 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
         ["POLL_MS", "POLL MS", "POLL"]
     ];
 
-    public Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
         CCsvParser.ValidateRequiredHeaders(GetMapPath(), TableName, RequiredHeaderGroups);
+        ST_MELSEC_MAP_DATA SelectRow1(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return Parse(row, index + 2);
+        }
+
+        bool FilterData2(ST_MELSEC_MAP_DATA data)
+        {
+            return !string.IsNullOrWhiteSpace(data.Id);
+        }
+
+        string GetDataSortKey3(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Group;
+        }
+
+        int GetDataSortKey4(ST_MELSEC_MAP_DATA data)
+        {
+            return data.DeviceNo;
+        }
+
+        string GetDataSortKey5(ST_MELSEC_MAP_DATA data)
+        {
+            return data.Id;
+        }
 
         var rows = CCsvParser.Read(GetMapPath())
-            .Select((row, index) => Parse(row, index + 2))
-            .Where(data => !string.IsNullOrWhiteSpace(data.Id))
-            .OrderBy(data => data.Group, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(data => data.DeviceNo)
-            .ThenBy(data => data.Id, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectRow1)
+            .Where(FilterData2)
+            .OrderBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(GetDataSortKey4)
+            .ThenBy(GetDataSortKey5, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         Validate(rows);
@@ -99,8 +123,12 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
     private static void Validate(IReadOnlyList<ST_MELSEC_MAP_DATA> rows)
     {
         var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        bool FilterRow6(ST_MELSEC_MAP_DATA row)
+        {
+            return row.Use;
+        }
 
-        foreach (var row in rows.Where(row => row.Use))
+        foreach (var row in rows.Where(FilterRow6))
         {
             if (string.IsNullOrWhiteSpace(row.Id))
             {
@@ -217,38 +245,71 @@ public sealed class CMelsecMapFile(string configRoot) : IMelsecMapFile
 
     private static EN_MELSEC_DATA_TYPE ReadDataType(string value, int rowNo)
     {
-        return NormalizeText(value) switch
+        EN_MELSEC_DATA_TYPE EvaluateValueSwitch1()
         {
-            "BIT" => EN_MELSEC_DATA_TYPE.Bit,
-            "WORD" => EN_MELSEC_DATA_TYPE.Word,
-            "DWORD" or "D_WORD" or "DOUBLEWORD" => EN_MELSEC_DATA_TYPE.DWord,
-            "DOUBLE" or "REAL64" => EN_MELSEC_DATA_TYPE.Double,
-            "FLOAT" or "REAL32" => EN_MELSEC_DATA_TYPE.Float,
-            "STRING" or "TEXT" => EN_MELSEC_DATA_TYPE.String,
-            _ => throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DATA TYPE is invalid: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "BIT":
+                    return EN_MELSEC_DATA_TYPE.Bit;
+                case "WORD":
+                    return EN_MELSEC_DATA_TYPE.Word;
+                case "DWORD" or "D_WORD" or "DOUBLEWORD":
+                    return EN_MELSEC_DATA_TYPE.DWord;
+                case "DOUBLE" or "REAL64":
+                    return EN_MELSEC_DATA_TYPE.Double;
+                case "FLOAT" or "REAL32":
+                    return EN_MELSEC_DATA_TYPE.Float;
+                case "STRING" or "TEXT":
+                    return EN_MELSEC_DATA_TYPE.String;
+                default:
+                    throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DATA TYPE is invalid: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static EN_MELSEC_DIRECTION ReadDirection(string value, int rowNo)
     {
-        return NormalizeText(value) switch
+        EN_MELSEC_DIRECTION EvaluateValueSwitch2()
         {
-            "IN" or "INPUT" => EN_MELSEC_DIRECTION.In,
-            "OUT" or "OUTPUT" => EN_MELSEC_DIRECTION.Out,
-            "INOUT" or "IN_OUT" or "BOTH" => EN_MELSEC_DIRECTION.InOut,
-            _ => throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DIRECTION is invalid: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "IN" or "INPUT":
+                    return EN_MELSEC_DIRECTION.In;
+                case "OUT" or "OUTPUT":
+                    return EN_MELSEC_DIRECTION.Out;
+                case "INOUT" or "IN_OUT" or "BOTH":
+                    return EN_MELSEC_DIRECTION.InOut;
+                default:
+                    throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / DIRECTION is invalid: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static EN_MELSEC_ACCESS ReadAccess(string value, int rowNo)
     {
-        return NormalizeText(value) switch
+        EN_MELSEC_ACCESS EvaluateValueSwitch3()
         {
-            "R" or "READ" => EN_MELSEC_ACCESS.Read,
-            "W" or "WRITE" => EN_MELSEC_ACCESS.Write,
-            "RW" or "R/W" or "READWRITE" or "READ_WRITE" => EN_MELSEC_ACCESS.ReadWrite,
-            _ => throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / ACCESS is invalid: {value}")
-        };
+            var switchValue = NormalizeText(value);
+            switch (switchValue)
+            {
+                case "R" or "READ":
+                    return EN_MELSEC_ACCESS.Read;
+                case "W" or "WRITE":
+                    return EN_MELSEC_ACCESS.Write;
+                case "RW" or "R/W" or "READWRITE" or "READ_WRITE":
+                    return EN_MELSEC_ACCESS.ReadWrite;
+                default:
+                    throw new InvalidDataException($"{TableName} validation failed. Row {rowNo} / ACCESS is invalid: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch3();
     }
 
     private static string RequireText(

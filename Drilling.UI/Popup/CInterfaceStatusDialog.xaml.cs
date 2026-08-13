@@ -12,11 +12,25 @@ public partial class CInterfaceStatusDialog : Window
         IReadOnlyList<ST_INTERFACE_COMM_STATUS> statuses)
     {
         InitializeComponent();
+        int GetStatusSortKey1(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.Number;
+        }
+
+        string GetStatusSortKey2(ST_INTERFACE_COMM_STATUS status)
+        {
+            return status.NickName;
+        }
+
+        CInterfaceStatusRow SelectStatus3(ST_INTERFACE_COMM_STATUS status)
+        {
+            return new CInterfaceStatusRow(status);
+        }
 
         var rows = statuses
-            .OrderBy(status => status.Number)
-            .ThenBy(status => status.NickName, StringComparer.OrdinalIgnoreCase)
-            .Select(status => new CInterfaceStatusRow(status))
+            .OrderBy(GetStatusSortKey1)
+            .ThenBy(GetStatusSortKey2, StringComparer.OrdinalIgnoreCase)
+            .Select(SelectStatus3)
             .ToArray();
 
         Title = $"{title} Status";
@@ -59,12 +73,21 @@ public partial class CInterfaceStatusDialog : Window
 
         private static string ToStateText(EN_COMM_STATE state)
         {
-            return state switch
+            string EvaluateStateSwitch1()
             {
-                EN_COMM_STATE.Online => "ONLINE",
-                EN_COMM_STATE.Offline => "OFFLINE",
-                _ => "SIMULATION"
-            };
+                var switchValue = state;
+                switch (switchValue)
+                {
+                    case EN_COMM_STATE.Online:
+                        return "ONLINE";
+                    case EN_COMM_STATE.Offline:
+                        return "OFFLINE";
+                    default:
+                        return "SIMULATION";
+                }
+            }
+
+            return EvaluateStateSwitch1();
         }
     }
 }

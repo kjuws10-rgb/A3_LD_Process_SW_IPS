@@ -39,9 +39,13 @@ internal sealed class CSocketComm(
                 var client = new TcpClient();
                 using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
                 timeout.CancelAfter(Math.Max(100, Option.TimeoutMs));
+                void RunTask1()
+                {
+                    client.Connect(Option.RemoteAddress, Option.Port);
+                }
 
                 var connectTask = Task.Run(
-                    () => client.Connect(Option.RemoteAddress, Option.Port),
+RunTask1,
                     cancellationToken);
 
                 if (await Task.WhenAny(connectTask, Task.Delay(Math.Max(100, Option.TimeoutMs), timeout.Token)) != connectTask)

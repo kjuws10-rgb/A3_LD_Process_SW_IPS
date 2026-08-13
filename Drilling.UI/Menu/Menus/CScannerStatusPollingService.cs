@@ -5,8 +5,8 @@ using Drilling.Common.Managers;
 namespace Drilling.UI.Menu.Menus;
 
 internal sealed class CScannerStatusPollingService(
-    IAutomationManager automationManager,
-    ISettingManager settingManager)
+    CAutomationManager automationManager,
+    CSettingManager settingManager)
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 
@@ -25,8 +25,13 @@ internal sealed class CScannerStatusPollingService(
 
         _stopSource?.Dispose();
         _stopSource = new CancellationTokenSource();
+        Task? RunTask1()
+        {
+            return PollLoop(_stopSource.Token);
+        }
+
         _pollTask = Task.Run(
-            () => PollLoop(_stopSource.Token),
+RunTask1,
             CancellationToken.None);
     }
 
@@ -147,19 +152,18 @@ internal sealed class CScannerStatusPollingService(
     private static IReadOnlyList<ST_SCANNER_AXIS_SETTING> BuildAxisDefinitions(
         IReadOnlyList<ST_SYSTEM_PARAMETER> settings)
     {
-        return Enumerable.Range(1, 8)
-            .SelectMany(headNo =>
-            {
-                var automationNo = ReadHeadSettingInt(
-                    settings,
-                    headNo <= 4 ? 0 : 1,
-                    headNo,
-                    "AUTOMATION_NO");
-                var defaultGxAxisNo = ((headNo - 1) % 4) * 2;
-                var defaultGyAxisNo = defaultGxAxisNo + 1;
+        IEnumerable<ST_SCANNER_AXIS_SETTING> SelectHeadNo2(int headNo)
+        {
+            var automationNo = ReadHeadSettingInt(
+                settings,
+                headNo <= 4 ? 0 : 1,
+                headNo,
+                "AUTOMATION_NO");
+            var defaultGxAxisNo = ((headNo - 1) % 4) * 2;
+            var defaultGyAxisNo = defaultGxAxisNo + 1;
 
-                return new[]
-                {
+            return new[]
+            {
                     new ST_SCANNER_AXIS_SETTING(
                         headNo,
                         automationNo,
@@ -171,7 +175,9 @@ internal sealed class CScannerStatusPollingService(
                         "GY",
                         ReadHeadSettingInt(settings, defaultGyAxisNo, headNo, "GY_AXIS_NO"))
                 };
-            })
+        }
+        return Enumerable.Range(1, 8)
+            .SelectMany(SelectHeadNo2)
             .ToArray();
     }
 

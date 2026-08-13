@@ -17,9 +17,13 @@ internal static class CCsvParser
         {
             return [];
         }
+        string SelectHeader1(string header)
+        {
+            return header.Trim();
+        }
 
         var headers = ParseLine(lines[0], path, 1)
-            .Select(header => header.Trim())
+            .Select(SelectHeader1)
             .ToArray();
         ValidateHeaders(path, headers);
 
@@ -53,9 +57,19 @@ internal static class CCsvParser
         IEnumerable<IReadOnlyDictionary<string, string>> rows)
     {
         var rowList = rows.ToArray();
+        IEnumerable<string> SelectRow2(IReadOnlyDictionary<string, string> row)
+        {
+            return row.Keys;
+        }
+
+        bool FilterKey3(string key)
+        {
+            return !headers.Contains(key, StringComparer.OrdinalIgnoreCase);
+        }
+
         var outputHeaders = headers
-            .Concat(rowList.SelectMany(row => row.Keys)
-                .Where(key => !headers.Contains(key, StringComparer.OrdinalIgnoreCase)))
+            .Concat(rowList.SelectMany(SelectRow2)
+                .Where(FilterKey3))
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
         var directory = Path.GetDirectoryName(path);
@@ -65,8 +79,17 @@ internal static class CCsvParser
         }
 
         var lines = new List<string> { string.Join(",", outputHeaders.Select(Escape)) };
-        lines.AddRange(rowList.Select(row =>
-            string.Join(",", outputHeaders.Select(header => Escape(Get(row, header))))));
+        string SelectRow4(IReadOnlyDictionary<string, string> row)
+        {
+            string SelectHeader2(string header)
+            {
+                return Escape(Get(row, header));
+            }
+
+            return string.Join(",", outputHeaders.Select(SelectHeader2));
+        }
+
+        lines.AddRange(rowList.Select(SelectRow4));
 
         System.IO.File.WriteAllLines(path, lines, Encoding.UTF8);
     }
@@ -172,13 +195,21 @@ internal static class CCsvParser
         {
             return defaultValue;
         }
-
-        return NormalizeHeader(value) switch
+        bool EvaluateValueSwitch1()
         {
-            "1" or "TRUE" or "ON" or "YES" or "USE" or "Y" => true,
-            "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N" => false,
-            _ => defaultValue
-        };
+            var switchValue = NormalizeHeader(value);
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES" or "USE" or "Y":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     public static bool ReadRequiredBool(
@@ -187,13 +218,22 @@ internal static class CCsvParser
         int rowNo,
         string fieldName)
     {
-        return NormalizeHeader(value) switch
+        bool EvaluateValueSwitch2()
         {
-            "1" or "TRUE" or "ON" or "YES" or "USE" or "Y" or "SIMUL" or "SIMULATION" or "SIM" => true,
-            "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N" or "ONLINE" or "LIVE" or "REAL" => false,
-            _ => throw new InvalidDataException(
-                $"{tableName} validation failed. Row {rowNo} / {fieldName} must be 1/0 or ON/OFF.")
-        };
+            var switchValue = NormalizeHeader(value);
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES" or "USE" or "Y" or "SIMUL" or "SIMULATION" or "SIM":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO" or "NOTUSE" or "N" or "ONLINE" or "LIVE" or "REAL":
+                    return false;
+                default:
+                    throw new InvalidDataException(
+                        $"{tableName} validation failed. Row {rowNo} / {fieldName} must be 1/0 or ON/OFF.");
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     public static IReadOnlyList<string> ReadHeaders(string path)
@@ -204,11 +244,21 @@ internal static class CCsvParser
         }
 
         var firstLine = System.IO.File.ReadLines(path).FirstOrDefault();
+        string SelectHeader5(string header)
+        {
+            return header.Trim();
+        }
+
+        bool FilterHeader6(string header)
+        {
+            return !string.IsNullOrWhiteSpace(header);
+        }
+
         var headers = string.IsNullOrWhiteSpace(firstLine)
             ? []
             : ParseLine(firstLine, path, 1)
-                .Select(header => header.Trim())
-                .Where(header => !string.IsNullOrWhiteSpace(header))
+                .Select(SelectHeader5)
+                .Where(FilterHeader6)
                 .ToArray();
 
         if (headers.Length > 0)
@@ -238,14 +288,44 @@ internal static class CCsvParser
         var headerSet = headers
             .Select(NormalizeHeader)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        string[] SelectGroup7(IEnumerable<string> group)
+        {
+            bool FilterHeader2(string header)
+            {
+                return !string.IsNullOrWhiteSpace(header);
+            }
+
+            string SelectHeader3(string header)
+            {
+                return header.Trim();
+            }
+
+            return group
+                            .Where(FilterHeader2)
+                            .Select(SelectHeader3)
+                            .ToArray();
+        }
+
+        bool FilterGroup8(string[] group)
+        {
+            bool CheckHeader4(string header)
+            {
+                return headerSet.Contains(NormalizeHeader(header));
+            }
+
+            return group.Length > 0 &&
+                            !group.Any(CheckHeader4);
+        }
+
+        string SelectGroup9(string[] group)
+        {
+            return string.Join(" or ", group);
+        }
+
         var missing = requiredHeaderGroups
-            .Select(group => group
-                .Where(header => !string.IsNullOrWhiteSpace(header))
-                .Select(header => header.Trim())
-                .ToArray())
-            .Where(group => group.Length > 0 &&
-                !group.Any(header => headerSet.Contains(NormalizeHeader(header))))
-            .Select(group => string.Join(" or ", group))
+            .Select(SelectGroup7)
+            .Where(FilterGroup8)
+            .Select(SelectGroup9)
             .ToArray();
 
         if (missing.Length > 0)
@@ -261,10 +341,24 @@ internal static class CCsvParser
         IEnumerable<string> knownHeaders)
     {
         var known = new HashSet<string>(knownHeaders, StringComparer.OrdinalIgnoreCase);
+        bool FilterItem10(KeyValuePair<string, string> item)
+        {
+            return !known.Contains(item.Key);
+        }
+
+        string ToDictionaryItemCallback11(KeyValuePair<string, string> item)
+        {
+            return item.Key;
+        }
+
+        string ToDictionaryItemCallback12(KeyValuePair<string, string> item)
+        {
+            return item.Value;
+        }
 
         return row
-            .Where(item => !known.Contains(item.Key))
-            .ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);
+            .Where(FilterItem10)
+            .ToDictionary(ToDictionaryItemCallback11, ToDictionaryItemCallback12, StringComparer.OrdinalIgnoreCase);
     }
 
     private static List<string> ParseLine(
@@ -318,22 +412,37 @@ internal static class CCsvParser
         string path,
         IReadOnlyList<string> headers)
     {
-        var emptyIndexes = headers
-            .Select((header, index) => new { Header = header, Index = index + 1 })
-            .Where(item => string.IsNullOrWhiteSpace(item.Header))
-            .Select(item => item.Index)
-            .ToArray();
+        List<int> emptyIndexList = new List<int>();
+        for (int index = 0; index < headers.Count; index++)
+        {
+            string header = headers[index];
+            if (string.IsNullOrWhiteSpace(header))
+            {
+                emptyIndexList.Add(index + 1);
+            }
+        }
+
+        int[] emptyIndexes = emptyIndexList.ToArray();
 
         if (emptyIndexes.Length > 0)
         {
             throw new InvalidDataException(
                 $"CSV validation failed. {Path.GetFileName(path)} header column cannot be empty. Column(s): {string.Join(", ", emptyIndexes)}");
         }
+        bool FilterGroup13(IGrouping<string, string> group)
+        {
+            return group.Count() > 1;
+        }
+
+        string SelectGroup14(IGrouping<string, string> group)
+        {
+            return group.First();
+        }
 
         var duplicatedHeaders = headers
             .GroupBy(NormalizeHeader, StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Count() > 1)
-            .Select(group => group.First())
+            .Where(FilterGroup13)
+            .Select(SelectGroup14)
             .ToArray();
 
         if (duplicatedHeaders.Length > 0)

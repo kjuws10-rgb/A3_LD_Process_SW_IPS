@@ -88,26 +88,35 @@ internal static class CCellPreviewDrawing
     {
         var defaultSpanX = Math.Max(0.0, glassWidth - (akMarginX * 2.0));
         var defaultSpanY = Math.Max(0.0, glassHeight - (akMarginY * 2.0));
-
-        return Enumerable.Range(1, 6)
-            .Select(keyNo =>
+        ST_DISTORTION_KEY_PREVIEW SelectKeyNo1(int keyNo)
+        {
+            double EvaluateKeyNoSwitch1()
             {
-                var defaultX = keyNo switch
+                var switchValue = keyNo;
+                switch (switchValue)
                 {
-                    1 or 4 => 0.0,
-                    2 or 5 => defaultSpanX / 2.0,
-                    _ => defaultSpanX
-                };
-                var defaultY = keyNo <= 3
-                    ? 0.0
-                    : defaultSpanY;
-                var x = readValue($"DISTORTION_KEY{keyNo}_X") ?? defaultX;
-                var y = readValue($"DISTORTION_KEY{keyNo}_Y") ?? defaultY;
-                return new ST_DISTORTION_KEY_PREVIEW(
-                    keyNo,
-                    akMarginX + x,
-                    akMarginY + y);
-            })
+                    case 1 or 4:
+                        return 0.0;
+                    case 2 or 5:
+                        return defaultSpanX / 2.0;
+                    default:
+                        return defaultSpanX;
+                }
+            }
+
+            var defaultX = EvaluateKeyNoSwitch1();
+            var defaultY = keyNo <= 3
+                ? 0.0
+                : defaultSpanY;
+            var x = readValue($"DISTORTION_KEY{keyNo}_X") ?? defaultX;
+            var y = readValue($"DISTORTION_KEY{keyNo}_Y") ?? defaultY;
+            return new ST_DISTORTION_KEY_PREVIEW(
+                keyNo,
+                akMarginX + x,
+                akMarginY + y);
+        }
+        return Enumerable.Range(1, 6)
+            .Select(SelectKeyNo1)
             .ToArray();
     }
 
@@ -237,9 +246,21 @@ public sealed record ST_CELL_PREVIEW_LABEL(
     double DesignHeight,
     bool IsSelected)
 {
-    public string DisplayText => $"Cell{CellNo}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"Cell{CellNo}";
+        }
+    }
 
-    public double Height => 16.0;
+    public double Height
+    {
+        get
+        {
+            return 16.0;
+        }
+    }
 }
 
 public sealed record ST_DISTORTION_KEY_PREVIEW(
@@ -247,5 +268,11 @@ public sealed record ST_DISTORTION_KEY_PREVIEW(
     double GlassX,
     double GlassY)
 {
-    public string DisplayText => $"DK{KeyNo}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"DK{KeyNo}";
+        }
+    }
 }

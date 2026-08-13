@@ -4,7 +4,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
+public sealed class CPowerMeterFile(string configRoot) : CPowerMeterFileBase
 {
     private const string DefaultProcessFile = "POWER_CHECK.pwm";
 
@@ -29,23 +29,32 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
 
     private readonly string _powerMeterDirectory = Path.Combine(configRoot, "PowerMeter");
 
-    public Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
+        bool FilterName1(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name);
+        }
+
+        string GetNameSortKey2(string name)
+        {
+            return name;
+        }
 
         var files = Directory
             .EnumerateFiles(_powerMeterDirectory, "*.pwm")
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Where(FilterName1)
             .Cast<string>()
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<string>>(files);
     }
 
-    public Task Create(
+    public override Task Create(
         string processFile,
         CancellationToken cancellationToken = default)
     {
@@ -57,16 +66,20 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         {
             throw new InvalidOperationException($"PowerMeter process file already exists: {Path.GetFileName(path)}");
         }
-
-        WriteSteps(path, CreateDefaultSteps().Select(step => step with
+        ST_POWER_METER_STEP_DATA SelectStep3(ST_POWER_METER_STEP_DATA step)
         {
-            State = step.StepNo == 1 ? "READY" : "WAIT",
-            MeasurePower = null
-        }).ToArray());
+            return step with
+            {
+                State = step.StepNo == 1 ? "READY" : "WAIT",
+                MeasurePower = null
+            };
+        }
+
+        WriteSteps(path, CreateDefaultSteps().Select(SelectStep3).ToArray());
         return Task.CompletedTask;
     }
 
-    public Task Delete(
+    public override Task Delete(
         string processFile,
         CancellationToken cancellationToken = default)
     {
@@ -87,7 +100,7 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.CompletedTask;
     }
 
-    public Task Rename(
+    public override Task Rename(
         string oldProcessFile,
         string newProcessFile,
         CancellationToken cancellationToken = default)
@@ -112,34 +125,47 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         return Task.CompletedTask;
     }
 
-    public Task<ST_POWER_METER_TABLE_DATA> Load(
+    public override Task<ST_POWER_METER_TABLE_DATA> Load(
         string processFile = "",
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFiles();
+        bool FilterName4(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name);
+        }
+
+        string GetNameSortKey5(string name)
+        {
+            return name;
+        }
 
         var files = Directory
             .EnumerateFiles(_powerMeterDirectory, "*.pwm")
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Where(FilterName4)
             .Cast<string>()
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetNameSortKey5, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         var selectedFile = SelectProcessFile(files, processFile);
         var steps = ReadSteps(GetProcessPath(selectedFile));
+        ST_POWER_METER_PROCESS_DATA SelectName6(string name)
+        {
+            return new ST_POWER_METER_PROCESS_DATA(
+                            name,
+                            name.Equals(selectedFile, StringComparison.OrdinalIgnoreCase));
+        }
 
         var processes = files
-            .Select(name => new ST_POWER_METER_PROCESS_DATA(
-                name,
-                name.Equals(selectedFile, StringComparison.OrdinalIgnoreCase)))
+            .Select(SelectName6)
             .ToArray();
 
         return Task.FromResult(new ST_POWER_METER_TABLE_DATA(processes, selectedFile, steps));
     }
 
-    public Task Save(
+    public override Task Save(
         string processFile,
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
         CancellationToken cancellationToken = default)
@@ -169,47 +195,72 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         var powerCalPath = GetProcessPath("POWER_CAL.pwm");
         if (!System.IO.File.Exists(powerCalPath))
         {
-            WriteSteps(powerCalPath, defaults.Select(step => step with
+            ST_POWER_METER_STEP_DATA SelectStep7(ST_POWER_METER_STEP_DATA step)
             {
-                OptionName = step.OptionName.Replace("CHECK", "CAL", StringComparison.OrdinalIgnoreCase),
-                State = "WAIT",
-                MeasurePower = null
-            }).ToArray());
+                return step with
+                {
+                    OptionName = step.OptionName.Replace("CHECK", "CAL", StringComparison.OrdinalIgnoreCase),
+                    State = "WAIT",
+                    MeasurePower = null
+                };
+            }
+
+            WriteSteps(powerCalPath, defaults.Select(SelectStep7).ToArray());
         }
 
         var dailyCheckPath = GetProcessPath("DAILY_CHECK.pwm");
         if (!System.IO.File.Exists(dailyCheckPath))
         {
-            WriteSteps(dailyCheckPath, defaults.Take(3).Select(step => step with
+            ST_POWER_METER_STEP_DATA SelectStep8(ST_POWER_METER_STEP_DATA step)
             {
-                OptionName = step.OptionName.Replace("CHECK", "DAILY", StringComparison.OrdinalIgnoreCase),
-                State = "WAIT",
-                MeasurePower = null
-            }).ToArray());
+                return step with
+                {
+                    OptionName = step.OptionName.Replace("CHECK", "DAILY", StringComparison.OrdinalIgnoreCase),
+                    State = "WAIT",
+                    MeasurePower = null
+                };
+            }
+
+            WriteSteps(dailyCheckPath, defaults.Take(3).Select(SelectStep8).ToArray());
         }
     }
 
     private List<ST_POWER_METER_STEP_DATA> ReadSteps(string path)
     {
+        bool FilterRow9(IReadOnlyDictionary<string, string> row)
+        {
+            return !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "STEP"));
+        }
+
+        ST_POWER_METER_STEP_DATA SelectRow10(IReadOnlyDictionary<string, string> row, int order)
+        {
+            return new ST_POWER_METER_STEP_DATA(
+                            ReadInt(CCsvParser.Get(row, "STEP"), order + 1),
+                            ReadText(CCsvParser.Get(row, "OPTION_NAME"), $"PWM_STEP_{order + 1:000}"),
+                            ReadBool(CCsvParser.Get(row, "POWER_OUT"), true),
+                            ReadText(CCsvParser.Get(row, "POWER_UNIT"), "W"),
+                            ReadDouble(CCsvParser.Get(row, "SETTING_ATT"), 23.50),
+                            ReadDouble(CCsvParser.Get(row, "SETTING_POWER"), 1.200),
+                            ReadDouble(CCsvParser.Get(row, "SETTING_FREQ"), 20.0),
+                            ReadInt(CCsvParser.Get(row, "MEASURE_CYCLE"), 3),
+                            ReadInt(CCsvParser.Get(row, "MEASURE_TIME"), 1000),
+                            ReadInt(CCsvParser.Get(row, "MEASURE_INTERVAL"), 100),
+                            ReadInt(CCsvParser.Get(row, "START_DELAY"), 500),
+                            ReadInt(CCsvParser.Get(row, "COOLING_TIME"), 300),
+                            ReadDouble(CCsvParser.Get(row, "ROTATOR"), 0.0),
+                            ReadNullableDouble(CCsvParser.Get(row, "MEASURE_POWER")),
+                            ReadText(CCsvParser.Get(row, "STATE"), "WAIT"));
+        }
+
+        int GetStepSortKey11(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo;
+        }
+
         return CCsvParser.Read(path)
-            .Where(row => !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "STEP")))
-            .Select((row, order) => new ST_POWER_METER_STEP_DATA(
-                ReadInt(CCsvParser.Get(row, "STEP"), order + 1),
-                ReadText(CCsvParser.Get(row, "OPTION_NAME"), $"PWM_STEP_{order + 1:000}"),
-                ReadBool(CCsvParser.Get(row, "POWER_OUT"), true),
-                ReadText(CCsvParser.Get(row, "POWER_UNIT"), "W"),
-                ReadDouble(CCsvParser.Get(row, "SETTING_ATT"), 23.50),
-                ReadDouble(CCsvParser.Get(row, "SETTING_POWER"), 1.200),
-                ReadDouble(CCsvParser.Get(row, "SETTING_FREQ"), 20.0),
-                ReadInt(CCsvParser.Get(row, "MEASURE_CYCLE"), 3),
-                ReadInt(CCsvParser.Get(row, "MEASURE_TIME"), 1000),
-                ReadInt(CCsvParser.Get(row, "MEASURE_INTERVAL"), 100),
-                ReadInt(CCsvParser.Get(row, "START_DELAY"), 500),
-                ReadInt(CCsvParser.Get(row, "COOLING_TIME"), 300),
-                ReadDouble(CCsvParser.Get(row, "ROTATOR"), 0.0),
-                ReadNullableDouble(CCsvParser.Get(row, "MEASURE_POWER")),
-                ReadText(CCsvParser.Get(row, "STATE"), "WAIT")))
-            .OrderBy(step => step.StepNo)
+            .Where(FilterRow9)
+            .Select(SelectRow10)
+            .OrderBy(GetStepSortKey11)
             .ToList();
     }
 
@@ -217,9 +268,14 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         string path,
         IReadOnlyList<ST_POWER_METER_STEP_DATA> steps)
     {
-        var rows = steps
-            .OrderBy(step => step.StepNo)
-            .Select(step => new Dictionary<string, string>
+        int GetStepSortKey12(ST_POWER_METER_STEP_DATA step)
+        {
+            return step.StepNo;
+        }
+
+        Dictionary<string, string> SelectStep13(ST_POWER_METER_STEP_DATA step)
+        {
+            return new Dictionary<string, string>
             {
                 ["STEP"] = step.StepNo.ToString(CultureInfo.InvariantCulture),
                 ["OPTION_NAME"] = step.OptionName,
@@ -236,7 +292,12 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
                 ["ROTATOR"] = step.Rotator.ToString("F4", CultureInfo.InvariantCulture),
                 ["MEASURE_POWER"] = step.MeasurePower?.ToString("F4", CultureInfo.InvariantCulture) ?? "",
                 ["STATE"] = step.State
-            });
+            };
+        }
+
+        var rows = steps
+            .OrderBy(GetStepSortKey12)
+            .Select(SelectStep13);
 
         CCsvParser.Write(path, Headers, rows);
     }
@@ -271,13 +332,21 @@ public sealed class CPowerMeterFile(string configRoot) : IPowerMeterFile
         string processFile)
     {
         var normalized = NormalizeProcessFile(processFile);
+        bool CheckFile14(string file)
+        {
+            return file.Equals(normalized, StringComparison.OrdinalIgnoreCase);
+        }
 
-        if (files.Any(file => file.Equals(normalized, StringComparison.OrdinalIgnoreCase)))
+        if (files.Any(CheckFile14))
         {
             return normalized;
         }
+        bool CheckFile15(string file)
+        {
+            return file.Equals(DefaultProcessFile, StringComparison.OrdinalIgnoreCase);
+        }
 
-        if (files.Any(file => file.Equals(DefaultProcessFile, StringComparison.OrdinalIgnoreCase)))
+        if (files.Any(CheckFile15))
         {
             return DefaultProcessFile;
         }

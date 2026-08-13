@@ -1,6 +1,7 @@
-﻿<UserControl x:Class="Drilling.UI.Views.CManualView"
+<UserControl x:Class="Drilling.UI.Views.CManualView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:menu="clr-namespace:Drilling.UI.Menu"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -264,7 +265,7 @@
 
             <Button Grid.Column="0"
                     Content="SCANNER"
-                    Command="{Binding CurrentScreen.Manual.SelectManualWorkspaceCommand}"
+                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectManualWorkspaceCommand}"
                     CommandParameter="SCANNER"
                     Margin="0,0,8,0">
                 <Button.Style>
@@ -281,7 +282,7 @@
 
             <Button Grid.Column="1"
                     Content="STAGE / VISION"
-                    Command="{Binding CurrentScreen.Manual.SelectManualWorkspaceCommand}"
+                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectManualWorkspaceCommand}"
                     CommandParameter="STAGE_VISION">
                 <Button.Style>
                     <Style TargetType="Button" BasedOn="{StaticResource ManualWorkspaceButton}">
@@ -312,7 +313,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Command="{Binding DataContext.CurrentScreen.Manual.SelectHeadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Manual.SelectHeadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                     CommandParameter="{Binding HeadNo}"
                                     Style="{StaticResource ManualHeadButton}">
                                 <Border Margin="4,0"
@@ -465,7 +466,7 @@
                                       ItemsSource="{Binding CurrentScreen.Manual.SettingFiles}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding DataContext.CurrentScreen.Manual.SelectSettingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                    <Button menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Manual.SelectSettingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                             CommandParameter="{Binding Name}"
                                             Style="{StaticResource ManualHeadButton}">
                                         <Border Height="27"
@@ -492,19 +493,19 @@
                                     Grid.Column="1"
                                     Margin="12,0,0,0">
                             <Button Content="CREATE"
-                                    Command="{Binding CurrentScreen.Manual.CreateCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.CreateCommand}"
                                     Style="{StaticResource ManualCreateButton}"
                                     Margin="0,0,0,7" />
                             <Button Content="DELETE"
-                                    Command="{Binding CurrentScreen.Manual.DeleteCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.DeleteCommand}"
                                     Style="{StaticResource ManualDeleteButton}"
                                     Margin="0,0,0,7" />
                             <Button Content="RENAME"
-                                    Command="{Binding CurrentScreen.Manual.RenameCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.RenameCommand}"
                                     Style="{StaticResource ManualRenameButton}"
                                     Margin="0,0,0,7" />
                             <Button Content="SAVE"
-                                    Command="{Binding CurrentScreen.Manual.SaveCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SaveCommand}"
                                     Style="{StaticResource ManualSaveButton}"
                                     Margin="0" />
                         </StackPanel>
@@ -563,7 +564,7 @@
                                      Columns="3"
                                      Margin="0,10,12,0">
                             <Button Height="96"
-                                    Command="{Binding CurrentScreen.Manual.CenterMoveCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.CenterMoveCommand}"
                                     Style="{StaticResource ManualCommandButton}"
                                     Margin="0,0,8,0">
                                 <StackPanel>
@@ -586,7 +587,7 @@
                                 </StackPanel>
                             </Button>
                             <Button Height="96"
-                                    Command="{Binding CurrentScreen.Manual.PositionMoveCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.PositionMoveCommand}"
                                     Style="{StaticResource ManualCommandButton}"
                                     Margin="0,0,8,0">
                                 <StackPanel>
@@ -607,7 +608,7 @@
                                 </StackPanel>
                             </Button>
                             <Button Height="96"
-                                    Command="{Binding CurrentScreen.Manual.MoveStopCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.MoveStopCommand}"
                                     Background="{DynamicResource ButtonDangerBrush}"
                                     BorderBrush="{DynamicResource ButtonDangerBrush}"
                                     Style="{StaticResource ManualCommandButton}">
@@ -740,7 +741,7 @@
                         <UniformGrid Grid.Row="1"
                                      Columns="7"
                                      Margin="0,12,0,0">
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Dot" Margin="0,0,10,0">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Dot" Margin="0,0,10,0">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -762,7 +763,7 @@
                                     <TextBlock Text="DOT" HorizontalAlignment="Center" FontSize="15" />
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Cross" Margin="0,0,10,0">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Cross" Margin="0,0,10,0">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -786,7 +787,7 @@
                                     <TextBlock Text="CROSS" HorizontalAlignment="Center" FontSize="15" />
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Circle" Margin="0,0,10,0">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Circle" Margin="0,0,10,0">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -809,7 +810,7 @@
                                     <TextBlock Text="CIRCLE" HorizontalAlignment="Center" FontSize="15" />
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Rect" Margin="0,0,10,0">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Rect" Margin="0,0,10,0">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -832,7 +833,7 @@
                                     <TextBlock Text="RECT" HorizontalAlignment="Center" FontSize="15" />
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Grid" Margin="0,0,10,0">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="Grid" Margin="0,0,10,0">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -859,7 +860,7 @@
                                     <TextBlock Text="GRID" HorizontalAlignment="Center" FontSize="15" />
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="H-Line" Margin="0,0,10,0">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="H-Line" Margin="0,0,10,0">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -881,7 +882,7 @@
                                     <TextBlock Text="H-LINE" HorizontalAlignment="Center" FontSize="15" />
                                 </StackPanel>
                             </Button>
-                            <Button Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="V-Line">
+                            <Button menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.SelectShapeCommand}" CommandParameter="V-Line">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ManualCommandButton}">
                                         <Setter Property="Background" Value="{DynamicResource ButtonSecondaryBrush}" />
@@ -911,7 +912,7 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <Button Height="84"
-                                    Command="{Binding CurrentScreen.Manual.ShapeStartCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.ShapeStartCommand}"
                                     Background="{DynamicResource ButtonSuccessBrush}"
                                     BorderBrush="{DynamicResource StatusReadyBrush}"
                                     Style="{StaticResource ManualCommandButton}"
@@ -931,7 +932,7 @@
                             </Button>
                             <Button Grid.Column="1"
                                     Height="84"
-                                    Command="{Binding CurrentScreen.Manual.ShapeStopCommand}"
+                                    menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.ShapeStopCommand}"
                                     Background="{DynamicResource ButtonDangerBrush}"
                                     BorderBrush="{DynamicResource ButtonDangerBorderBrush}"
                                     Style="{StaticResource ManualCommandButton}">
@@ -970,7 +971,7 @@
                     <StackPanel Grid.Row="1"
                                 Margin="0,8,0,12">
                         <Button Background="{DynamicResource ButtonSuccessBrush}"
-                                Command="{Binding CurrentScreen.Manual.LaserOnCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.LaserOnCommand}"
                                 BorderBrush="{DynamicResource StatusReadyBrush}"
                                 Style="{StaticResource LaserActionButton}"
                                 Margin="0,0,0,10">
@@ -1085,7 +1086,7 @@
                         </Border>
 
                         <Button Background="{DynamicResource ButtonSecondaryBrush}"
-                                Command="{Binding CurrentScreen.Manual.LaserOffCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.LaserOffCommand}"
                                 BorderBrush="{DynamicResource PanelBorderBrush}"
                                 Style="{StaticResource LaserActionButton}"
                                 Margin="0,0,0,10">
@@ -1111,7 +1112,7 @@
                             </Grid>
                         </Button>
                         <Button Background="{DynamicResource ButtonPrimaryBrush}"
-                                Command="{Binding CurrentScreen.Manual.CenterOnCommand}"
+                                menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.CenterOnCommand}"
                                 BorderBrush="{DynamicResource ButtonPrimaryBorderBrush}"
                                 Style="{StaticResource LaserActionButton}">
                             <Grid Width="230">
@@ -1283,18 +1284,18 @@
                                         </Grid.ColumnDefinitions>
                                         <Button Grid.Column="0"
                                                 Content="HOME"
-                                                Command="{Binding DataContext.CurrentScreen.Manual.StageHomeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Manual.StageHomeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 Style="{StaticResource ManualCommandButton}"
                                                 Margin="0,0,6,0" />
                                         <Button Grid.Column="1"
                                                 Content="MOVE"
-                                                Command="{Binding DataContext.CurrentScreen.Manual.StageMoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Manual.StageMoveCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource ManualCommandButton}"
                                                 Margin="6,0" />
                                         <Button Grid.Column="2"
                                                 Content="STOP"
-                                                Command="{Binding DataContext.CurrentScreen.Manual.StageStopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                menu:CButtonCommandBehavior.Command="{Binding DataContext.CurrentScreen.Manual.StageStopCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 Style="{StaticResource ManualCommandButton}"
                                                 Background="{DynamicResource ButtonDangerBrush}"
                                                 BorderBrush="{DynamicResource ButtonDangerBorderBrush}"
@@ -1379,7 +1380,7 @@
 
                     <Button Grid.Row="3"
                             Content="SHOT"
-                            Command="{Binding CurrentScreen.Manual.VisionShotCommand}"
+                            menu:CButtonCommandBehavior.Command="{Binding CurrentScreen.Manual.VisionShotCommand}"
                             Style="{StaticResource ManualCommandButton}"
                             Background="{DynamicResource ButtonSuccessBrush}"
                             BorderBrush="{DynamicResource StatusReadyBrush}"

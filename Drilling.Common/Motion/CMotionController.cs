@@ -10,11 +10,28 @@ namespace Drilling.Common.Motion;
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 internal sealed class CMotionControllerTypeAttribute(params string[] controllerNames) : Attribute
 {
-    public IReadOnlyList<string> ControllerNames { get; } = controllerNames
-        .Where(name => !string.IsNullOrWhiteSpace(name))
-        .Select(NormalizeControllerName)
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .ToArray();
+    public IReadOnlyList<string> ControllerNames { get; } = CreateControllerNames(controllerNames);
+
+    private static IReadOnlyList<string> CreateControllerNames(string[] controllerNames)
+    {
+        List<string> normalizedNames = new List<string>();
+        HashSet<string> registeredNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (string controllerName in controllerNames)
+        {
+            if (string.IsNullOrWhiteSpace(controllerName))
+            {
+                continue;
+            }
+
+            string normalizedName = NormalizeControllerName(controllerName);
+            if (registeredNames.Add(normalizedName))
+            {
+                normalizedNames.Add(normalizedName);
+            }
+        }
+
+        return normalizedNames.ToArray();
+    }
 
     private static string NormalizeControllerName(string value)
     {
@@ -24,16 +41,22 @@ internal sealed class CMotionControllerTypeAttribute(params string[] controllerN
 
 internal abstract class CMotionController(
     string controller,
-    IInterfaceManager? interfaceManager,
+    CInterfaceManager? interfaceManager,
     int deviceNo = 0)
 {
-    private readonly IInterfaceManager? _interfaceManager = interfaceManager;
+    private readonly CInterfaceManager? _interfaceManager = interfaceManager;
 
     public string Controller { get; } = controller.Trim().ToUpperInvariant();
 
     public int DeviceNo { get; } = deviceNo;
 
-    protected virtual EN_EQP_MODULE PrimaryModule => EN_EQP_MODULE.Motion;
+    protected virtual EN_EQP_MODULE PrimaryModule
+    {
+        get
+        {
+            return EN_EQP_MODULE.Motion;
+        }
+    }
 
     protected abstract string CommandPrefix { get; }
 
@@ -137,18 +160,33 @@ internal abstract class CMotionController(
         EN_MOTION_COMMAND command,
         double parameter)
     {
-        var commandText = command switch
+        string EvaluateCommandSwitch1()
         {
-            EN_MOTION_COMMAND.ServoOn => "SERVO_ON",
-            EN_MOTION_COMMAND.ServoOff => "SERVO_OFF",
-            EN_MOTION_COMMAND.Home => "HOME",
-            EN_MOTION_COMMAND.MoveAbs => $"MOVE_ABS:{parameter:F3}",
-            EN_MOTION_COMMAND.MoveRel => $"MOVE_REL:{parameter:F3}",
-            EN_MOTION_COMMAND.Stop => "STOP",
-            EN_MOTION_COMMAND.ResetAlarm => "RESET_ALARM",
-            EN_MOTION_COMMAND.Refresh => "READ",
-            _ => "READ"
-        };
+            var switchValue = command;
+            switch (switchValue)
+            {
+                case EN_MOTION_COMMAND.ServoOn:
+                    return "SERVO_ON";
+                case EN_MOTION_COMMAND.ServoOff:
+                    return "SERVO_OFF";
+                case EN_MOTION_COMMAND.Home:
+                    return "HOME";
+                case EN_MOTION_COMMAND.MoveAbs:
+                    return $"MOVE_ABS:{parameter:F3}";
+                case EN_MOTION_COMMAND.MoveRel:
+                    return $"MOVE_REL:{parameter:F3}";
+                case EN_MOTION_COMMAND.Stop:
+                    return "STOP";
+                case EN_MOTION_COMMAND.ResetAlarm:
+                    return "RESET_ALARM";
+                case EN_MOTION_COMMAND.Refresh:
+                    return "READ";
+                default:
+                    return "READ";
+            }
+        }
+
+        var commandText = EvaluateCommandSwitch1();
 
         return $"{CommandPrefix}:AXIS:{axis.Axis}:{axis.Name}:{commandText}";
     }
@@ -243,22 +281,40 @@ internal abstract class CMotionController(
         {
             return null;
         }
+        bool FilterData1(ST_INTERFACE_DATA data)
+        {
+            return data.Number == DeviceNo;
+        }
+
+        string GetDataSortKey2(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
 
         var primary = _interfaceManager
             .GetInterfaceList(PrimaryModule)
-            .Where(data => data.Number == DeviceNo)
-            .OrderBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterData1)
+            .OrderBy(GetDataSortKey2, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
 
         if (primary is not null)
         {
             return primary;
         }
+        bool FilterData3(ST_INTERFACE_DATA data)
+        {
+            return data.Number == DeviceNo;
+        }
+
+        string GetDataSortKey4(ST_INTERFACE_DATA data)
+        {
+            return data.NickName;
+        }
 
         return _interfaceManager
             .GetInterfaceList(EN_EQP_MODULE.Motion)
-            .Where(data => data.Number == DeviceNo)
-            .OrderBy(data => data.NickName, StringComparer.OrdinalIgnoreCase)
+            .Where(FilterData3)
+            .OrderBy(GetDataSortKey4, StringComparer.OrdinalIgnoreCase)
             .FirstOrDefault();
     }
 }

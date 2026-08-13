@@ -9,7 +9,7 @@ using Drilling.File.Parser;
 
 namespace Drilling.File.JHMI;
 
-public sealed class CManualScanFile(string configRoot) : IManualScanFile
+public sealed class CManualScanFile(string configRoot) : CManualScanFileBase
 {
     private const string DefaultSettingName = "CIRCLE_TEST.scan";
 
@@ -21,7 +21,7 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
 
     private readonly string _manualDirectory = Path.Combine(configRoot, "Manual");
 
-    public Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<string>> List(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -29,42 +29,66 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         {
             return Task.FromResult<IReadOnlyList<string>>([]);
         }
+        bool FilterName1(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name);
+        }
+
+        string GetNameSortKey2(string name)
+        {
+            return name;
+        }
 
         var settingNames = Directory
             .EnumerateFiles(_manualDirectory, "*.scan")
             .Select(Path.GetFileName)
-            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Where(FilterName1)
             .Cast<string>()
-            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(GetNameSortKey2, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
         return Task.FromResult<IReadOnlyList<string>>(settingNames);
     }
 
-    public Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default)
+    public override Task<IReadOnlyList<ST_MANUAL_SCAN_FORM>> LoadForm(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         return Task.FromResult(LoadFormItems());
     }
 
-    public Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default)
+    public override Task<ST_MANUAL_SCAN_PARAM> Load(CancellationToken cancellationToken = default)
     {
         return Load(GetDefaultSettingName(), cancellationToken);
     }
 
-    public Task<ST_MANUAL_SCAN_PARAM> Load(
+    public override Task<ST_MANUAL_SCAN_PARAM> Load(
         string settingName,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var formItems = LoadFormItems();
+        bool FilterRow3(IReadOnlyDictionary<string, string> row)
+        {
+            return !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "NAME"));
+        }
+
+        string HandleValues4(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "NAME");
+        }
+
+        string HandleValues5(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "VALUE");
+        }
+
         var values = CCsvParser.Read(GetSettingPath(settingName))
-            .Where(row => !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "NAME")))
+            .Where(FilterRow3)
             .ToDictionary(
-                row => CCsvParser.Get(row, "NAME"),
-                row => CCsvParser.Get(row, "VALUE"),
+HandleValues4,
+HandleValues5,
                 StringComparer.OrdinalIgnoreCase);
 
         var settings = new ST_MANUAL_SCAN_PARAM(
@@ -88,12 +112,12 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         return Task.FromResult(settings);
     }
 
-    public Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default)
+    public override Task Save(ST_MANUAL_SCAN_PARAM settings, CancellationToken cancellationToken = default)
     {
         return Save(GetDefaultSettingName(), settings, cancellationToken);
     }
 
-    public Task Save(
+    public override Task Save(
         string settingName,
         ST_MANUAL_SCAN_PARAM settings,
         CancellationToken cancellationToken = default)
@@ -120,16 +144,30 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         };
 
         ValidateValues(formItems, values);
+        bool FilterItem6(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.Use;
+        }
+
+        int GetItemSortKey7(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.DisplayOrder;
+        }
+
+        Dictionary<string, string> SelectItem8(ST_MANUAL_SCAN_FORM item)
+        {
+            return new Dictionary<string, string>
+            {
+                ["NAME"] = item.Name,
+                ["VALUE"] = values.TryGetValue(item.Name, out var value) ? value : item.DefaultValue
+            };
+        }
 
         IReadOnlyList<IReadOnlyDictionary<string, string>> rows =
             formItems
-                .Where(item => item.Use)
-                .OrderBy(item => item.DisplayOrder)
-                .Select(item => new Dictionary<string, string>
-                {
-                    ["NAME"] = item.Name,
-                    ["VALUE"] = values.TryGetValue(item.Name, out var value) ? value : item.DefaultValue
-                })
+                .Where(FilterItem6)
+                .OrderBy(GetItemSortKey7)
+                .Select(SelectItem8)
                 .ToArray();
 
         CCsvParser.Write(GetSettingPath(normalizedName), ValueHeaders, rows);
@@ -137,7 +175,7 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         return Task.CompletedTask;
     }
 
-    public Task Rename(
+    public override Task Rename(
         string oldSettingName,
         string newSettingName,
         CancellationToken cancellationToken = default)
@@ -162,7 +200,7 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         return Task.CompletedTask;
     }
 
-    public Task Delete(string settingName, CancellationToken cancellationToken = default)
+    public override Task Delete(string settingName, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -182,32 +220,46 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         {
             return DefaultSettingName;
         }
+        bool MatchName9(string? name)
+        {
+            return !string.IsNullOrWhiteSpace(name);
+        }
 
         return Directory.Exists(_manualDirectory)
             ? Directory
                 .EnumerateFiles(_manualDirectory, "*.scan")
                 .Select(Path.GetFileName)
-                .FirstOrDefault(name => !string.IsNullOrWhiteSpace(name))
+                .FirstOrDefault(MatchName9)
                 ?? DefaultSettingName
             : DefaultSettingName;
     }
 
     private IReadOnlyList<ST_MANUAL_SCAN_FORM> LoadFormItems()
     {
+        ST_MANUAL_SCAN_FORM SelectRow10(IReadOnlyDictionary<string, string> row, int index)
+        {
+            return new ST_MANUAL_SCAN_FORM(
+                            CCsvParser.Get(row, "NAME"),
+                            GetOrDefault(CCsvParser.Get(row, "DISPLAY NAME"), CCsvParser.Get(row, "NAME")),
+                            ReadDataType(CCsvParser.Get(row, "DATA TYPE")),
+                            CCsvParser.Get(row, "UNIT"),
+                            ReadBool(CCsvParser.Get(row, "SHOW"), true),
+                            ReadBool(CCsvParser.Get(row, "USE"), true),
+                            CCsvParser.Get(row, "VALUE"),
+                            ReadDoubleValue(CCsvParser.Get(row, "MIN"), 0.0),
+                            ReadDoubleValue(CCsvParser.Get(row, "MAX"), 0.0),
+                            CCsvParser.Get(row, "DESCRIPTION"),
+                            ReadInt(CCsvParser.Get(row, "ORDER"), index + 1));
+        }
+
+        bool FilterItem11(ST_MANUAL_SCAN_FORM item)
+        {
+            return !string.IsNullOrWhiteSpace(item.Name);
+        }
+
         var formItems = CCsvParser.Read(GetFormPath())
-            .Select((row, index) => new ST_MANUAL_SCAN_FORM(
-                CCsvParser.Get(row, "NAME"),
-                GetOrDefault(CCsvParser.Get(row, "DISPLAY NAME"), CCsvParser.Get(row, "NAME")),
-                ReadDataType(CCsvParser.Get(row, "DATA TYPE")),
-                CCsvParser.Get(row, "UNIT"),
-                ReadBool(CCsvParser.Get(row, "SHOW"), true),
-                ReadBool(CCsvParser.Get(row, "USE"), true),
-                CCsvParser.Get(row, "VALUE"),
-                ReadDoubleValue(CCsvParser.Get(row, "MIN"), 0.0),
-                ReadDoubleValue(CCsvParser.Get(row, "MAX"), 0.0),
-                CCsvParser.Get(row, "DESCRIPTION"),
-                ReadInt(CCsvParser.Get(row, "ORDER"), index + 1)))
-            .Where(item => !string.IsNullOrWhiteSpace(item.Name))
+            .Select(SelectRow10)
+            .Where(FilterItem11)
             .ToArray();
 
         return formItems.Length > 0
@@ -221,12 +273,26 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        bool FilterRow12(IReadOnlyDictionary<string, string> row)
+        {
+            return !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "NAME"));
+        }
+
+        string HandleActualValues13(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "NAME");
+        }
+
+        string HandleActualValues14(IReadOnlyDictionary<string, string> row)
+        {
+            return CCsvParser.Get(row, "VALUE");
+        }
 
         var actualValues = CCsvParser.Read(GetSettingPath(settingName))
-            .Where(row => !string.IsNullOrWhiteSpace(CCsvParser.Get(row, "NAME")))
+            .Where(FilterRow12)
             .ToDictionary(
-                row => CCsvParser.Get(row, "NAME"),
-                row => CCsvParser.Get(row, "VALUE"),
+HandleActualValues13,
+HandleActualValues14,
                 StringComparer.OrdinalIgnoreCase);
 
         foreach (var (name, expectedValue) in values)
@@ -248,9 +314,19 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         IReadOnlyList<ST_MANUAL_SCAN_FORM> formItems,
         IReadOnlyDictionary<string, string> values)
     {
+        bool FilterItem15(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.Use;
+        }
+
+        string HandleFormItemsByName16(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.Name;
+        }
+
         var formItemsByName = formItems
-            .Where(item => item.Use)
-            .ToDictionary(item => item.Name, StringComparer.OrdinalIgnoreCase);
+            .Where(FilterItem15)
+            .ToDictionary(HandleFormItemsByName16, StringComparer.OrdinalIgnoreCase);
 
         foreach (var (name, value) in values)
         {
@@ -263,14 +339,23 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
             {
                 throw new InvalidDataException($"Manual setting save blocked. {formItem.DisplayName} cannot be empty.");
             }
-
-            var validationMessage = formItem.DataType switch
+            string EvaluateDataTypeSwitch1()
             {
-                EN_RECIPE_DATA_TYPE.Int => ValidateIntParameter(formItem, value),
-                EN_RECIPE_DATA_TYPE.Double => ValidateDoubleParameter(formItem, value),
-                EN_RECIPE_DATA_TYPE.Bool => ValidateBoolParameter(formItem, value),
-                _ => ""
-            };
+                var switchValue = formItem.DataType;
+                switch (switchValue)
+                {
+                    case EN_RECIPE_DATA_TYPE.Int:
+                        return ValidateIntParameter(formItem, value);
+                    case EN_RECIPE_DATA_TYPE.Double:
+                        return ValidateDoubleParameter(formItem, value);
+                    case EN_RECIPE_DATA_TYPE.Bool:
+                        return ValidateBoolParameter(formItem, value);
+                    default:
+                        return "";
+                }
+            }
+
+            var validationMessage = EvaluateDataTypeSwitch1();
 
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
@@ -367,10 +452,15 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
         string key,
         string defaultValue)
     {
+        bool MatchItem17(ST_MANUAL_SCAN_FORM item)
+        {
+            return item.Name.Equals(key, StringComparison.OrdinalIgnoreCase);
+        }
+
         return values.TryGetValue(key, out var value) &&
             !string.IsNullOrWhiteSpace(value)
             ? value
-            : formItems.FirstOrDefault(item => item.Name.Equals(key, StringComparison.OrdinalIgnoreCase))?.DefaultValue
+            : formItems.FirstOrDefault(MatchItem17)?.DefaultValue
                 ?? defaultValue;
     }
 
@@ -403,13 +493,23 @@ public sealed class CManualScanFile(string configRoot) : IManualScanFile
 
     private static EN_RECIPE_DATA_TYPE ReadDataType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_RECIPE_DATA_TYPE EvaluateValueSwitch2()
         {
-            "INT" => EN_RECIPE_DATA_TYPE.Int,
-            "DOUBLE" => EN_RECIPE_DATA_TYPE.Double,
-            "BOOL" => EN_RECIPE_DATA_TYPE.Bool,
-            _ => EN_RECIPE_DATA_TYPE.String
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INT":
+                    return EN_RECIPE_DATA_TYPE.Int;
+                case "DOUBLE":
+                    return EN_RECIPE_DATA_TYPE.Double;
+                case "BOOL":
+                    return EN_RECIPE_DATA_TYPE.Bool;
+                default:
+                    return EN_RECIPE_DATA_TYPE.String;
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static bool ReadBool(string value, bool defaultValue)

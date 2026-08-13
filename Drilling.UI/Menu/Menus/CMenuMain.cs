@@ -87,7 +87,13 @@ public sealed class CMenuMain(
     private readonly CScannerStatusPollingService _scannerStatusPollingService =
         new(automationManager, settingManager);
 
-    public EN_MENU Menu => EN_MENU.Main;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Main;
+        }
+    }
 
     public IReadOnlyList<ST_HEAD_PREVIEW> HeadPreviews { get; private set; } = [];
 
@@ -108,80 +114,171 @@ public sealed class CMenuMain(
 
     public IReadOnlyList<ST_DISPLAY_ITEM> CycleItems
     {
-        get => _cycleItems;
-        private set => SetProperty(ref _cycleItems, value);
+        get
+        {
+            return _cycleItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _cycleItems, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> ResultItems
     {
-        get => _resultItems;
-        private set => SetProperty(ref _resultItems, value);
+        get
+        {
+            return _resultItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _resultItems, value);
+        }
     }
 
     public IReadOnlyList<ST_MAIN_PROCESS_SEQUENCE_ITEM> ProcessSequenceItems
     {
-        get => _processSequenceItems;
-        private set => SetProperty(ref _processSequenceItems, value);
+        get
+        {
+            return _processSequenceItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _processSequenceItems, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> CurrentStepDetails
     {
-        get => _currentStepDetails;
-        private set => SetProperty(ref _currentStepDetails, value);
+        get
+        {
+            return _currentStepDetails;
+        }
+
+        private set
+        {
+            SetProperty(ref _currentStepDetails, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> ProcessSummaryItems
     {
-        get => _processSummaryItems;
-        private set => SetProperty(ref _processSummaryItems, value);
+        get
+        {
+            return _processSummaryItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _processSummaryItems, value);
+        }
     }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> LifecycleItems
     {
-        get => _lifecycleItems;
-        private set => SetProperty(ref _lifecycleItems, value);
+        get
+        {
+            return _lifecycleItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _lifecycleItems, value);
+        }
     }
 
     public IReadOnlyList<ST_SCRIPT_TASK_STATUS_ITEM> ScriptTaskStatusItems
     {
-        get => _scriptTaskStatusItems;
-        private set => SetProperty(ref _scriptTaskStatusItems, value);
+        get
+        {
+            return _scriptTaskStatusItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _scriptTaskStatusItems, value);
+        }
     }
 
     public IReadOnlyList<ST_INSPECTION_STATUS_ITEM> InspectionStatusItems
     {
-        get => _inspectionStatusItems;
-        private set => SetProperty(ref _inspectionStatusItems, value);
+        get
+        {
+            return _inspectionStatusItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionStatusItems, value);
+        }
     }
 
     public string InspectionSummary
     {
-        get => _inspectionSummary;
-        private set => SetProperty(ref _inspectionSummary, value);
+        get
+        {
+            return _inspectionSummary;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionSummary, value);
+        }
     }
 
     public string InspectionModeText
     {
-        get => _inspectionModeText;
-        private set => SetProperty(ref _inspectionModeText, value);
+        get
+        {
+            return _inspectionModeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionModeText, value);
+        }
     }
 
     public string InspectionRuleText
     {
-        get => _inspectionRuleText;
-        private set => SetProperty(ref _inspectionRuleText, value);
+        get
+        {
+            return _inspectionRuleText;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionRuleText, value);
+        }
     }
 
     public Visibility InspectionRuleVisibility
     {
-        get => _inspectionRuleVisibility;
-        private set => SetProperty(ref _inspectionRuleVisibility, value);
+        get
+        {
+            return _inspectionRuleVisibility;
+        }
+
+        private set
+        {
+            SetProperty(ref _inspectionRuleVisibility, value);
+        }
     }
 
     public IReadOnlyList<ST_INTERLOCK_ITEM> InterlockItems
     {
-        get => _interlockItems;
-        private set => SetProperty(ref _interlockItems, value);
+        get
+        {
+            return _interlockItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _interlockItems, value);
+        }
     }
 
     public IReadOnlyList<ST_HEAD_PARAMETER> HeadParameters { get; private set; } = [];
@@ -194,8 +291,15 @@ public sealed class CMenuMain(
 
     public IReadOnlyList<ST_SCANNER_AXIS_STATUS_ITEM> ScannerStatusItems
     {
-        get => _scannerStatusItems;
-        private set => SetProperty(ref _scannerStatusItems, value);
+        get
+        {
+            return _scannerStatusItems;
+        }
+
+        private set
+        {
+            SetProperty(ref _scannerStatusItems, value);
+        }
     }
 
     public Visibility HeadParameterVisibility { get; private set; } = Visibility.Visible;
@@ -204,99 +308,213 @@ public sealed class CMenuMain(
 
     public Visibility ScannerStatusVisibility { get; private set; } = Visibility.Collapsed;
 
-    public bool IsScannerStatusSelected => _selectedParameterTabKey.Equals(ParameterTabScanner, StringComparison.OrdinalIgnoreCase);
+    public bool IsScannerStatusSelected
+    {
+        get
+        {
+            return _selectedParameterTabKey.Equals(ParameterTabScanner, StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public string ProcessStep
     {
-        get => _processStep;
-        private set => SetProperty(ref _processStep, value);
+        get
+        {
+            return _processStep;
+        }
+
+        private set
+        {
+            SetProperty(ref _processStep, value);
+        }
     }
 
     public string ScriptStatus
     {
-        get => _scriptStatus;
-        private set => SetProperty(ref _scriptStatus, value);
+        get
+        {
+            return _scriptStatus;
+        }
+
+        private set
+        {
+            SetProperty(ref _scriptStatus, value);
+        }
     }
 
     public string ScriptStatusText
     {
-        get => _scriptStatusText;
-        private set => SetProperty(ref _scriptStatusText, value);
+        get
+        {
+            return _scriptStatusText;
+        }
+
+        private set
+        {
+            SetProperty(ref _scriptStatusText, value);
+        }
     }
 
     public string ResultMessage
     {
-        get => _resultMessage;
-        private set => SetProperty(ref _resultMessage, value);
+        get
+        {
+            return _resultMessage;
+        }
+
+        private set
+        {
+            SetProperty(ref _resultMessage, value);
+        }
     }
 
     public string TotalPointsText
     {
-        get => _totalPointsText;
-        private set => SetProperty(ref _totalPointsText, value);
+        get
+        {
+            return _totalPointsText;
+        }
+
+        private set
+        {
+            SetProperty(ref _totalPointsText, value);
+        }
     }
 
     public string MoveCountText
     {
-        get => _moveCountText;
-        private set => SetProperty(ref _moveCountText, value);
+        get
+        {
+            return _moveCountText;
+        }
+
+        private set
+        {
+            SetProperty(ref _moveCountText, value);
+        }
     }
 
     public string LaserOnSegmentsText
     {
-        get => _laserOnSegmentsText;
-        private set => SetProperty(ref _laserOnSegmentsText, value);
+        get
+        {
+            return _laserOnSegmentsText;
+        }
+
+        private set
+        {
+            SetProperty(ref _laserOnSegmentsText, value);
+        }
     }
 
     public string EstimatedTimeText
     {
-        get => _estimatedTimeText;
-        private set => SetProperty(ref _estimatedTimeText, value);
+        get
+        {
+            return _estimatedTimeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _estimatedTimeText, value);
+        }
     }
 
     public string ElapsedTimeText
     {
-        get => _elapsedTimeText;
-        private set => SetProperty(ref _elapsedTimeText, value);
+        get
+        {
+            return _elapsedTimeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _elapsedTimeText, value);
+        }
     }
 
     public string ProgressText
     {
-        get => _progressText;
-        private set => SetProperty(ref _progressText, value);
+        get
+        {
+            return _progressText;
+        }
+
+        private set
+        {
+            SetProperty(ref _progressText, value);
+        }
     }
 
     public string ProgressPercentText
     {
-        get => _progressPercentText;
-        private set => SetProperty(ref _progressPercentText, value);
+        get
+        {
+            return _progressPercentText;
+        }
+
+        private set
+        {
+            SetProperty(ref _progressPercentText, value);
+        }
     }
 
     public double ProgressPercent
     {
-        get => _progressPercent;
-        private set => SetProperty(ref _progressPercent, value);
+        get
+        {
+            return _progressPercent;
+        }
+
+        private set
+        {
+            SetProperty(ref _progressPercent, value);
+        }
     }
 
     public string ProcessResultValue
     {
-        get => _processResultValue;
-        private set => SetProperty(ref _processResultValue, value);
+        get
+        {
+            return _processResultValue;
+        }
+
+        private set
+        {
+            SetProperty(ref _processResultValue, value);
+        }
     }
 
     public Brush ProcessResultBrush
     {
-        get => _processResultBrush;
-        private set => SetProperty(ref _processResultBrush, value);
+        get
+        {
+            return _processResultBrush;
+        }
+
+        private set
+        {
+            SetProperty(ref _processResultBrush, value);
+        }
     }
 
     public CButtonCommand TogglePreviewHeadCommand { get; private set; } = CButtonCommand.NoOp;
 
-    public CButtonCommand ToggleSequenceStepUseCommand =>
-        _toggleSequenceStepUseCommand ??= new CButtonCommand(async parameter => await ToggleSequenceStepUse(parameter));
+    public CButtonCommand ToggleSequenceStepUseCommand
+    {
+        get
+        {
+            return _toggleSequenceStepUseCommand ??= new CButtonCommand(async parameter => await ToggleSequenceStepUse(parameter));
+        }
+    }
 
-    public CButtonCommand SelectParameterTabCommand =>
-        _selectParameterTabCommand ??= new CButtonCommand(async parameter => await SelectParameterTab(parameter));
+    public CButtonCommand SelectParameterTabCommand
+    {
+        get
+        {
+            return _selectParameterTabCommand ??= new CButtonCommand(async parameter => await SelectParameterTab(parameter));
+        }
+    }
 
     public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
@@ -2170,7 +2388,13 @@ public sealed record ST_HEAD_PREVIEW(
     string Status,
     bool IsSelected)
 {
-    public Brush StatusBrush => CStatusBrush.ForHeadStatus(Status);
+    public Brush StatusBrush
+    {
+        get
+        {
+            return CStatusBrush.ForHeadStatus(Status);
+        }
+    }
 }
 
 public sealed record ST_MAIN_PROCESS_SEQUENCE_ITEM(
@@ -2183,17 +2407,53 @@ public sealed record ST_MAIN_PROCESS_SEQUENCE_ITEM(
     bool IsOptionOn,
     bool CanToggleOption)
 {
-    public string OptionText => IsOptional ? IsOptionOn ? "ON" : "OFF" : "";
+    public string OptionText
+    {
+        get
+        {
+            return IsOptional ? IsOptionOn ? "ON" : "OFF" : "";
+        }
+    }
 
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 
-    public Brush OptionBrush => IsOptionOn ? CStatusBrush.CommandGreen : CStatusBrush.CommandDark;
+    public Brush OptionBrush
+    {
+        get
+        {
+            return IsOptionOn ? CStatusBrush.CommandGreen : CStatusBrush.CommandDark;
+        }
+    }
 
-    public Brush OptionBorderBrush => IsOptionOn ? CStatusBrush.CommandGreenBorder : CStatusBrush.CommandDarkBorder;
+    public Brush OptionBorderBrush
+    {
+        get
+        {
+            return IsOptionOn ? CStatusBrush.CommandGreenBorder : CStatusBrush.CommandDarkBorder;
+        }
+    }
 
-    public Visibility OptionVisibility => IsOptional ? Visibility.Visible : Visibility.Hidden;
+    public Visibility OptionVisibility
+    {
+        get
+        {
+            return IsOptional ? Visibility.Visible : Visibility.Hidden;
+        }
+    }
 
-    public double OptionOpacity => CanToggleOption ? 1.0 : 0.45;
+    public double OptionOpacity
+    {
+        get
+        {
+            return CanToggleOption ? 1.0 : 0.45;
+        }
+    }
 }
 
 public sealed record ST_HEAD_ASSIGNMENT_AREA(
@@ -2212,11 +2472,29 @@ public sealed record ST_HEAD_ASSIGNMENT_AREA(
     Thickness BorderThicknessValue,
     double Opacity)
 {
-    public double LabelCanvasTop => CanvasTop - 24.0;
+    public double LabelCanvasTop
+    {
+        get
+        {
+            return CanvasTop - 24.0;
+        }
+    }
 
-    public Visibility RangeVisibility => IsSelected ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility RangeVisibility
+    {
+        get
+        {
+            return IsSelected ? Visibility.Visible : Visibility.Collapsed;
+        }
+    }
 
-    public string DisplayLabel => $"H{HeadNo:00}";
+    public string DisplayLabel
+    {
+        get
+        {
+            return $"H{HeadNo:00}";
+        }
+    }
 }
 
 internal readonly record struct ST_PREVIEW_HEAD_ASSIGNMENT_CANDIDATE(
@@ -2251,15 +2529,45 @@ public sealed record ST_SCRIPT_TASK_STATUS_ITEM(
     string Detail,
     int Points)
 {
-    public string ControllerTaskText => $"{Automation} / {TaskNo}";
+    public string ControllerTaskText
+    {
+        get
+        {
+            return $"{Automation} / {TaskNo}";
+        }
+    }
 
-    public string FileText => string.IsNullOrWhiteSpace(File) ? "-" : File;
+    public string FileText
+    {
+        get
+        {
+            return string.IsNullOrWhiteSpace(File) ? "-" : File;
+        }
+    }
 
-    public string DetailText => string.IsNullOrWhiteSpace(Detail) ? "-" : Detail;
+    public string DetailText
+    {
+        get
+        {
+            return string.IsNullOrWhiteSpace(Detail) ? "-" : Detail;
+        }
+    }
 
-    public string PointText => $"{Points.ToString("N0", CultureInfo.InvariantCulture)}P";
+    public string PointText
+    {
+        get
+        {
+            return $"{Points.ToString("N0", CultureInfo.InvariantCulture)}P";
+        }
+    }
 
-    public Brush StateBrush => TaskStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return TaskStateBrush(State);
+        }
+    }
 
     private static Brush TaskStateBrush(string state)
     {
@@ -2284,9 +2592,21 @@ public sealed record ST_INSPECTION_STATUS_ITEM(
     string State,
     string Judge)
 {
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 
-    public Brush JudgeBrush => CStatusBrush.ForDisplayState(Judge);
+    public Brush JudgeBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Judge);
+        }
+    }
 }
 
 public sealed record ST_INTERLOCK_ITEM(
@@ -2300,11 +2620,29 @@ public sealed record ST_MAIN_PARAMETER_TAB_ITEM(
     string Name,
     bool IsSelected)
 {
-    public Brush BackgroundBrush => IsSelected ? CStatusBrush.CommandBlue : CStatusBrush.CommandDark;
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.CommandBlue : CStatusBrush.CommandDark;
+        }
+    }
 
-    public Brush BorderBrush => IsSelected ? CStatusBrush.CommandBlueBorder : CStatusBrush.CommandDarkBorder;
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.CommandBlueBorder : CStatusBrush.CommandDarkBorder;
+        }
+    }
 
-    public Brush TextBrush => IsSelected ? CStatusBrush.PrimaryText : CStatusBrush.Muted;
+    public Brush TextBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.PrimaryText : CStatusBrush.Muted;
+        }
+    }
 }
 
 public sealed record ST_HEAD_PARAMETER(
@@ -2331,31 +2669,109 @@ public sealed record ST_OPTIC_HEAD_PARAMETER(
     string BetDivergenceTargetStep,
     string BetState)
 {
-    public string LaserPowerText => $"P {LaserPower}";
+    public string LaserPowerText
+    {
+        get
+        {
+            return $"P {LaserPower}";
+        }
+    }
 
-    public string LaserGateText => $"G {LaserGate}";
+    public string LaserGateText
+    {
+        get
+        {
+            return $"G {LaserGate}";
+        }
+    }
 
-    public string LaserShutterText => $"S {LaserShutter}";
+    public string LaserShutterText
+    {
+        get
+        {
+            return $"S {LaserShutter}";
+        }
+    }
 
-    public string AttenuatorText => $"{AttenuatorCurrent} / {AttenuatorTarget}";
+    public string AttenuatorText
+    {
+        get
+        {
+            return $"{AttenuatorCurrent} / {AttenuatorTarget}";
+        }
+    }
 
-    public string BetMagnificationText => $"MAG {BetMagnificationCurrentStep} / {BetMagnificationTargetStep}";
+    public string BetMagnificationText
+    {
+        get
+        {
+            return $"MAG {BetMagnificationCurrentStep} / {BetMagnificationTargetStep}";
+        }
+    }
 
-    public string BetDivergenceText => $"DIV {BetDivergenceCurrentStep} / {BetDivergenceTargetStep}";
+    public string BetDivergenceText
+    {
+        get
+        {
+            return $"DIV {BetDivergenceCurrentStep} / {BetDivergenceTargetStep}";
+        }
+    }
 
-    public Brush StateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+        }
+    }
 
-    public Brush LaserStateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserState);
+    public Brush LaserStateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserState);
+        }
+    }
 
-    public Brush LaserPowerBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserPower);
+    public Brush LaserPowerBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserPower);
+        }
+    }
 
-    public Brush LaserGateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserGate);
+    public Brush LaserGateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserGate);
+        }
+    }
 
-    public Brush LaserShutterBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserShutter);
+    public Brush LaserShutterBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(LaserShutter);
+        }
+    }
 
-    public Brush AttenuatorStateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(AttenuatorState);
+    public Brush AttenuatorStateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(AttenuatorState);
+        }
+    }
 
-    public Brush BetStateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(BetState);
+    public Brush BetStateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(BetState);
+        }
+    }
 }
 
 public sealed record ST_OPTIC_PARAMETER_GROUP(
@@ -2363,7 +2779,13 @@ public sealed record ST_OPTIC_PARAMETER_GROUP(
     string State,
     IReadOnlyList<ST_OPTIC_PARAMETER_ITEM> Items)
 {
-    public Brush StateBrush => ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return ST_OPTIC_PARAMETER_ITEM.OpticStateBrush(State);
+        }
+    }
 }
 
 public sealed record ST_OPTIC_PARAMETER_ITEM(
@@ -2372,7 +2794,13 @@ public sealed record ST_OPTIC_PARAMETER_ITEM(
     string RecipeTarget,
     string State)
 {
-    public Brush StateBrush => OpticStateBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return OpticStateBrush(State);
+        }
+    }
 
     public static Brush OpticStateBrush(string state)
     {
@@ -2417,11 +2845,29 @@ public sealed record ST_SCANNER_AXIS_STATUS_ITEM(
     string Error,
     string Detail)
 {
-    public Brush AbleBrush => ScannerStateBrush(Able);
+    public Brush AbleBrush
+    {
+        get
+        {
+            return ScannerStateBrush(Able);
+        }
+    }
 
-    public Brush HomeBrush => ScannerStateBrush(Home);
+    public Brush HomeBrush
+    {
+        get
+        {
+            return ScannerStateBrush(Home);
+        }
+    }
 
-    public Brush ErrorBrush => ScannerStateBrush(Error);
+    public Brush ErrorBrush
+    {
+        get
+        {
+            return ScannerStateBrush(Error);
+        }
+    }
 
     private static Brush ScannerStateBrush(string state)
     {

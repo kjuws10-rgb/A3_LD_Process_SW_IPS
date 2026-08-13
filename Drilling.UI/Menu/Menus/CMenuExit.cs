@@ -9,7 +9,13 @@ namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuExit : IMenu
 {
-    public EN_MENU Menu => EN_MENU.Exit;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Exit;
+        }
+    }
 
     public Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {

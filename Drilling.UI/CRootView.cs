@@ -159,7 +159,11 @@ public sealed class CRootView : CBindingBase
 
     public CMenuItem SelectedMenu
     {
-        get => _selectedMenu;
+        get
+        {
+            return _selectedMenu;
+        }
+
         set
         {
             var previousMenu = _selectedMenu.Menu;
@@ -185,39 +189,85 @@ public sealed class CRootView : CBindingBase
 
     public CScreenViewModel CurrentScreen
     {
-        get => _currentScreen;
-        private set => SetProperty(ref _currentScreen, value);
+        get
+        {
+            return _currentScreen;
+        }
+
+        private set
+        {
+            SetProperty(ref _currentScreen, value);
+        }
     }
 
     public string StatusMessage
     {
-        get => _statusMessage;
-        private set => SetProperty(ref _statusMessage, value);
+        get
+        {
+            return _statusMessage;
+        }
+
+        private set
+        {
+            SetProperty(ref _statusMessage, value);
+        }
     }
 
     public string CurrentDateText
     {
-        get => _currentDateText;
-        private set => SetProperty(ref _currentDateText, value);
+        get
+        {
+            return _currentDateText;
+        }
+
+        private set
+        {
+            SetProperty(ref _currentDateText, value);
+        }
     }
 
     public string CurrentTimeText
     {
-        get => _currentTimeText;
-        private set => SetProperty(ref _currentTimeText, value);
+        get
+        {
+            return _currentTimeText;
+        }
+
+        private set
+        {
+            SetProperty(ref _currentTimeText, value);
+        }
     }
 
-    public string CurrentUserText => _systemStatus.OperationMode == EN_SYSTEM_MODE.Simulation
+    public string CurrentUserText
+    {
+        get
+        {
+            return _systemStatus.OperationMode == EN_SYSTEM_MODE.Simulation
         ? "Engineer / Simulation"
         : "Engineer / Live";
+        }
+    }
 
-    public string ThemeToggleText => _currentTheme == EN_UI_THEME.Light
+    public string ThemeToggleText
+    {
+        get
+        {
+            return _currentTheme == EN_UI_THEME.Light
         ? "DARK"
         : "LIGHT";
+        }
+    }
 
-    public string ThemeModeText => _currentTheme == EN_UI_THEME.Light
+    public string ThemeModeText
+    {
+        get
+        {
+            return _currentTheme == EN_UI_THEME.Light
         ? "Light Theme"
         : "Dark Theme";
+        }
+    }
 
     public CButtonCommand StartCommand { get; }
 
@@ -229,7 +279,13 @@ public sealed class CRootView : CBindingBase
 
     public CButtonCommand ToggleThemeCommand { get; }
 
-    private bool CanSelectHead => SelectedMenu.Menu is EN_MENU.Main or EN_MENU.Manual;
+    private bool CanSelectHead
+    {
+        get
+        {
+            return SelectedMenu.Menu is EN_MENU.Main or EN_MENU.Manual;
+        }
+    }
 
     private async Task RefreshCurrentScreen()
     {

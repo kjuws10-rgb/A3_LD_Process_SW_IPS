@@ -97,7 +97,13 @@ public sealed class CMenuManual : CBindingBase, IMenu
         ];
     }
 
-    public EN_MENU Menu => EN_MENU.Manual;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Manual;
+        }
+    }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> ManualSettings { get; private set; } = [];
 
@@ -117,61 +123,128 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public string TargetGx
     {
-        get => _targetGx;
-        set => SetProperty(ref _targetGx, value);
+        get
+        {
+            return _targetGx;
+        }
+
+        set
+        {
+            SetProperty(ref _targetGx, value);
+        }
     }
 
     public string TargetGy
     {
-        get => _targetGy;
-        set => SetProperty(ref _targetGy, value);
+        get
+        {
+            return _targetGy;
+        }
+
+        set
+        {
+            SetProperty(ref _targetGy, value);
+        }
     }
 
     public string ShapeSize
     {
-        get => _shapeSize;
-        set => SetProperty(ref _shapeSize, value);
+        get
+        {
+            return _shapeSize;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeSize, value);
+        }
     }
 
     public string ShapeOffsetX
     {
-        get => _shapeOffsetX;
-        set => SetProperty(ref _shapeOffsetX, value);
+        get
+        {
+            return _shapeOffsetX;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeOffsetX, value);
+        }
     }
 
     public string ShapeOffsetY
     {
-        get => _shapeOffsetY;
-        set => SetProperty(ref _shapeOffsetY, value);
+        get
+        {
+            return _shapeOffsetY;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeOffsetY, value);
+        }
     }
 
     public string ShapeDirection
     {
-        get => _shapeDirection;
-        set => SetProperty(ref _shapeDirection, value);
+        get
+        {
+            return _shapeDirection;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeDirection, value);
+        }
     }
 
     public string ShapeName
     {
-        get => _shapeName;
-        set => SetProperty(ref _shapeName, NormalizeShapeName(value));
+        get
+        {
+            return _shapeName;
+        }
+
+        set
+        {
+            SetProperty(ref _shapeName, NormalizeShapeName(value));
+        }
     }
 
     public string GridRowLines
     {
-        get => _gridRowLines;
-        set => SetProperty(ref _gridRowLines, value);
+        get
+        {
+            return _gridRowLines;
+        }
+
+        set
+        {
+            SetProperty(ref _gridRowLines, value);
+        }
     }
 
     public string GridColLines
     {
-        get => _gridColLines;
-        set => SetProperty(ref _gridColLines, value);
+        get
+        {
+            return _gridColLines;
+        }
+
+        set
+        {
+            SetProperty(ref _gridColLines, value);
+        }
     }
 
     public string LaserOnMode
     {
-        get => _laserOnMode;
+        get
+        {
+            return _laserOnMode;
+        }
+
         set
         {
             var normalizedValue = NormalizeLaserOnMode(value);
@@ -184,20 +257,46 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
     }
 
-    public bool IsLaserTimeMode => IsLaserTimeModeValue(LaserOnMode);
+    public bool IsLaserTimeMode
+    {
+        get
+        {
+            return IsLaserTimeModeValue(LaserOnMode);
+        }
+    }
 
-    public bool IsLaserCountMode => !IsLaserTimeMode;
+    public bool IsLaserCountMode
+    {
+        get
+        {
+            return !IsLaserTimeMode;
+        }
+    }
 
     public string LaserOnTimeMsec
     {
-        get => _laserOnTimeMsec;
-        set => SetProperty(ref _laserOnTimeMsec, value);
+        get
+        {
+            return _laserOnTimeMsec;
+        }
+
+        set
+        {
+            SetProperty(ref _laserOnTimeMsec, value);
+        }
     }
 
     public string LaserShotCount
     {
-        get => _laserShotCount;
-        set => SetProperty(ref _laserShotCount, value);
+        get
+        {
+            return _laserShotCount;
+        }
+
+        set
+        {
+            SetProperty(ref _laserShotCount, value);
+        }
     }
 
     public IReadOnlyList<ST_MANUAL_HEAD_CARD> HeadCards { get; private set; } = [];
@@ -212,7 +311,11 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     public bool IsScannerWorkspace
     {
-        get => _isScannerWorkspace;
+        get
+        {
+            return _isScannerWorkspace;
+        }
+
         private set
         {
             if (SetProperty(ref _isScannerWorkspace, value))
@@ -222,11 +325,21 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
     }
 
-    public bool IsStageVisionWorkspace => !IsScannerWorkspace;
+    public bool IsStageVisionWorkspace
+    {
+        get
+        {
+            return !IsScannerWorkspace;
+        }
+    }
 
     public ImageSource? VisionImage
     {
-        get => _visionImage;
+        get
+        {
+            return _visionImage;
+        }
+
         private set
         {
             if (SetProperty(ref _visionImage, value))
@@ -236,18 +349,38 @@ public sealed class CMenuManual : CBindingBase, IMenu
         }
     }
 
-    public bool HasVisionImage => VisionImage is not null;
+    public bool HasVisionImage
+    {
+        get
+        {
+            return VisionImage is not null;
+        }
+    }
 
     public string VisionCaptureStatus
     {
-        get => _visionCaptureStatus;
-        private set => SetProperty(ref _visionCaptureStatus, value);
+        get
+        {
+            return _visionCaptureStatus;
+        }
+
+        private set
+        {
+            SetProperty(ref _visionCaptureStatus, value);
+        }
     }
 
     public string VisionCaptureTime
     {
-        get => _visionCaptureTime;
-        private set => SetProperty(ref _visionCaptureTime, value);
+        get
+        {
+            return _visionCaptureTime;
+        }
+
+        private set
+        {
+            SetProperty(ref _visionCaptureTime, value);
+        }
     }
 
     public CButtonCommand SelectHeadCommand { get; }
@@ -1669,7 +1802,13 @@ public sealed record ST_MANUAL_HEAD_CARD(
     string State,
     bool IsSelected)
 {
-    public Brush StateBrush => CStatusBrush.ForHeadStatus(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForHeadStatus(State);
+        }
+    }
 }
 
 public sealed record ST_MANUAL_SETTING_FILE(
@@ -1692,12 +1831,25 @@ public sealed class ST_MANUAL_STAGE_AXIS : CBindingBase
 
     public string Unit { get; }
 
-    public string CurrentPosition => "-";
+    public string CurrentPosition
+    {
+        get
+        {
+            return "-";
+        }
+    }
 
     public string TargetPosition
     {
-        get => _targetPosition;
-        set => SetProperty(ref _targetPosition, value);
+        get
+        {
+            return _targetPosition;
+        }
+
+        set
+        {
+            SetProperty(ref _targetPosition, value);
+        }
     }
 }
 
@@ -1729,19 +1881,38 @@ public sealed class ST_MANUAL_PARAMETER : CBindingBase
 
     public string Value
     {
-        get => _value;
-        set => SetProperty(ref _value, value);
+        get
+        {
+            return _value;
+        }
+
+        set
+        {
+            SetProperty(ref _value, value);
+        }
     }
 
     public string Unit { get; }
 
     public EN_RECIPE_DATA_TYPE DataType { get; }
 
-    public bool UsesSelectionEditor => DataType == EN_RECIPE_DATA_TYPE.Bool;
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return DataType == EN_RECIPE_DATA_TYPE.Bool;
+        }
+    }
 
-    public IReadOnlyList<string> ValueOptions => Value.Trim() is "0" or "1"
+    public IReadOnlyList<string> ValueOptions
+    {
+        get
+        {
+            return Value.Trim() is "0" or "1"
         ? ["0", "1"]
         : ["OFF", "ON"];
+        }
+    }
 
     public double Min { get; }
 
@@ -1774,7 +1945,11 @@ public sealed class ST_MANUAL_COMMAND_STATE : CBindingBase
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             var nextValue = _normalizeValue?.Invoke(value) ?? value;
@@ -1789,9 +1964,21 @@ public sealed class ST_MANUAL_COMMAND_STATE : CBindingBase
 
     public bool IsEditable { get; }
 
-    public bool IsReadOnly => !IsEditable;
+    public bool IsReadOnly
+    {
+        get
+        {
+            return !IsEditable;
+        }
+    }
 
-    public bool UsesSelectionEditor => Name.Equals("Laser On Mode", StringComparison.OrdinalIgnoreCase);
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return Name.Equals("Laser On Mode", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public IReadOnlyList<string> ValueOptions { get; } = ["TIME", "COUNT"];
 }

@@ -26,5 +26,8 @@ public partial class CPmView : UserControl
         }
     }
 
-    private void ClearPmPassword(object sender, RoutedEventArgs e) => PmPasswordBox.Clear();
+    private void ClearPmPassword(object sender, RoutedEventArgs e)
+    {
+        PmPasswordBox.Clear();
+    }
 }

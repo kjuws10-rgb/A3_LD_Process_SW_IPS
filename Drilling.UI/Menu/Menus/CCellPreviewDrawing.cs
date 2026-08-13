@@ -237,9 +237,21 @@ public sealed record ST_CELL_PREVIEW_LABEL(
     double DesignHeight,
     bool IsSelected)
 {
-    public string DisplayText => $"Cell{CellNo}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"Cell{CellNo}";
+        }
+    }
 
-    public double Height => 16.0;
+    public double Height
+    {
+        get
+        {
+            return 16.0;
+        }
+    }
 }
 
 public sealed record ST_DISTORTION_KEY_PREVIEW(
@@ -247,5 +259,11 @@ public sealed record ST_DISTORTION_KEY_PREVIEW(
     double GlassX,
     double GlassY)
 {
-    public string DisplayText => $"DK{KeyNo}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"DK{KeyNo}";
+        }
+    }
 }

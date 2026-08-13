@@ -11,7 +11,13 @@ public sealed class CMenuPm(
     Func<ST_PM_LOCK_STATUS> lockStatusProvider,
     Action enterLock) : IMenu
 {
-    public EN_MENU Menu => EN_MENU.Pm;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Pm;
+        }
+    }
 
     public string StartTime { get; private set; } = "";
 

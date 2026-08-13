@@ -56,18 +56,53 @@ public sealed class CMenuCorrection : IMenu
         ExecuteCommand = new CButtonCommand(async parameter => await Execute(parameter));
     }
 
-    public EN_MENU Menu => EN_MENU.Correction;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Correction;
+        }
+    }
 
-    public string Title => $"CORRECTION / {_selectedTab}";
+    public string Title
+    {
+        get
+        {
+            return $"CORRECTION / {_selectedTab}";
+        }
+    }
 
-    public string Subtitle => GetSubtitle(_selectedTab);
+    public string Subtitle
+    {
+        get
+        {
+            return GetSubtitle(_selectedTab);
+        }
+    }
 
-    public string SelectedTab => _selectedTab;
+    public string SelectedTab
+    {
+        get
+        {
+            return _selectedTab;
+        }
+    }
 
-    public bool IsReviewDataTab =>
-        _selectedTab.Equals("REVIEW DATA", StringComparison.OrdinalIgnoreCase);
+    public bool IsReviewDataTab
+    {
+        get
+        {
+            return _selectedTab.Equals("REVIEW DATA", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsOtherCorrectionTab => !IsReviewDataTab;
+    public bool IsOtherCorrectionTab
+    {
+        get
+        {
+            return !IsReviewDataTab;
+        }
+    }
 
     public IReadOnlyList<ST_CORRECTION_TAB> Tabs { get; private set; } = [];
 
@@ -91,15 +126,45 @@ public sealed class CMenuCorrection : IMenu
 
     public IReadOnlyList<ST_CORRECTION_REVIEW_OFFSET_ROW> ApplyPreviewRows { get; private set; } = [];
 
-    public string LoadedReviewFileName => _loadedReviewResult?.FileName ?? "Not loaded";
+    public string LoadedReviewFileName
+    {
+        get
+        {
+            return _loadedReviewResult?.FileName ?? "Not loaded";
+        }
+    }
 
-    public string ReviewLoadStatus => _reviewLoadStatus;
+    public string ReviewLoadStatus
+    {
+        get
+        {
+            return _reviewLoadStatus;
+        }
+    }
 
-    public Brush ReviewLoadStatusBrush => CStatusBrush.ForDisplayState(_reviewLoadState);
+    public Brush ReviewLoadStatusBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(_reviewLoadState);
+        }
+    }
 
-    public string CurrentSettingState => _currentSettingState;
+    public string CurrentSettingState
+    {
+        get
+        {
+            return _currentSettingState;
+        }
+    }
 
-    public string CurrentReviewOffsetRecipeName => _currentReviewOffsetRecipeName;
+    public string CurrentReviewOffsetRecipeName
+    {
+        get
+        {
+            return _currentReviewOffsetRecipeName;
+        }
+    }
 
     public CButtonCommand SelectTabCommand { get; }
 
@@ -1032,7 +1097,13 @@ public sealed record ST_CORRECTION_SOURCE_ROW(
     string State,
     string Source)
 {
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 }
 
 public sealed record ST_CORRECTION_VALUE_ROW(
@@ -1042,9 +1113,21 @@ public sealed record ST_CORRECTION_VALUE_ROW(
     string Unit,
     string State)
 {
-    public Brush ValueBrush => CStatusBrush.ForDisplayState(State);
+    public Brush ValueBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
 }
 
 public sealed record ST_CORRECTION_HISTORY_ROW(
@@ -1056,7 +1139,13 @@ public sealed record ST_CORRECTION_HISTORY_ROW(
     string After,
     string Result)
 {
-    public Brush ResultBrush => CStatusBrush.ForDisplayState(Result);
+    public Brush ResultBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Result);
+        }
+    }
 }
 
 public sealed record ST_CORRECTION_REVIEW_RESULT_ROW(
@@ -1067,11 +1156,29 @@ public sealed record ST_CORRECTION_REVIEW_RESULT_ROW(
     double ErrorYValue,
     string Judge)
 {
-    public string ErrorX => FormatDisplayValue(ErrorXValue);
+    public string ErrorX
+    {
+        get
+        {
+            return FormatDisplayValue(ErrorXValue);
+        }
+    }
 
-    public string ErrorY => FormatDisplayValue(ErrorYValue);
+    public string ErrorY
+    {
+        get
+        {
+            return FormatDisplayValue(ErrorYValue);
+        }
+    }
 
-    public Brush JudgeBrush => CStatusBrush.ForDisplayState(Judge);
+    public Brush JudgeBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Judge);
+        }
+    }
 
     private static string FormatDisplayValue(double value)
     {
@@ -1086,18 +1193,42 @@ public sealed record ST_CORRECTION_REVIEW_OFFSET_ROW(
     double OffsetYValue,
     string State)
 {
-    public string OffsetX => FormatDisplayValue(OffsetXValue);
-
-    public string OffsetY => FormatDisplayValue(OffsetYValue);
-
-    public Brush StateBrush => CStatusBrush.ForDisplayState(State);
-
-    public Brush OffsetValueBrush => State.Trim().ToUpperInvariant() switch
+    public string OffsetX
     {
-        "PENDING" => CStatusBrush.Wait,
-        "SAVED" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return FormatDisplayValue(OffsetXValue);
+        }
+    }
+
+    public string OffsetY
+    {
+        get
+        {
+            return FormatDisplayValue(OffsetYValue);
+        }
+    }
+
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(State);
+        }
+    }
+
+    public Brush OffsetValueBrush
+    {
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "PENDING" => CStatusBrush.Wait,
+                "SAVED" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 
     private static string FormatDisplayValue(double value)
     {

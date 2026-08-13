@@ -37,7 +37,13 @@ public partial class CValueInputDialog : Window
         };
     }
 
-    public string ResultValue => ValueTextBox.Text;
+    public string ResultValue
+    {
+        get
+        {
+            return ValueTextBox.Text;
+        }
+    }
 
     private void BuildKeys()
     {
@@ -103,7 +109,10 @@ public partial class CValueInputDialog : Window
         }
     }
 
-    private void ClearClick(object sender, RoutedEventArgs e) => ValueTextBox.Clear();
+    private void ClearClick(object sender, RoutedEventArgs e)
+    {
+        ValueTextBox.Clear();
+    }
 
     private void ValueTextBoxPreviewTextInput(object sender, TextCompositionEventArgs e)
     {
@@ -152,7 +161,10 @@ public partial class CValueInputDialog : Window
         return true;
     }
 
-    private void CancelClick(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void CancelClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+    }
 
     private void WindowKeyDown(object sender, KeyEventArgs e)
     {

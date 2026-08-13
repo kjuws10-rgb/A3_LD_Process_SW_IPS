@@ -66,7 +66,13 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         ReloadCommand = new CButtonCommand(async _ => await Reload());
     }
 
-    public EN_MENU Menu => EN_MENU.Setting;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Setting;
+        }
+    }
 
     public IReadOnlyList<ST_SCREEN_SECTION> Tabs { get; private set; } = [];
 
@@ -106,13 +112,29 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     public CButtonCommand ReloadCommand { get; }
 
-    public bool IsInterfaceTab => SelectedTab == "INTERFACE";
+    public bool IsInterfaceTab
+    {
+        get
+        {
+            return SelectedTab == "INTERFACE";
+        }
+    }
 
-    public bool IsParameterTab => !IsInterfaceTab;
+    public bool IsParameterTab
+    {
+        get
+        {
+            return !IsInterfaceTab;
+        }
+    }
 
     public ST_SETTING_INTERFACE_ROW? SelectedInterfaceRow
     {
-        get => _selectedInterfaceRow;
+        get
+        {
+            return _selectedInterfaceRow;
+        }
+
         set
         {
             if (_selectedInterfaceRow is not null)
@@ -139,10 +161,15 @@ public sealed class CMenuSetting : CBindingBase, IMenu
         }
     }
 
-    public bool CanOperateSelectedInterface =>
-        IsInterfaceTab &&
+    public bool CanOperateSelectedInterface
+    {
+        get
+        {
+            return IsInterfaceTab &&
         SelectedInterfaceRow is not null &&
         !SelectedInterfaceRow.IsSimulation;
+        }
+    }
 
     public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
@@ -884,7 +911,11 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             if (!SetProperty(ref _value, value))
@@ -909,31 +940,75 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
 
     public EN_RECIPE_DATA_TYPE DataType { get; }
 
-    public bool IsVisionFlipOption =>
-        Key.Equals("VisionXFlip", StringComparison.OrdinalIgnoreCase) ||
+    public bool IsVisionFlipOption
+    {
+        get
+        {
+            return Key.Equals("VisionXFlip", StringComparison.OrdinalIgnoreCase) ||
         Key.Equals("VisionYFlip", StringComparison.OrdinalIgnoreCase) ||
         Key.Equals("VisionXyFlip", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsBoolean => DataType == EN_RECIPE_DATA_TYPE.Bool;
+    public bool IsBoolean
+    {
+        get
+        {
+            return DataType == EN_RECIPE_DATA_TYPE.Bool;
+        }
+    }
 
-    public bool UsesSelectionEditor => IsVisionFlipOption || IsBoolean;
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return IsVisionFlipOption || IsBoolean;
+        }
+    }
 
-    public IReadOnlyList<string> ValueOptions =>
-        UsesSelectionEditor ? VisionFlipOptions : [];
+    public IReadOnlyList<string> ValueOptions
+    {
+        get
+        {
+            return UsesSelectionEditor ? VisionFlipOptions : [];
+        }
+    }
 
     public double Min { get; }
 
     public double Max { get; }
 
-    public string OriginalValue => _originalValue;
+    public string OriginalValue
+    {
+        get
+        {
+            return _originalValue;
+        }
+    }
 
-    public bool IsModified => !NormalizeValue(Value).Equals(NormalizeValue(_originalValue), StringComparison.OrdinalIgnoreCase);
+    public bool IsModified
+    {
+        get
+        {
+            return !NormalizeValue(Value).Equals(NormalizeValue(_originalValue), StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public string ModifiedText => IsModified ? "Yes" : "No";
+    public string ModifiedText
+    {
+        get
+        {
+            return IsModified ? "Yes" : "No";
+        }
+    }
 
     public string ValueState
     {
-        get => _valueState;
+        get
+        {
+            return _valueState;
+        }
+
         private set
         {
             if (SetProperty(ref _valueState, value))
@@ -943,14 +1018,26 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
         }
     }
 
-    public Brush ValueBrush => ValueState switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return ValueState switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 
-    public Brush ModifiedBrush => IsModified ? CStatusBrush.Wait : CStatusBrush.PrimaryText;
+    public Brush ModifiedBrush
+    {
+        get
+        {
+            return IsModified ? CStatusBrush.Wait : CStatusBrush.PrimaryText;
+        }
+    }
 
     private static string NormalizeValue(string value)
     {
@@ -975,11 +1062,17 @@ public sealed record ST_SETTING_HISTORY_ROW(
     string After,
     string AfterState = "Warn")
 {
-    public Brush AfterBrush => AfterState switch
+    public Brush AfterBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            return AfterState switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                _ => CStatusBrush.Wait
+            };
+        }
+    }
 }
 
 public sealed record ST_SETTING_SUMMARY_ROW(
@@ -987,13 +1080,19 @@ public sealed record ST_SETTING_SUMMARY_ROW(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
@@ -1081,78 +1180,165 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
 
     public string Type
     {
-        get => _type;
-        set => SetEditable(ref _type, value);
+        get
+        {
+            return _type;
+        }
+
+        set
+        {
+            SetEditable(ref _type, value);
+        }
     }
 
     public string Device
     {
-        get => _device;
-        set => SetEditable(ref _device, value);
+        get
+        {
+            return _device;
+        }
+
+        set
+        {
+            SetEditable(ref _device, value);
+        }
     }
 
     public string Number
     {
-        get => _number;
-        set => SetEditable(ref _number, value);
+        get
+        {
+            return _number;
+        }
+
+        set
+        {
+            SetEditable(ref _number, value);
+        }
     }
 
     public string NickName
     {
-        get => _nickName;
-        set => SetEditable(ref _nickName, value);
+        get
+        {
+            return _nickName;
+        }
+
+        set
+        {
+            SetEditable(ref _nickName, value);
+        }
     }
 
     public string SystemSection
     {
-        get => _systemSection;
-        set => SetEditable(ref _systemSection, value);
+        get
+        {
+            return _systemSection;
+        }
+
+        set
+        {
+            SetEditable(ref _systemSection, value);
+        }
     }
 
     public string AutoConnection
     {
-        get => _autoConnection;
-        set => SetEditable(ref _autoConnection, value);
+        get
+        {
+            return _autoConnection;
+        }
+
+        set
+        {
+            SetEditable(ref _autoConnection, value);
+        }
     }
 
     public string Simul
     {
-        get => _simul;
-        set => SetEditable(ref _simul, value);
+        get
+        {
+            return _simul;
+        }
+
+        set
+        {
+            SetEditable(ref _simul, value);
+        }
     }
 
     public string Arg1
     {
-        get => _arg1;
-        set => SetEditable(ref _arg1, value);
+        get
+        {
+            return _arg1;
+        }
+
+        set
+        {
+            SetEditable(ref _arg1, value);
+        }
     }
 
     public string Arg2
     {
-        get => _arg2;
-        set => SetEditable(ref _arg2, value);
+        get
+        {
+            return _arg2;
+        }
+
+        set
+        {
+            SetEditable(ref _arg2, value);
+        }
     }
 
     public string Arg3
     {
-        get => _arg3;
-        set => SetEditable(ref _arg3, value);
+        get
+        {
+            return _arg3;
+        }
+
+        set
+        {
+            SetEditable(ref _arg3, value);
+        }
     }
 
     public string Arg4
     {
-        get => _arg4;
-        set => SetEditable(ref _arg4, value);
+        get
+        {
+            return _arg4;
+        }
+
+        set
+        {
+            SetEditable(ref _arg4, value);
+        }
     }
 
     public string Arg5
     {
-        get => _arg5;
-        set => SetEditable(ref _arg5, value);
+        get
+        {
+            return _arg5;
+        }
+
+        set
+        {
+            SetEditable(ref _arg5, value);
+        }
     }
 
-    public bool IsModified =>
-        IsChanged(Type, _originalType) ||
+    public bool IsModified
+    {
+        get
+        {
+            return IsChanged(Type, _originalType) ||
         IsChanged(Device, _originalDevice) ||
         IsChanged(Number, _originalNumber) ||
         IsChanged(NickName, _originalNickName) ||
@@ -1164,22 +1350,48 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
         IsChanged(Arg3, _originalArg3) ||
         IsChanged(Arg4, _originalArg4) ||
         IsChanged(Arg5, _originalArg5);
+        }
+    }
 
-    public bool IsSimulation => Simul.Trim().ToUpperInvariant() switch
+    public bool IsSimulation
     {
-        "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL" => false,
-        _ => true
-    };
+        get
+        {
+            return Simul.Trim().ToUpperInvariant() switch
+            {
+                "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL" => false,
+                _ => true
+            };
+        }
+    }
 
-    public string ModifiedText => IsModified ? "Yes" : "No";
-
-    public Brush ModifiedBrush => IsModified ? CStatusBrush.Wait : CStatusBrush.Muted;
-
-    public Brush SimulBrush => Simul.Trim().ToUpperInvariant() switch
+    public string ModifiedText
     {
-        "SIMULATION" or "SIMUL" or "SIM" or "1" => CStatusBrush.Simul,
-        _ => CStatusBrush.Online
-    };
+        get
+        {
+            return IsModified ? "Yes" : "No";
+        }
+    }
+
+    public Brush ModifiedBrush
+    {
+        get
+        {
+            return IsModified ? CStatusBrush.Wait : CStatusBrush.Muted;
+        }
+    }
+
+    public Brush SimulBrush
+    {
+        get
+        {
+            return Simul.Trim().ToUpperInvariant() switch
+            {
+                "SIMULATION" or "SIMUL" or "SIM" or "1" => CStatusBrush.Simul,
+                _ => CStatusBrush.Online
+            };
+        }
+    }
 
     private void SetEditable(ref string field, string value)
     {

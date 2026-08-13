@@ -114,7 +114,13 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         BackToCoordinateGlassPreviewCommand = new CButtonCommand(async _ => await BackToCoordinateGlassPreview());
     }
 
-    public EN_MENU Menu => EN_MENU.Monitor;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Monitor;
+        }
+    }
 
     public IReadOnlyList<ST_SCREEN_SECTION> DeviceTabs { get; private set; } = [];
 
@@ -196,15 +202,39 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     public string CoordinateGlassPreviewSummary { get; private set; } = "0 Cells / 0 Holes";
 
-    public bool CoordinateIsGlassPreviewVisible => !_coordinateIsCellDetailVisible;
+    public bool CoordinateIsGlassPreviewVisible
+    {
+        get
+        {
+            return !_coordinateIsCellDetailVisible;
+        }
+    }
 
-    public bool CoordinateIsCellDetailVisible => _coordinateIsCellDetailVisible;
+    public bool CoordinateIsCellDetailVisible
+    {
+        get
+        {
+            return _coordinateIsCellDetailVisible;
+        }
+    }
 
-    public string CoordinateSelectedCellName => $"Cell{Math.Max(1, _coordinateSelectedCellNo):000}";
+    public string CoordinateSelectedCellName
+    {
+        get
+        {
+            return $"Cell{Math.Max(1, _coordinateSelectedCellNo):000}";
+        }
+    }
 
-    public string CoordinateSelectedHoleName => string.IsNullOrWhiteSpace(_coordinateSelectedHoleKey)
+    public string CoordinateSelectedHoleName
+    {
+        get
+        {
+            return string.IsNullOrWhiteSpace(_coordinateSelectedHoleKey)
         ? "-"
         : _coordinateSelectedHoleKey;
+        }
+    }
 
     public IReadOnlyList<ST_PWM_PROCESS_ROW> PwmProcessRows { get; private set; } = [];
 
@@ -246,24 +276,58 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     public CButtonCommand BackToCoordinateGlassPreviewCommand { get; }
 
-    public string SelectedAxisId => _selectedAxisId;
-
-    public int SelectedLaserNumber => _selectedLaserNumber;
-
-    public string SelectedLaserName => $"H{_selectedLaserNumber + 1:00}";
-
-    public string SelectedHeadDeviceName => $"H{GetSelectedHeadNumber(SelectedTab) + 1:00}";
-
-    public string HeadDeviceSelectorTitle => SelectedTab switch
+    public string SelectedAxisId
     {
-        "ATTENUATOR" => "Attenuator Head",
-        "BET" => "BET Head",
-        _ => "Laser Head"
-    };
+        get
+        {
+            return _selectedAxisId;
+        }
+    }
+
+    public int SelectedLaserNumber
+    {
+        get
+        {
+            return _selectedLaserNumber;
+        }
+    }
+
+    public string SelectedLaserName
+    {
+        get
+        {
+            return $"H{_selectedLaserNumber + 1:00}";
+        }
+    }
+
+    public string SelectedHeadDeviceName
+    {
+        get
+        {
+            return $"H{GetSelectedHeadNumber(SelectedTab) + 1:00}";
+        }
+    }
+
+    public string HeadDeviceSelectorTitle
+    {
+        get
+        {
+            return SelectedTab switch
+            {
+                "ATTENUATOR" => "Attenuator Head",
+                "BET" => "BET Head",
+                _ => "Laser Head"
+            };
+        }
+    }
 
     public ST_MONITOR_AXIS_ROW? SelectedAxisRow
     {
-        get => AxisRows.FirstOrDefault(row => row.Axis.Equals(_selectedAxisId, StringComparison.OrdinalIgnoreCase));
+        get
+        {
+            return AxisRows.FirstOrDefault(row => row.Axis.Equals(_selectedAxisId, StringComparison.OrdinalIgnoreCase));
+        }
+
         set
         {
             if (value is not null && !string.IsNullOrWhiteSpace(value.Axis))
@@ -275,7 +339,11 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     public ST_PWM_PROCESS_ROW? SelectedPwmProcessRow
     {
-        get => PwmProcessRows.FirstOrDefault(row => row.IsSelected);
+        get
+        {
+            return PwmProcessRows.FirstOrDefault(row => row.IsSelected);
+        }
+
         set
         {
             if (value is null ||
@@ -291,7 +359,11 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     public ST_PWM_STEP_ROW? SelectedPwmStepRow
     {
-        get => PwmStepRows.FirstOrDefault(row => row.IsSelected);
+        get
+        {
+            return PwmStepRows.FirstOrDefault(row => row.IsSelected);
+        }
+
         set
         {
             if (value is null ||
@@ -305,80 +377,206 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         }
     }
 
-    public bool IsIo => SelectedTab == "IO";
+    public bool IsIo
+    {
+        get
+        {
+            return SelectedTab == "IO";
+        }
+    }
 
-    public bool IsMotor => SelectedTab == "MOTOR";
+    public bool IsMotor
+    {
+        get
+        {
+            return SelectedTab == "MOTOR";
+        }
+    }
 
-    public bool IsLaser => SelectedTab == "LASER";
+    public bool IsLaser
+    {
+        get
+        {
+            return SelectedTab == "LASER";
+        }
+    }
 
-    public bool IsChiller => SelectedTab == "CHILLER";
+    public bool IsChiller
+    {
+        get
+        {
+            return SelectedTab == "CHILLER";
+        }
+    }
 
-    public bool IsAttenuator => SelectedTab == "ATTENUATOR";
+    public bool IsAttenuator
+    {
+        get
+        {
+            return SelectedTab == "ATTENUATOR";
+        }
+    }
 
-    public bool IsBet => SelectedTab == "BET";
+    public bool IsBet
+    {
+        get
+        {
+            return SelectedTab == "BET";
+        }
+    }
 
-    public bool IsPowerMeter => SelectedTab == "POWER METER";
+    public bool IsPowerMeter
+    {
+        get
+        {
+            return SelectedTab == "POWER METER";
+        }
+    }
 
-    public bool IsPicoMotor => SelectedTab == "PICO MOTOR";
+    public bool IsPicoMotor
+    {
+        get
+        {
+            return SelectedTab == "PICO MOTOR";
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoConnectionButtons =>
-    [
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoConnectionButtons
+    {
+        get
+        {
+            return [
         new("CONNECT", "Servo", _picoMotorIsConnected ? "Dark" : "Green"),
         new("DISCONNECT", "Stop", _picoMotorIsConnected ? "Red" : "Dark")
     ];
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotorSelectButtons => Enumerable.Range(1, 4)
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotorSelectButtons
+    {
+        get
+        {
+            return Enumerable.Range(1, 4)
         .Select(number => new ST_MONITOR_OPERATION_BUTTON($"MOTOR {number}", "Move", _selectedPicoMotorNo == number ? "Blue" : "Dark"))
         .ToArray();
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionStopButtons =>
-    [
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionStopButtons
+    {
+        get
+        {
+            return [
         new("STOP MOTION", "Stop", "Red")
     ];
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionMoveButtons =>
-    [
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionMoveButtons
+    {
+        get
+        {
+            return [
         new("HOME", "Home", "Blue"),
         new("ABS MOVE", "Abs", "Blue")
     ];
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionJogButtons =>
-    [
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionJogButtons
+    {
+        get
+        {
+            return [
         new("JOG -", "Rel", "Dark"),
         new("JOG +", "Rel", "Dark")
     ];
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionRelButtons =>
-    [
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoMotionRelButtons
+    {
+        get
+        {
+            return [
         new("REL -", "Rel", "Dark"),
         new("REL +", "Rel", "Blue")
     ];
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoAllMotorSelectButtons => Enumerable.Range(1, 4)
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoAllMotorSelectButtons
+    {
+        get
+        {
+            return Enumerable.Range(1, 4)
         .Select(number => new ST_MONITOR_OPERATION_BUTTON(
             $"MOTOR {number}",
             "Move",
             _picoAllMoveMotorNos.Contains(number) ? "Blue" : "Dark",
             $"ALL MOTOR {number}"))
         .ToArray();
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoAllMotorCommandButtons =>
-    [
+    public IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> PicoAllMotorCommandButtons
+    {
+        get
+        {
+            return [
         new("START", "Run", "Green"),
         new("STOP", "Stop", "Red")
     ];
+        }
+    }
 
-    public IReadOnlyList<ST_MONITOR_PARAMETER_ROW> PicoErrorRows => CreatePicoErrorRows();
+    public IReadOnlyList<ST_MONITOR_PARAMETER_ROW> PicoErrorRows
+    {
+        get
+        {
+            return CreatePicoErrorRows();
+        }
+    }
 
-    public bool IsProduct => SelectedTab == "PRODUCT";
+    public bool IsProduct
+    {
+        get
+        {
+            return SelectedTab == "PRODUCT";
+        }
+    }
 
-    public bool IsMelsec => SelectedTab == "MELSEC";
+    public bool IsMelsec
+    {
+        get
+        {
+            return SelectedTab == "MELSEC";
+        }
+    }
 
-    public bool IsCoordinateViewer => SelectedTab == "COORDINATE VIEWER";
+    public bool IsCoordinateViewer
+    {
+        get
+        {
+            return SelectedTab == "COORDINATE VIEWER";
+        }
+    }
 
-    public bool IsControlDevice => false;
+    public bool IsControlDevice
+    {
+        get
+        {
+            return false;
+        }
+    }
 
-    public bool IsGenericDevice => !IsIo && !IsMotor && !IsLaser && !IsChiller && !IsAttenuator && !IsBet && !IsPowerMeter && !IsPicoMotor && !IsProduct && !IsMelsec && !IsCoordinateViewer;
+    public bool IsGenericDevice
+    {
+        get
+        {
+            return !IsIo && !IsMotor && !IsLaser && !IsChiller && !IsAttenuator && !IsBet && !IsPowerMeter && !IsPicoMotor && !IsProduct && !IsMelsec && !IsCoordinateViewer;
+        }
+    }
 
     public async Task<CScreenViewModel> Build(CancellationToken cancellationToken = default)
     {
@@ -4894,11 +5092,29 @@ public sealed record ST_MONITOR_COORDINATE_BASIS_OPTION(
     string Description,
     bool IsSelected)
 {
-    public Brush BackgroundBrush => IsSelected ? CStatusBrush.CommandBlue : CStatusBrush.CommandDark;
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.CommandBlue : CStatusBrush.CommandDark;
+        }
+    }
 
-    public Brush BorderBrush => IsSelected ? CStatusBrush.CommandBlueBorder : CStatusBrush.CommandDarkBorder;
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.CommandBlueBorder : CStatusBrush.CommandDarkBorder;
+        }
+    }
 
-    public Brush TextBrush => IsSelected ? Brushes.White : CStatusBrush.PrimaryText;
+    public Brush TextBrush
+    {
+        get
+        {
+            return IsSelected ? Brushes.White : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed record ST_MONITOR_COORDINATE_VALUE_ROW(
@@ -4921,15 +5137,33 @@ public sealed record ST_MONITOR_COORDINATE_HOLE_BUTTON(
     bool IsSelected,
     CButtonCommand SelectCommand)
 {
-    public Brush BorderBrush => IsSelected
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected
         ? CStatusBrush.Active
         : CStatusBrush.Frozen(0x3B, 0x4A, 0x5B);
+        }
+    }
 
-    public Brush BackgroundBrush => IsSelected
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected
         ? CStatusBrush.Frozen(0x32, 0x47, 0x5A)
         : CStatusBrush.Frozen(0x18, 0x20, 0x29);
+        }
+    }
 
-    public Brush DetailBrush => IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+    public Brush DetailBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed record ST_MONITOR_PRODUCT_ITEM(
@@ -4937,14 +5171,20 @@ public sealed record ST_MONITOR_PRODUCT_ITEM(
     string Value,
     string Tone = "Normal")
 {
-    public Brush ValueBrush => Tone switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        "Error" => CStatusBrush.Offline,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return Tone switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                "Error" => CStatusBrush.Offline,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_MONITOR_PRODUCT_HEAD_ROW(
@@ -4956,20 +5196,32 @@ public sealed record ST_MONITOR_PRODUCT_HEAD_ROW(
     string ErrorCode,
     string Message)
 {
-    public Brush ResultBrush => Result.Trim().ToUpperInvariant() switch
+    public Brush ResultBrush
     {
-        "OK" => CStatusBrush.Online,
-        "NG" => CStatusBrush.Offline,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            return Result.Trim().ToUpperInvariant() switch
+            {
+                "OK" => CStatusBrush.Online,
+                "NG" => CStatusBrush.Offline,
+                _ => CStatusBrush.Wait
+            };
+        }
+    }
 
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public Brush StateBrush
     {
-        "COMPLETED" or "READY" => CStatusBrush.Online,
-        "RUNNING" => CStatusBrush.Simul,
-        "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "COMPLETED" or "READY" => CStatusBrush.Online,
+                "RUNNING" => CStatusBrush.Simul,
+                "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.Wait
+            };
+        }
+    }
 }
 
 public sealed record ST_MONITOR_PRODUCT_HISTORY_ROW(
@@ -4981,12 +5233,18 @@ public sealed record ST_MONITOR_PRODUCT_HISTORY_ROW(
     string Result,
     string Detail)
 {
-    public Brush ResultBrush => Result.Trim().ToUpperInvariant() switch
+    public Brush ResultBrush
     {
-        "OK" => CStatusBrush.Online,
-        "NG" => CStatusBrush.Offline,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            return Result.Trim().ToUpperInvariant() switch
+            {
+                "OK" => CStatusBrush.Online,
+                "NG" => CStatusBrush.Offline,
+                _ => CStatusBrush.Wait
+            };
+        }
+    }
 }
 
 public sealed record ST_MONITOR_MELSEC_GROUP(
@@ -5056,38 +5314,80 @@ public sealed class ST_MONITOR_MELSEC_ROW
 
     public string WriteValue { get; set; }
 
-    public IReadOnlyList<string> WriteValueOptions => DataType == "BIT" ? ["ON", "OFF"] : [];
-
-    public bool UsesWriteSelection => WriteValueOptions.Count > 0;
-
-    public EN_RECIPE_DATA_TYPE WriteInputType => DataType switch
+    public IReadOnlyList<string> WriteValueOptions
     {
-        "WORD" or "DWORD" => EN_RECIPE_DATA_TYPE.Int,
-        "DOUBLE" or "FLOAT" => EN_RECIPE_DATA_TYPE.Double,
-        _ => EN_RECIPE_DATA_TYPE.String
-    };
+        get
+        {
+            return DataType == "BIT" ? ["ON", "OFF"] : [];
+        }
+    }
+
+    public bool UsesWriteSelection
+    {
+        get
+        {
+            return WriteValueOptions.Count > 0;
+        }
+    }
+
+    public EN_RECIPE_DATA_TYPE WriteInputType
+    {
+        get
+        {
+            return DataType switch
+            {
+                "WORD" or "DWORD" => EN_RECIPE_DATA_TYPE.Int,
+                "DOUBLE" or "FLOAT" => EN_RECIPE_DATA_TYPE.Double,
+                _ => EN_RECIPE_DATA_TYPE.String
+            };
+        }
+    }
 
     public string State { get; }
 
     public string Description { get; }
 
-    public bool CanRead => Access is "R" or "RW";
-
-    public bool CanWrite => Access is "W" or "RW";
-
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public bool CanRead
     {
-        "READY" or "READ" => CStatusBrush.Online,
-        "WRITE" => CStatusBrush.Wait,
-        "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.Muted
-    };
+        get
+        {
+            return Access is "R" or "RW";
+        }
+    }
 
-    public Brush ValueBrush => State.Equals("ERROR", StringComparison.OrdinalIgnoreCase)
+    public bool CanWrite
+    {
+        get
+        {
+            return Access is "W" or "RW";
+        }
+    }
+
+    public Brush StateBrush
+    {
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "READY" or "READ" => CStatusBrush.Online,
+                "WRITE" => CStatusBrush.Wait,
+                "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.Muted
+            };
+        }
+    }
+
+    public Brush ValueBrush
+    {
+        get
+        {
+            return State.Equals("ERROR", StringComparison.OrdinalIgnoreCase)
         ? CStatusBrush.Offline
         : string.IsNullOrWhiteSpace(ReadValue) || ReadValue == "-"
             ? CStatusBrush.Muted
             : CStatusBrush.Simul;
+        }
+    }
 }
 
 public sealed record ST_MONITOR_IO_ROW(
@@ -5100,9 +5400,21 @@ public sealed record ST_MONITOR_IO_ROW(
     string Description,
     bool IsSelected = false)
 {
-    public Brush StateBrush => MonitorStatusBrush(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return MonitorStatusBrush(State);
+        }
+    }
 
-    public Brush RowBrush => IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+    public Brush RowBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+        }
+    }
 
     private static Brush MonitorStatusBrush(string state)
     {
@@ -5130,16 +5442,34 @@ public sealed record ST_MONITOR_AXIS_ROW(
     string State,
     bool IsSelected = false)
 {
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public Brush StateBrush
     {
-        "READY" or "OK" => CStatusBrush.Online,
-        "ALARM" or "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "READY" or "OK" => CStatusBrush.Online,
+                "ALARM" or "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.Wait
+            };
+        }
+    }
 
-    public Brush ServoBrush => Servo.Trim().ToUpperInvariant() == "ON" ? CStatusBrush.Online : CStatusBrush.Offline;
+    public Brush ServoBrush
+    {
+        get
+        {
+            return Servo.Trim().ToUpperInvariant() == "ON" ? CStatusBrush.Online : CStatusBrush.Offline;
+        }
+    }
 
-    public Brush RowBrush => IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+    public Brush RowBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed record ST_MONITOR_STATUS_ROW(
@@ -5149,19 +5479,31 @@ public sealed record ST_MONITOR_STATUS_ROW(
     string Unit,
     string Description)
 {
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public Brush StateBrush
     {
-        "ON" or "ONLINE" or "OK" or "READY" or "RUN" or "NORMAL" or "SAFE" or "YES" or "DONE" or "IDLE" => CStatusBrush.Online,
-        "OFF" or "CLOSE" or "ERROR" or "ALARM" => CStatusBrush.Offline,
-        "WARN" or "WARNING" or "SET" or "WAIT" or "SIMULATION" or "SIM" => CStatusBrush.Wait,
-        _ => CStatusBrush.Muted
-    };
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "ON" or "ONLINE" or "OK" or "READY" or "RUN" or "NORMAL" or "SAFE" or "YES" or "DONE" or "IDLE" => CStatusBrush.Online,
+                "OFF" or "CLOSE" or "ERROR" or "ALARM" => CStatusBrush.Offline,
+                "WARN" or "WARNING" or "SET" or "WAIT" or "SIMULATION" or "SIM" => CStatusBrush.Wait,
+                _ => CStatusBrush.Muted
+            };
+        }
+    }
 
-    public Brush ValueBrush => Value.Trim().ToUpperInvariant() switch
+    public Brush ValueBrush
     {
-        "22.4" or "55.000" or "1.200" or "20.000" or "900" or "50.000" or "30.000" => CStatusBrush.Wait,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return Value.Trim().ToUpperInvariant() switch
+            {
+                "22.4" or "55.000" or "1.200" or "20.000" or "900" or "50.000" or "30.000" => CStatusBrush.Wait,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_MONITOR_OPERATION_BUTTON(
@@ -5170,23 +5512,41 @@ public sealed record ST_MONITOR_OPERATION_BUTTON(
     string Tone,
     string CommandKey = "")
 {
-    public Brush BackgroundBrush => Tone switch
+    public Brush BackgroundBrush
     {
-        "Green" => CStatusBrush.CommandGreen,
-        "Red" => CStatusBrush.CommandRed,
-        "Blue" => CStatusBrush.CommandBlue,
-        _ => CStatusBrush.CommandDark
-    };
+        get
+        {
+            return Tone switch
+            {
+                "Green" => CStatusBrush.CommandGreen,
+                "Red" => CStatusBrush.CommandRed,
+                "Blue" => CStatusBrush.CommandBlue,
+                _ => CStatusBrush.CommandDark
+            };
+        }
+    }
 
-    public Brush BorderBrush => Tone switch
+    public Brush BorderBrush
     {
-        "Green" => CStatusBrush.CommandGreenBorder,
-        "Red" => CStatusBrush.CommandRedBorder,
-        "Blue" => CStatusBrush.CommandBlueBorder,
-        _ => CStatusBrush.CommandDarkBorder
-    };
+        get
+        {
+            return Tone switch
+            {
+                "Green" => CStatusBrush.CommandGreenBorder,
+                "Red" => CStatusBrush.CommandRedBorder,
+                "Blue" => CStatusBrush.CommandBlueBorder,
+                _ => CStatusBrush.CommandDarkBorder
+            };
+        }
+    }
 
-    public Geometry IconGeometry => CMonitorIcon.Get(Icon);
+    public Geometry IconGeometry
+    {
+        get
+        {
+            return CMonitorIcon.Get(Icon);
+        }
+    }
 }
 
 public sealed record ST_MONITOR_HEAD_SELECT_ROW(
@@ -5197,24 +5557,48 @@ public sealed record ST_MONITOR_HEAD_SELECT_ROW(
     bool IsRegistered,
     bool IsSelected)
 {
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public Brush StateBrush
     {
-        "ONLINE" => CStatusBrush.Online,
-        "SIMULATION" or "SIMUL" or "SIM" => CStatusBrush.Wait,
-        _ => CStatusBrush.Offline
-    };
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "ONLINE" => CStatusBrush.Online,
+                "SIMULATION" or "SIMUL" or "SIM" => CStatusBrush.Wait,
+                _ => CStatusBrush.Offline
+            };
+        }
+    }
 
-    public Brush BorderBrush => IsSelected
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected
         ? CStatusBrush.Active
         : CStatusBrush.CommandDarkBorder;
+        }
+    }
 
-    public Brush BackgroundBrush => IsSelected
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected
         ? CStatusBrush.CommandBlue
         : CStatusBrush.CommandDark;
+        }
+    }
 
-    public Brush TextBrush => IsRegistered
+    public Brush TextBrush
+    {
+        get
+        {
+            return IsRegistered
         ? CStatusBrush.PrimaryText
         : CStatusBrush.Muted;
+        }
+    }
 }
 
 public sealed record ST_MONITOR_LASER_CONTROL_ROW(
@@ -5227,32 +5611,62 @@ public sealed record ST_MONITOR_LASER_CONTROL_ROW(
     string Tone = "Blue",
     bool CanCommand = true)
 {
-    public double CommandOpacity => CanCommand ? 1.0 : 0.5;
-
-    public Brush CurrentValueBrush => Tone switch
+    public double CommandOpacity
     {
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return CanCommand ? 1.0 : 0.5;
+        }
+    }
 
-    public Brush BackgroundBrush => Tone switch
+    public Brush CurrentValueBrush
     {
-        "Green" => CStatusBrush.CommandGreen,
-        "Red" => CStatusBrush.CommandRed,
-        "Blue" or "Warn" => CStatusBrush.CommandBlue,
-        _ => CStatusBrush.CommandDark
-    };
+        get
+        {
+            return Tone switch
+            {
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 
-    public Brush BorderBrush => Tone switch
+    public Brush BackgroundBrush
     {
-        "Green" => CStatusBrush.CommandGreenBorder,
-        "Red" => CStatusBrush.CommandRedBorder,
-        "Blue" or "Warn" => CStatusBrush.CommandBlueBorder,
-        _ => CStatusBrush.CommandDarkBorder
-    };
+        get
+        {
+            return Tone switch
+            {
+                "Green" => CStatusBrush.CommandGreen,
+                "Red" => CStatusBrush.CommandRed,
+                "Blue" or "Warn" => CStatusBrush.CommandBlue,
+                _ => CStatusBrush.CommandDark
+            };
+        }
+    }
 
-    public Geometry IconGeometry => CMonitorIcon.Get("Move");
+    public Brush BorderBrush
+    {
+        get
+        {
+            return Tone switch
+            {
+                "Green" => CStatusBrush.CommandGreenBorder,
+                "Red" => CStatusBrush.CommandRedBorder,
+                "Blue" or "Warn" => CStatusBrush.CommandBlueBorder,
+                _ => CStatusBrush.CommandDarkBorder
+            };
+        }
+    }
+
+    public Geometry IconGeometry
+    {
+        get
+        {
+            return CMonitorIcon.Get("Move");
+        }
+    }
 }
 
 public sealed class ST_MONITOR_PARAMETER_ROW
@@ -5277,13 +5691,19 @@ public sealed class ST_MONITOR_PARAMETER_ROW
 
     public string State { get; }
 
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_MONITOR_COMMAND_HISTORY_ROW(
@@ -5294,13 +5714,19 @@ public sealed record ST_MONITOR_COMMAND_HISTORY_ROW(
     string Target,
     string Result)
 {
-    public Brush ResultBrush => Result.Trim().ToUpperInvariant() switch
+    public Brush ResultBrush
     {
-        "OK" => CStatusBrush.Online,
-        "WARN" => CStatusBrush.Wait,
-        "NG" or "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return Result.Trim().ToUpperInvariant() switch
+            {
+                "OK" => CStatusBrush.Online,
+                "WARN" => CStatusBrush.Wait,
+                "NG" or "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
@@ -5333,7 +5759,11 @@ public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
 
     public string Mag
     {
-        get => _mag;
+        get
+        {
+            return _mag;
+        }
+
         set
         {
             if (_mag == value)
@@ -5349,7 +5779,11 @@ public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
 
     public string Div
     {
-        get => _div;
+        get
+        {
+            return _div;
+        }
+
         set
         {
             if (_div == value)
@@ -5363,23 +5797,47 @@ public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
         }
     }
 
-    public string SpotSize => CalculateSpotSizeText(Mag);
+    public string SpotSize
+    {
+        get
+        {
+            return CalculateSpotSizeText(Mag);
+        }
+    }
 
     public string State { get; set; }
 
     public bool IsSelected { get; set; }
 
-    public string MoveCommandLabel => $"MOVE TABLE {No}";
-
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public string MoveCommandLabel
     {
-        "ACTIVE" or "SELECTED" or "OK" => CStatusBrush.Online,
-        "WARN" => CStatusBrush.Wait,
-        "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return $"MOVE TABLE {No}";
+        }
+    }
 
-    public Brush RowBrush => IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+    public Brush StateBrush
+    {
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "ACTIVE" or "SELECTED" or "OK" => CStatusBrush.Online,
+                "WARN" => CStatusBrush.Wait,
+                "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
+
+    public Brush RowBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+        }
+    }
 
     private static string CalculateSpotSizeText(string mag)
     {
@@ -5406,19 +5864,37 @@ public sealed record ST_PWM_PROCESS_ROW(
     string AveragePower,
     bool IsSelected = false)
 {
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public Brush StateBrush
     {
-        "LOADED" or "READY" => CStatusBrush.Online,
-        "WAIT" => CStatusBrush.Wait,
-        "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "LOADED" or "READY" => CStatusBrush.Online,
+                "WAIT" => CStatusBrush.Wait,
+                "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 
-    public Brush UseBrush => Use.Trim().ToUpperInvariant() == "ON"
+    public Brush UseBrush
+    {
+        get
+        {
+            return Use.Trim().ToUpperInvariant() == "ON"
         ? CStatusBrush.Online
         : CStatusBrush.Muted;
+        }
+    }
 
-    public Brush RowBrush => IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+    public Brush RowBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed record ST_PWM_STEP_ROW(
@@ -5439,20 +5915,38 @@ public sealed record ST_PWM_STEP_ROW(
     string State,
     bool IsSelected = false)
 {
-    public Brush PowerBrush => PowerOut.Trim().ToUpperInvariant() == "ON"
+    public Brush PowerBrush
+    {
+        get
+        {
+            return PowerOut.Trim().ToUpperInvariant() == "ON"
         ? CStatusBrush.Online
         : CStatusBrush.Muted;
+        }
+    }
 
-    public Brush StateBrush => State.Trim().ToUpperInvariant() switch
+    public Brush StateBrush
     {
-        "READY" or "OK" => CStatusBrush.Online,
-        "RUN" or "RUNNING" => CStatusBrush.Simul,
-        "SKIP" => CStatusBrush.Muted,
-        "ERROR" => CStatusBrush.Offline,
-        _ => CStatusBrush.Wait
-    };
+        get
+        {
+            return State.Trim().ToUpperInvariant() switch
+            {
+                "READY" or "OK" => CStatusBrush.Online,
+                "RUN" or "RUNNING" => CStatusBrush.Simul,
+                "SKIP" => CStatusBrush.Muted,
+                "ERROR" => CStatusBrush.Offline,
+                _ => CStatusBrush.Wait
+            };
+        }
+    }
 
-    public Brush RowBrush => IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+    public Brush RowBrush
+    {
+        get
+        {
+            return IsSelected ? CStatusBrush.Active : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed class ST_PWM_SETTING_ROW(
@@ -5468,7 +5962,11 @@ public sealed class ST_PWM_SETTING_ROW(
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             if (_value == value)
@@ -5483,28 +5981,52 @@ public sealed class ST_PWM_SETTING_ROW(
 
     public string Unit { get; } = unit;
 
-    public IReadOnlyList<string> ValueOptions => Parameter.ToUpperInvariant() switch
+    public IReadOnlyList<string> ValueOptions
     {
-        "POWER OUT" => ["ON", "OFF"],
-        "POWER UNIT" => ["W", "mW"],
-        _ => []
-    };
+        get
+        {
+            return Parameter.ToUpperInvariant() switch
+            {
+                "POWER OUT" => ["ON", "OFF"],
+                "POWER UNIT" => ["W", "mW"],
+                _ => []
+            };
+        }
+    }
 
-    public bool UsesSelectionEditor => ValueOptions.Count > 0;
-
-    public EN_RECIPE_DATA_TYPE DataType => Parameter.ToUpperInvariant() switch
+    public bool UsesSelectionEditor
     {
-        "OPTION NAME" => EN_RECIPE_DATA_TYPE.String,
-        "MEASURE CYCLE" or "MEASURE TIME" or "MEASURE INTERVAL" or "START DELAY" or "COOLING TIME" => EN_RECIPE_DATA_TYPE.Int,
-        _ => EN_RECIPE_DATA_TYPE.Double
-    };
+        get
+        {
+            return ValueOptions.Count > 0;
+        }
+    }
 
-    public Brush ValueBrush => Parameter.Contains("POWER", StringComparison.OrdinalIgnoreCase) ||
+    public EN_RECIPE_DATA_TYPE DataType
+    {
+        get
+        {
+            return Parameter.ToUpperInvariant() switch
+            {
+                "OPTION NAME" => EN_RECIPE_DATA_TYPE.String,
+                "MEASURE CYCLE" or "MEASURE TIME" or "MEASURE INTERVAL" or "START DELAY" or "COOLING TIME" => EN_RECIPE_DATA_TYPE.Int,
+                _ => EN_RECIPE_DATA_TYPE.Double
+            };
+        }
+    }
+
+    public Brush ValueBrush
+    {
+        get
+        {
+            return Parameter.Contains("POWER", StringComparison.OrdinalIgnoreCase) ||
         Parameter.Contains("ATT", StringComparison.OrdinalIgnoreCase) ||
         Parameter.Contains("FREQ", StringComparison.OrdinalIgnoreCase) ||
         Parameter.Contains("WAVELENGTH", StringComparison.OrdinalIgnoreCase)
         ? CStatusBrush.Wait
         : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed record ST_PWM_DEVICE_ROW(
@@ -5513,10 +6035,16 @@ public sealed record ST_PWM_DEVICE_ROW(
     string Unit,
     string Command)
 {
-    public Brush ValueBrush => Item.Contains("POWER", StringComparison.OrdinalIgnoreCase) ||
+    public Brush ValueBrush
+    {
+        get
+        {
+            return Item.Contains("POWER", StringComparison.OrdinalIgnoreCase) ||
         Item.Contains("WAVELENGTH", StringComparison.OrdinalIgnoreCase)
         ? CStatusBrush.Wait
         : CStatusBrush.PrimaryText;
+        }
+    }
 }
 
 public sealed record ST_MONITOR_TREND_POINT(
@@ -5531,13 +6059,19 @@ public sealed record ST_MONITOR_SUMMARY_ITEM(
     string Unit,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_MONITOR_POSITION_ROW(
@@ -5546,13 +6080,19 @@ public sealed record ST_MONITOR_POSITION_ROW(
     string Unit,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 internal static class CMonitorIcon

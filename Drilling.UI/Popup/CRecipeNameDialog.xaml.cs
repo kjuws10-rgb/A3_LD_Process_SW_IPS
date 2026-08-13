@@ -26,7 +26,13 @@ public partial class CRecipeNameDialog : Window
         UpdateOkState();
     }
 
-    public string RecipeName => RecipeNameTextBox.Text.Trim();
+    public string RecipeName
+    {
+        get
+        {
+            return RecipeNameTextBox.Text.Trim();
+        }
+    }
 
     private void OpenScreenKeyboard(object sender, MouseButtonEventArgs e)
     {

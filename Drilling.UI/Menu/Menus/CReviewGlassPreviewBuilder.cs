@@ -627,5 +627,11 @@ public sealed record ST_REVIEW_CURRENT_HOLE_MARKER(
     double DesignWidth,
     double DesignHeight)
 {
-    public double Height => Width;
+    public double Height
+    {
+        get
+        {
+            return Width;
+        }
+    }
 }

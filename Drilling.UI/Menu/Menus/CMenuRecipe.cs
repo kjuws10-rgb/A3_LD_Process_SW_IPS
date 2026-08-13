@@ -115,7 +115,13 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         DeleteCommand = new CButtonCommand(async _ => await Delete());
     }
 
-    public EN_MENU Menu => EN_MENU.Recipe;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Recipe;
+        }
+    }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> RecipeList { get; private set; } = [];
 
@@ -143,7 +149,11 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     public ST_RECIPE_HOLE_ROW? SelectedHole
     {
-        get => _selectedHole;
+        get
+        {
+            return _selectedHole;
+        }
+
         set
         {
             if (!SetProperty(ref _selectedHole, value))
@@ -182,8 +192,21 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     public bool IsHeadCategory { get; private set; }
 
     private bool _isCellDetailVisible;
-    public bool IsCellDetailVisible => _isCellDetailVisible;
-    public bool IsCellPreviewVisible => !_isCellDetailVisible;
+    public bool IsCellDetailVisible
+    {
+        get
+        {
+            return _isCellDetailVisible;
+        }
+    }
+
+    public bool IsCellPreviewVisible
+    {
+        get
+        {
+            return !_isCellDetailVisible;
+        }
+    }
 
     public ImageSource? CellPreviewImage { get; private set; }
 
@@ -195,18 +218,45 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     public string HeadPreviewSummaryText { get; private set; } = "";
 
-    public string CurrentCellIndicatorText => $"CURRENT: Cell{_selectedCellNo}";
+    public string CurrentCellIndicatorText
+    {
+        get
+        {
+            return $"CURRENT: Cell{_selectedCellNo}";
+        }
+    }
 
-    public string SelectedCellHoleTitle =>
-        $"SELECTED CELL HOLES - Cell{_selectedCellNo} / {HoleRows.Count:N0} HOLES";
+    public string SelectedCellHoleTitle
+    {
+        get
+        {
+            return $"SELECTED CELL HOLES - Cell{_selectedCellNo} / {HoleRows.Count:N0} HOLES";
+        }
+    }
 
-    public string SelectedHoleIndicatorText =>
-        SelectedHole is null ? "NO HOLE SELECTED" : SelectedHole.MatrixPointName;
+    public string SelectedHoleIndicatorText
+    {
+        get
+        {
+            return SelectedHole is null ? "NO HOLE SELECTED" : SelectedHole.MatrixPointName;
+        }
+    }
 
-    private int PointPatternTargetCount =>
-        CellOverviewRows.Count(row => row.CellNo != _selectedCellNo && row.IsSelected);
+    private int PointPatternTargetCount
+    {
+        get
+        {
+            return CellOverviewRows.Count(row => row.CellNo != _selectedCellNo && row.IsSelected);
+        }
+    }
 
-    private bool CanApplyPointPattern => PointPatternTargetCount > 0;
+    private bool CanApplyPointPattern
+    {
+        get
+        {
+            return PointPatternTargetCount > 0;
+        }
+    }
 
     public string SelectedGroup { get; private set; } = "ALL";
 
@@ -2281,11 +2331,29 @@ public sealed record ST_RECIPE_DISTORTION_KEY_ITEM(
     ST_RECIPE_MANAGED_ITEM? XItem,
     ST_RECIPE_MANAGED_ITEM? YItem)
 {
-    public string DisplayText => $"DK{KeyNo}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"DK{KeyNo}";
+        }
+    }
 
-    public string XLabel => $"AK1 To DK{KeyNo} X";
+    public string XLabel
+    {
+        get
+        {
+            return $"AK1 To DK{KeyNo} X";
+        }
+    }
 
-    public string YLabel => $"AK1 To DK{KeyNo} Y";
+    public string YLabel
+    {
+        get
+        {
+            return $"AK1 To DK{KeyNo} Y";
+        }
+    }
 }
 
 public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
@@ -2319,7 +2387,11 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
 
     public bool IsSelected
     {
-        get => _isSelected;
+        get
+        {
+            return _isSelected;
+        }
+
         set
         {
             if (SetProperty(ref _isSelected, value))
@@ -2329,14 +2401,94 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
         }
     }
 
-    public string FirstX { get => Get("ALIGN_TO_1ST_PIXEL_X"); set => Set("ALIGN_TO_1ST_PIXEL_X", value); }
-    public string FirstY { get => Get("ALIGN_TO_1ST_PIXEL_Y"); set => Set("ALIGN_TO_1ST_PIXEL_Y", value); }
-    public string Rotation { get => Get("ROTATION"); set => Set("ROTATION", value); }
-    public string CountX { get => Get("NUM_OF_PIXEL_X"); set => Set("NUM_OF_PIXEL_X", value); }
-    public string CountY { get => Get("NUM_OF_PIXEL_Y"); set => Set("NUM_OF_PIXEL_Y", value); }
-    public string PitchX { get => Get("PITCH_X"); set => Set("PITCH_X", value); }
-    public string PitchY { get => Get("PITCH_Y"); set => Set("PITCH_Y", value); }
-    public string PixelSize { get => Get("PIXEL_SIZE"); set => Set("PIXEL_SIZE", value); }
+    public string FirstX {
+        get
+        {
+            return Get("ALIGN_TO_1ST_PIXEL_X");
+        }
+
+        set
+        {
+            Set("ALIGN_TO_1ST_PIXEL_X", value);
+        }
+    }
+    public string FirstY {
+        get
+        {
+            return Get("ALIGN_TO_1ST_PIXEL_Y");
+        }
+
+        set
+        {
+            Set("ALIGN_TO_1ST_PIXEL_Y", value);
+        }
+    }
+    public string Rotation {
+        get
+        {
+            return Get("ROTATION");
+        }
+
+        set
+        {
+            Set("ROTATION", value);
+        }
+    }
+    public string CountX {
+        get
+        {
+            return Get("NUM_OF_PIXEL_X");
+        }
+
+        set
+        {
+            Set("NUM_OF_PIXEL_X", value);
+        }
+    }
+    public string CountY {
+        get
+        {
+            return Get("NUM_OF_PIXEL_Y");
+        }
+
+        set
+        {
+            Set("NUM_OF_PIXEL_Y", value);
+        }
+    }
+    public string PitchX {
+        get
+        {
+            return Get("PITCH_X");
+        }
+
+        set
+        {
+            Set("PITCH_X", value);
+        }
+    }
+    public string PitchY {
+        get
+        {
+            return Get("PITCH_Y");
+        }
+
+        set
+        {
+            Set("PITCH_Y", value);
+        }
+    }
+    public string PixelSize {
+        get
+        {
+            return Get("PIXEL_SIZE");
+        }
+
+        set
+        {
+            Set("PIXEL_SIZE", value);
+        }
+    }
 
     private string Get(string parameterName)
     {
@@ -2397,31 +2549,69 @@ public sealed class ST_RECIPE_HOLE_ROW : CBindingBase
 
     public int Column { get; }
 
-    public string MatrixPointName => $"{ToColumnLetter(Column)}{Row}";
+    public string MatrixPointName
+    {
+        get
+        {
+            return $"{ToColumnLetter(Column)}{Row}";
+        }
+    }
 
-    public string OffsetCoordinateText =>
-        $"({NormalizeOffsetText(OffsetX)}, {NormalizeOffsetText(OffsetY)})";
+    public string OffsetCoordinateText
+    {
+        get
+        {
+            return $"({NormalizeOffsetText(OffsetX)}, {NormalizeOffsetText(OffsetY)})";
+        }
+    }
 
     public bool IsInsideGlass { get; }
 
-    public string PlacementState => IsInsideGlass ? "IN GLASS" : "OUTSIDE";
+    public string PlacementState
+    {
+        get
+        {
+            return IsInsideGlass ? "IN GLASS" : "OUTSIDE";
+        }
+    }
 
     public bool IsSelected
     {
-        get => _isSelected;
-        set => SetProperty(ref _isSelected, value);
+        get
+        {
+            return _isSelected;
+        }
+
+        set
+        {
+            SetProperty(ref _isSelected, value);
+        }
     }
 
     public string OffsetX
     {
-        get => _offsetX;
-        set => SetOverride(ref _offsetX, value, "OFFSET_X");
+        get
+        {
+            return _offsetX;
+        }
+
+        set
+        {
+            SetOverride(ref _offsetX, value, "OFFSET_X");
+        }
     }
 
     public string OffsetY
     {
-        get => _offsetY;
-        set => SetOverride(ref _offsetY, value, "OFFSET_Y");
+        get
+        {
+            return _offsetY;
+        }
+
+        set
+        {
+            SetOverride(ref _offsetY, value, "OFFSET_Y");
+        }
     }
 
     private void SetOverride(ref string field, string value, string parameterName)
@@ -2476,21 +2666,51 @@ public sealed record ST_HEAD_COVERAGE_PREVIEW_LABEL(
     double DesignHeight,
     bool IsSelected)
 {
-    public string DisplayText => $"H{HeadNo:00}";
+    public string DisplayText
+    {
+        get
+        {
+            return $"H{HeadNo:00}";
+        }
+    }
 
-    public double Height => 24.0;
+    public double Height
+    {
+        get
+        {
+            return 24.0;
+        }
+    }
 
-    public Brush BackgroundBrush => IsSelected
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsSelected
         ? CMenuMain.CreateHeadBrush(HeadNo, 230)
         : new SolidColorBrush(Color.FromRgb(31, 41, 55));
+        }
+    }
 
-    public Brush BorderBrush => IsSelected
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsSelected
         ? CMenuMain.CreateHeadBrush(HeadNo, 255)
         : new SolidColorBrush(Color.FromRgb(102, 136, 164));
+        }
+    }
 
-    public Brush TextBrush => IsSelected
+    public Brush TextBrush
+    {
+        get
+        {
+            return IsSelected
         ? Brushes.White
         : new SolidColorBrush(Color.FromRgb(226, 232, 240));
+        }
+    }
 }
 
 public sealed record ST_RECIPE_FILE(
@@ -2545,7 +2765,11 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
 
     public string Value
     {
-        get => _value;
+        get
+        {
+            return _value;
+        }
+
         set
         {
             if (!SetProperty(ref _value, value))
@@ -2566,15 +2790,33 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
 
     public string SourceGroup { get; }
 
-    public string OriginalValue => _initialValue;
+    public string OriginalValue
+    {
+        get
+        {
+            return _initialValue;
+        }
+    }
 
     public EN_RECIPE_DATA_TYPE DataType { get; }
 
-    public bool UsesSelectionEditor => DataType == EN_RECIPE_DATA_TYPE.Bool;
+    public bool UsesSelectionEditor
+    {
+        get
+        {
+            return DataType == EN_RECIPE_DATA_TYPE.Bool;
+        }
+    }
 
-    public IReadOnlyList<string> ValueOptions => Value.Trim() is "0" or "1"
+    public IReadOnlyList<string> ValueOptions
+    {
+        get
+        {
+            return Value.Trim() is "0" or "1"
         ? ["0", "1"]
         : ["OFF", "ON"];
+        }
+    }
 
     public double ChangeLimit { get; }
 
@@ -2582,11 +2824,21 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
 
     public double Max { get; }
 
-    public bool IsEdited => !NormalizeValue(Value).Equals(NormalizeValue(_initialValue), StringComparison.OrdinalIgnoreCase);
+    public bool IsEdited
+    {
+        get
+        {
+            return !NormalizeValue(Value).Equals(NormalizeValue(_initialValue), StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
     public string ValueState
     {
-        get => _valueState;
+        get
+        {
+            return _valueState;
+        }
+
         private set
         {
             if (SetProperty(ref _valueState, value))
@@ -2596,12 +2848,18 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
         }
     }
 
-    public Brush ValueBrush => ValueState switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return ValueState switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 
     private static string NormalizeValue(string value)
     {
@@ -2618,7 +2876,13 @@ public sealed record ST_RECIPE_HISTORY_ROW(
     string Before,
     string After)
 {
-    public Brush AfterBrush => CStatusBrush.Wait;
+    public Brush AfterBrush
+    {
+        get
+        {
+            return CStatusBrush.Wait;
+        }
+    }
 }
 
 public sealed record ST_RECIPE_STATE_ROW(
@@ -2626,13 +2890,19 @@ public sealed record ST_RECIPE_STATE_ROW(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Accent" => CStatusBrush.Simul,
-        "Warn" => CStatusBrush.Wait,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Accent" => CStatusBrush.Simul,
+                "Warn" => CStatusBrush.Wait,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 

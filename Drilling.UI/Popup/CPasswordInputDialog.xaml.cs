@@ -14,7 +14,13 @@ public partial class CPasswordInputDialog : Window
         Loaded += (_, _) => PasswordInput.Focus();
     }
 
-    public string ResultPassword => PasswordInput.Password;
+    public string ResultPassword
+    {
+        get
+        {
+            return PasswordInput.Password;
+        }
+    }
 
     private void BuildKeys()
     {
@@ -36,18 +42,30 @@ public partial class CPasswordInputDialog : Window
         if (sender is Button { Tag: string key }) PasswordInput.Password += key;
     }
 
-    private void SpaceClick(object sender, RoutedEventArgs e) => PasswordInput.Password += " ";
+    private void SpaceClick(object sender, RoutedEventArgs e)
+    {
+        PasswordInput.Password += " ";
+    }
 
     private void BackClick(object sender, RoutedEventArgs e)
     {
         if (PasswordInput.Password.Length > 0) PasswordInput.Password = PasswordInput.Password[..^1];
     }
 
-    private void ClearClick(object sender, RoutedEventArgs e) => PasswordInput.Clear();
+    private void ClearClick(object sender, RoutedEventArgs e)
+    {
+        PasswordInput.Clear();
+    }
 
-    private void CancelClick(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void CancelClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = false;
+    }
 
-    private void OkClick(object sender, RoutedEventArgs e) => DialogResult = true;
+    private void OkClick(object sender, RoutedEventArgs e)
+    {
+        DialogResult = true;
+    }
 
     private void WindowKeyDown(object sender, KeyEventArgs e)
     {

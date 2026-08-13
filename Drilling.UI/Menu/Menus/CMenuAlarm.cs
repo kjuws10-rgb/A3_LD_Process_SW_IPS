@@ -18,11 +18,29 @@ public sealed class CMenuAlarm(
     Action refreshShellStatus,
     Func<Task> refreshCurrentScreen) : IMenu
 {
-    public EN_MENU Menu => EN_MENU.Alarm;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Alarm;
+        }
+    }
 
-    public CButtonCommand AlarmResetCommand => new(async _ => await ResetAlarm());
+    public CButtonCommand AlarmResetCommand
+    {
+        get
+        {
+            return new(async _ => await ResetAlarm());
+        }
+    }
 
-    public CButtonCommand BuzzerOffCommand => new(_ => setStatusMessage("Buzzer off command sent."));
+    public CButtonCommand BuzzerOffCommand
+    {
+        get
+        {
+            return new(_ => setStatusMessage("Buzzer off command sent."));
+        }
+    }
 
     public IReadOnlyList<ST_DISPLAY_ITEM> CurrentAlarms { get; private set; } = [];
 
@@ -277,13 +295,19 @@ public sealed record ST_ALARM_CURRENT_ROW(
     string Action,
     string Time)
 {
-    public Brush LevelBrush => Level switch
+    public Brush LevelBrush
     {
-        "WARN" => CStatusBrush.Wait,
-        "CRITICAL" or "ERROR" => CStatusBrush.Offline,
-        "INFO" => CStatusBrush.Simul,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return Level switch
+            {
+                "WARN" => CStatusBrush.Wait,
+                "CRITICAL" or "ERROR" => CStatusBrush.Offline,
+                "INFO" => CStatusBrush.Simul,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_ALARM_DETAIL_ROW(
@@ -291,14 +315,20 @@ public sealed record ST_ALARM_DETAIL_ROW(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Warn" => CStatusBrush.Wait,
-        "Critical" => CStatusBrush.Offline,
-        "Accent" => CStatusBrush.Simul,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Warn" => CStatusBrush.Wait,
+                "Critical" => CStatusBrush.Offline,
+                "Accent" => CStatusBrush.Simul,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_ALARM_HISTORY_ROW(
@@ -309,13 +339,19 @@ public sealed record ST_ALARM_HISTORY_ROW(
     string Message,
     string ResetUser)
 {
-    public Brush LevelBrush => Level switch
+    public Brush LevelBrush
     {
-        "WARN" => CStatusBrush.Wait,
-        "CRITICAL" or "ERROR" => CStatusBrush.Offline,
-        "INFO" => CStatusBrush.Simul,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return Level switch
+            {
+                "WARN" => CStatusBrush.Wait,
+                "CRITICAL" or "ERROR" => CStatusBrush.Offline,
+                "INFO" => CStatusBrush.Simul,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 public sealed record ST_ALARM_TREND_BAR(
@@ -332,14 +368,20 @@ public sealed record ST_ALARM_SUMMARY_ITEM(
     string Value,
     string State = "Normal")
 {
-    public Brush ValueBrush => State switch
+    public Brush ValueBrush
     {
-        "Warn" => CStatusBrush.Wait,
-        "Critical" => CStatusBrush.Offline,
-        "Accent" => CStatusBrush.Simul,
-        "Ok" => CStatusBrush.Online,
-        _ => CStatusBrush.PrimaryText
-    };
+        get
+        {
+            return State switch
+            {
+                "Warn" => CStatusBrush.Wait,
+                "Critical" => CStatusBrush.Offline,
+                "Accent" => CStatusBrush.Simul,
+                "Ok" => CStatusBrush.Online,
+                _ => CStatusBrush.PrimaryText
+            };
+        }
+    }
 }
 
 

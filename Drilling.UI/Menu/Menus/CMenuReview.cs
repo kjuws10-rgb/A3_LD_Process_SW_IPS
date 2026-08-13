@@ -91,54 +91,159 @@ public sealed class CMenuReview : IMenu
         SaveRuleCommand = new CButtonCommand(_ => _ = SaveCurrentReviewRule());
     }
 
-    public EN_MENU Menu => EN_MENU.Review;
+    public EN_MENU Menu
+    {
+        get
+        {
+            return EN_MENU.Review;
+        }
+    }
 
-    public string Title => "REVIEW / INSPECTION";
+    public string Title
+    {
+        get
+        {
+            return "REVIEW / INSPECTION";
+        }
+    }
 
-    public string Subtitle => "Review hole selection, vision measurement result and re-measure workflow";
+    public string Subtitle
+    {
+        get
+        {
+            return "Review hole selection, vision measurement result and re-measure workflow";
+        }
+    }
 
-    public string PlanSummary => $"{_activePlanPointCount} / {_totalReviewPointCount} holes";
+    public string PlanSummary
+    {
+        get
+        {
+            return $"{_activePlanPointCount} / {_totalReviewPointCount} holes";
+        }
+    }
 
-    public int SampleMapColumnCount => Math.Max(1, _sampleMapColumnCount);
+    public int SampleMapColumnCount
+    {
+        get
+        {
+            return Math.Max(1, _sampleMapColumnCount);
+        }
+    }
 
-    public bool IsRunTab => _selectedTab.Equals("RUN", StringComparison.OrdinalIgnoreCase);
+    public bool IsRunTab
+    {
+        get
+        {
+            return _selectedTab.Equals("RUN", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsRunGlassPreviewVisible => IsRunTab && !_isRunCellDetailVisible;
+    public bool IsRunGlassPreviewVisible
+    {
+        get
+        {
+            return IsRunTab && !_isRunCellDetailVisible;
+        }
+    }
 
-    public bool IsRunCellDetailVisible => IsRunTab && _isRunCellDetailVisible;
+    public bool IsRunCellDetailVisible
+    {
+        get
+        {
+            return IsRunTab && _isRunCellDetailVisible;
+        }
+    }
 
-    public string RunWorkspaceTitle => _isRunCellDetailVisible
+    public string RunWorkspaceTitle
+    {
+        get
+        {
+            return _isRunCellDetailVisible
         ? $"Cell{_selectedRunCellNo} / Hole Detail"
         : "Glass / Cell Preview";
+        }
+    }
 
-    public string RunWorkspaceSummary => _isRunCellDetailVisible
+    public string RunWorkspaceSummary
+    {
+        get
+        {
+            return _isRunCellDetailVisible
         ? $"{RunCellHoleRows.Count} Holes"
         : RunGlassPreviewSummary;
+        }
+    }
 
-    public bool IsSampleSelectTab => _selectedTab.Equals("SAMPLE SELECT", StringComparison.OrdinalIgnoreCase);
+    public bool IsSampleSelectTab
+    {
+        get
+        {
+            return _selectedTab.Equals("SAMPLE SELECT", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsSampleGlassPreviewVisible => IsSampleSelectTab && !_isSampleCellDetailVisible;
+    public bool IsSampleGlassPreviewVisible
+    {
+        get
+        {
+            return IsSampleSelectTab && !_isSampleCellDetailVisible;
+        }
+    }
 
-    public bool IsSampleCellDetailVisible => IsSampleSelectTab && _isSampleCellDetailVisible;
+    public bool IsSampleCellDetailVisible
+    {
+        get
+        {
+            return IsSampleSelectTab && _isSampleCellDetailVisible;
+        }
+    }
 
-    public string SampleWorkspaceTitle => _isSampleCellDetailVisible
+    public string SampleWorkspaceTitle
+    {
+        get
+        {
+            return _isSampleCellDetailVisible
         ? $"Cell{_selectedSampleCellNo} / Sample Hole Selection"
         : "Glass / Cell Preview";
+        }
+    }
 
-    public string SampleWorkspaceSummary => _isSampleCellDetailVisible
+    public string SampleWorkspaceSummary
+    {
+        get
+        {
+            return _isSampleCellDetailVisible
         ? $"{SampleCellHoleRows.Count(row => row.Use)} / {SampleCellHoleRows.Count} Holes Selected"
         : SampleGlassPreviewSummary;
+        }
+    }
 
-    public string SampleRuleName => GetSelectionRuleText();
+    public string SampleRuleName
+    {
+        get
+        {
+            return GetSelectionRuleText();
+        }
+    }
 
-    public IReadOnlyList<string> SampleHeadOptions =>
-        Enumerable.Range(1, Math.Max(1, _headCount))
+    public IReadOnlyList<string> SampleHeadOptions
+    {
+        get
+        {
+            return Enumerable.Range(1, Math.Max(1, _headCount))
             .Select(headNo => $"H{headNo:00}")
             .ToArray();
+        }
+    }
 
     public string SelectedSampleHead
     {
-        get => $"H{_sampleRuleHeadNo:00}";
+        get
+        {
+            return $"H{_sampleRuleHeadNo:00}";
+        }
+
         set
         {
             var normalized = value?.Trim() ?? "";
@@ -154,14 +259,23 @@ public sealed class CMenuReview : IMenu
         }
     }
 
-    public IReadOnlyList<string> SampleCellOptions =>
-        Enumerable.Range(1, Math.Max(1, _cellCount))
+    public IReadOnlyList<string> SampleCellOptions
+    {
+        get
+        {
+            return Enumerable.Range(1, Math.Max(1, _cellCount))
             .Select(cellNo => $"Cell{cellNo}")
             .ToArray();
+        }
+    }
 
     public string SelectedSampleCell
     {
-        get => $"Cell{_sampleRuleCellNo}";
+        get
+        {
+            return $"Cell{_sampleRuleCellNo}";
+        }
+
         set
         {
             var normalized = value?.Trim() ?? "";
@@ -177,34 +291,75 @@ public sealed class CMenuReview : IMenu
         }
     }
 
-    public string SampleRuleSelectionSummary =>
-        $"{_selectedSampleHoleKeys.Count} Holes / " +
-        $"{_lastAllPlan?.Points.Where(point => _selectedSampleHoleKeys.Contains(point.HoleKey)).Select(point => point.CellNo).Distinct().Count() ?? 0} Cells";
-
-    public string SampleRuleDescription => _selectedRuleType switch
+    public string SampleRuleSelectionSummary
     {
-        EN_REVIEW_RULE_TYPE.AllPoint => "Select every Hole in every Cell.",
-        EN_REVIEW_RULE_TYPE.Edge => "Select the outer row and column Holes of each Cell.",
-        EN_REVIEW_RULE_TYPE.Center => "Select all inner Holes except the outer Edge row and column of each Cell.",
-        EN_REVIEW_RULE_TYPE.HeadPoint => $"Select Holes assigned to H{_sampleRuleHeadNo:00}.",
-        EN_REVIEW_RULE_TYPE.CellPoint => $"Select every Hole in Cell{_sampleRuleCellNo}.",
-        EN_REVIEW_RULE_TYPE.ZeroLine => "Select reference line Holes.",
-        _ => "Select or clear individual Holes in a Cell."
-    };
+        get
+        {
+            return $"{_selectedSampleHoleKeys.Count} Holes / " +
+        $"{_lastAllPlan?.Points.Where(point => _selectedSampleHoleKeys.Contains(point.HoleKey)).Select(point => point.CellNo).Distinct().Count() ?? 0} Cells";
+        }
+    }
 
-    public bool IsOneHoleTab => _selectedTab.Equals("ONE HOLE", StringComparison.OrdinalIgnoreCase);
+    public string SampleRuleDescription
+    {
+        get
+        {
+            return _selectedRuleType switch
+            {
+                EN_REVIEW_RULE_TYPE.AllPoint => "Select every Hole in every Cell.",
+                EN_REVIEW_RULE_TYPE.Edge => "Select the outer row and column Holes of each Cell.",
+                EN_REVIEW_RULE_TYPE.Center => "Select all inner Holes except the outer Edge row and column of each Cell.",
+                EN_REVIEW_RULE_TYPE.HeadPoint => $"Select Holes assigned to H{_sampleRuleHeadNo:00}.",
+                EN_REVIEW_RULE_TYPE.CellPoint => $"Select every Hole in Cell{_sampleRuleCellNo}.",
+                EN_REVIEW_RULE_TYPE.ZeroLine => "Select reference line Holes.",
+                _ => "Select or clear individual Holes in a Cell."
+            };
+        }
+    }
 
-    public bool IsOneHoleCellMap => IsOneHoleTab && _isOneHoleCellMap;
+    public bool IsOneHoleTab
+    {
+        get
+        {
+            return _selectedTab.Equals("ONE HOLE", StringComparison.OrdinalIgnoreCase);
+        }
+    }
 
-    public bool IsOneHoleHoleMap => IsOneHoleTab && !_isOneHoleCellMap;
+    public bool IsOneHoleCellMap
+    {
+        get
+        {
+            return IsOneHoleTab && _isOneHoleCellMap;
+        }
+    }
 
-    public string OneHoleWorkspaceTitle => _isOneHoleCellMap
+    public bool IsOneHoleHoleMap
+    {
+        get
+        {
+            return IsOneHoleTab && !_isOneHoleCellMap;
+        }
+    }
+
+    public string OneHoleWorkspaceTitle
+    {
+        get
+        {
+            return _isOneHoleCellMap
         ? "Glass / Cell Preview"
         : $"Cell{_selectedOneHoleCellNo} / Hole Selection";
+        }
+    }
 
-    public string OneHoleWorkspaceSummary => _isOneHoleCellMap
+    public string OneHoleWorkspaceSummary
+    {
+        get
+        {
+            return _isOneHoleCellMap
         ? OneHoleGlassPreviewSummary
         : $"{OneHoleCellHoleRows.Count} Holes / Selected {GetSelectedOneHoleName()}";
+        }
+    }
 
     public IReadOnlyList<ST_REVIEW_TAB_ITEM> Tabs { get; private set; } = [];
 
@@ -262,7 +417,11 @@ public sealed class CMenuReview : IMenu
 
     public string SelectedRuleFile
     {
-        get => _selectedRuleFile;
+        get
+        {
+            return _selectedRuleFile;
+        }
+
         set
         {
             if (!string.IsNullOrWhiteSpace(value))
@@ -1098,9 +1257,14 @@ public sealed class CMenuReview : IMenu
         }
     }
 
-    private bool IsReviewExecutionActive =>
-        _isStartRequestPending ||
+    private bool IsReviewExecutionActive
+    {
+        get
+        {
+            return _isStartRequestPending ||
         _reviewManager.SequenceState is EN_REVIEW_SEQUENCE_STATE.Running or EN_REVIEW_SEQUENCE_STATE.Stopping;
+        }
+    }
 
     private void NotifyReviewExecutionCommandStates()
     {
@@ -1930,7 +2094,13 @@ public sealed record ST_REVIEW_SET_ROW(
     string Count,
     string State)
 {
-    public Brush StateBrush => CReviewStatusBrush.ForState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CReviewStatusBrush.ForState(State);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_RUN_HOLE_ROW(
@@ -1942,17 +2112,35 @@ public sealed record ST_REVIEW_RUN_HOLE_ROW(
     bool IsSelected,
     CButtonCommand SelectCommand)
 {
-    public Brush StateBrush => CReviewStatusBrush.ForState(State);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CReviewStatusBrush.ForState(State);
+        }
+    }
 
-    public Brush BorderBrush => IsCurrent || IsSelected
+    public Brush BorderBrush
+    {
+        get
+        {
+            return IsCurrent || IsSelected
         ? CStatusBrush.Active
         : CStatusBrush.Frozen(0x3B, 0x4A, 0x5B);
+        }
+    }
 
-    public Brush BackgroundBrush => IsCurrent
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return IsCurrent
         ? CStatusBrush.Frozen(0x18, 0x43, 0x63)
         : IsSelected
             ? CStatusBrush.Frozen(0x32, 0x47, 0x5A)
             : CStatusBrush.Frozen(0x18, 0x20, 0x29);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_RUN_HOLE_MATRIX_ROW(
@@ -2028,15 +2216,45 @@ public sealed record ST_REVIEW_POINT_SELECT_ROW(
     CButtonCommand ToggleCommand,
     CButtonCommand DragSelectionCommand)
 {
-    public string UseText => Use ? "USE" : "-";
+    public string UseText
+    {
+        get
+        {
+            return Use ? "USE" : "-";
+        }
+    }
 
-    public string StateText => Use ? "Selected" : "Skip";
+    public string StateText
+    {
+        get
+        {
+            return Use ? "Selected" : "Skip";
+        }
+    }
 
-    public Brush UseBrush => Use ? CStatusBrush.Active : CStatusBrush.Muted;
+    public Brush UseBrush
+    {
+        get
+        {
+            return Use ? CStatusBrush.Active : CStatusBrush.Muted;
+        }
+    }
 
-    public Brush BorderBrush => Use ? CStatusBrush.Active : CStatusBrush.Frozen(0x27, 0x32, 0x41);
+    public Brush BorderBrush
+    {
+        get
+        {
+            return Use ? CStatusBrush.Active : CStatusBrush.Frozen(0x27, 0x32, 0x41);
+        }
+    }
 
-    public Brush BackgroundBrush => Use ? CStatusBrush.Frozen(0x0B, 0x3B, 0x78) : CStatusBrush.Frozen(0x0B, 0x11, 0x19);
+    public Brush BackgroundBrush
+    {
+        get
+        {
+            return Use ? CStatusBrush.Frozen(0x0B, 0x3B, 0x78) : CStatusBrush.Frozen(0x0B, 0x11, 0x19);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_SAMPLE_DRAG_SELECTION(
@@ -2052,7 +2270,13 @@ public sealed record ST_REVIEW_RESULT_ROW(
     string ErrorY,
     string Judge)
 {
-    public Brush JudgeBrush => CStatusBrush.ForDisplayState(Judge);
+    public Brush JudgeBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Judge);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_HISTORY_ROW(
@@ -2062,5 +2286,11 @@ public sealed record ST_REVIEW_HISTORY_ROW(
     string Ng,
     string Result)
 {
-    public Brush ResultBrush => CStatusBrush.ForDisplayState(Result);
+    public Brush ResultBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Result);
+        }
+    }
 }

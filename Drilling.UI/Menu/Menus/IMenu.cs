@@ -35,9 +35,21 @@ public sealed record ST_DISPLAY_ITEM(
     string Value,
     string Detail = "")
 {
-    public Brush ValueBrush => CStatusBrush.ForDisplayState(string.IsNullOrWhiteSpace(Detail) ? Value : Detail);
+    public Brush ValueBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(string.IsNullOrWhiteSpace(Detail) ? Value : Detail);
+        }
+    }
 
-    public Brush StateBrush => CStatusBrush.ForDisplayState(Value);
+    public Brush StateBrush
+    {
+        get
+        {
+            return CStatusBrush.ForDisplayState(Value);
+        }
+    }
 }
 
 internal static class CStatusBrush
@@ -76,22 +88,133 @@ internal static class CStatusBrush
     private static readonly Brush DarkCommandDark = Frozen(0x2A, 0x32, 0x3B);
     private static readonly Brush DarkCommandDarkBorder = Frozen(0x4B, 0x59, 0x67);
 
-    public static Brush PrimaryText => Pick(LightPrimaryText, DarkPrimaryText);
-    public static Brush Recipe => Pick(LightRecipe, DarkRecipe);
-    public static Brush Online => Pick(LightOnline, DarkOnline);
-    public static Brush Simul => Pick(LightSimul, DarkSimul);
-    public static Brush Offline => Pick(LightOffline, DarkOffline);
-    public static Brush Wait => Pick(LightWait, DarkWait);
-    public static Brush Active => Pick(LightActive, DarkActive);
-    public static Brush Muted => Pick(LightMuted, DarkMuted);
-    public static Brush CommandBlue => Pick(LightCommandBlue, DarkCommandBlue);
-    public static Brush CommandBlueBorder => Pick(LightCommandBlueBorder, DarkCommandBlueBorder);
-    public static Brush CommandGreen => Pick(LightCommandGreen, DarkCommandGreen);
-    public static Brush CommandGreenBorder => Pick(LightCommandGreenBorder, DarkCommandGreenBorder);
-    public static Brush CommandRed => Pick(LightCommandRed, DarkCommandRed);
-    public static Brush CommandRedBorder => Pick(LightCommandRedBorder, DarkCommandRedBorder);
-    public static Brush CommandDark => Pick(LightCommandDark, DarkCommandDark);
-    public static Brush CommandDarkBorder => Pick(LightCommandDarkBorder, DarkCommandDarkBorder);
+    public static Brush PrimaryText
+    {
+        get
+        {
+            return Pick(LightPrimaryText, DarkPrimaryText);
+        }
+    }
+
+    public static Brush Recipe
+    {
+        get
+        {
+            return Pick(LightRecipe, DarkRecipe);
+        }
+    }
+
+    public static Brush Online
+    {
+        get
+        {
+            return Pick(LightOnline, DarkOnline);
+        }
+    }
+
+    public static Brush Simul
+    {
+        get
+        {
+            return Pick(LightSimul, DarkSimul);
+        }
+    }
+
+    public static Brush Offline
+    {
+        get
+        {
+            return Pick(LightOffline, DarkOffline);
+        }
+    }
+
+    public static Brush Wait
+    {
+        get
+        {
+            return Pick(LightWait, DarkWait);
+        }
+    }
+
+    public static Brush Active
+    {
+        get
+        {
+            return Pick(LightActive, DarkActive);
+        }
+    }
+
+    public static Brush Muted
+    {
+        get
+        {
+            return Pick(LightMuted, DarkMuted);
+        }
+    }
+
+    public static Brush CommandBlue
+    {
+        get
+        {
+            return Pick(LightCommandBlue, DarkCommandBlue);
+        }
+    }
+
+    public static Brush CommandBlueBorder
+    {
+        get
+        {
+            return Pick(LightCommandBlueBorder, DarkCommandBlueBorder);
+        }
+    }
+
+    public static Brush CommandGreen
+    {
+        get
+        {
+            return Pick(LightCommandGreen, DarkCommandGreen);
+        }
+    }
+
+    public static Brush CommandGreenBorder
+    {
+        get
+        {
+            return Pick(LightCommandGreenBorder, DarkCommandGreenBorder);
+        }
+    }
+
+    public static Brush CommandRed
+    {
+        get
+        {
+            return Pick(LightCommandRed, DarkCommandRed);
+        }
+    }
+
+    public static Brush CommandRedBorder
+    {
+        get
+        {
+            return Pick(LightCommandRedBorder, DarkCommandRedBorder);
+        }
+    }
+
+    public static Brush CommandDark
+    {
+        get
+        {
+            return Pick(LightCommandDark, DarkCommandDark);
+        }
+    }
+
+    public static Brush CommandDarkBorder
+    {
+        get
+        {
+            return Pick(LightCommandDarkBorder, DarkCommandDarkBorder);
+        }
+    }
 
     public static Brush ForHeaderState(string state)
     {
@@ -163,15 +286,45 @@ public sealed record ST_HEADER_STATUS_ITEM(
     CButtonCommand? NextCommand = null,
     CButtonCommand? OpenCommand = null)
 {
-    public Brush AccentBrush => CStatusBrush.ForHeaderState(State);
+    public Brush AccentBrush
+    {
+        get
+        {
+            return CStatusBrush.ForHeaderState(State);
+        }
+    }
 
-    public Brush ValueBrush => CStatusBrush.ForHeaderState(State);
+    public Brush ValueBrush
+    {
+        get
+        {
+            return CStatusBrush.ForHeaderState(State);
+        }
+    }
 
-    public CButtonCommand Previous => PreviousCommand ?? CButtonCommand.NoOp;
+    public CButtonCommand Previous
+    {
+        get
+        {
+            return PreviousCommand ?? CButtonCommand.NoOp;
+        }
+    }
 
-    public CButtonCommand Next => NextCommand ?? CButtonCommand.NoOp;
+    public CButtonCommand Next
+    {
+        get
+        {
+            return NextCommand ?? CButtonCommand.NoOp;
+        }
+    }
 
-    public CButtonCommand Open => OpenCommand ?? CButtonCommand.NoOp;
+    public CButtonCommand Open
+    {
+        get
+        {
+            return OpenCommand ?? CButtonCommand.NoOp;
+        }
+    }
 }
 
 public sealed record ST_SCREEN_SECTION(
@@ -225,26 +378,83 @@ public sealed class CScreenViewModel(
 
     public CMenuPm? Pm { get; } = pm;
 
-    public bool IsMainLayout => Menu == EN_MENU.Main;
+    public bool IsMainLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Main;
+        }
+    }
 
-    public bool IsManualLayout => Menu == EN_MENU.Manual;
+    public bool IsManualLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Manual;
+        }
+    }
 
-    public bool IsRecipeLayout => Menu == EN_MENU.Recipe;
+    public bool IsRecipeLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Recipe;
+        }
+    }
 
-    public bool IsSettingLayout => Menu == EN_MENU.Setting;
+    public bool IsSettingLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Setting;
+        }
+    }
 
-    public bool IsAlarmLayout => Menu == EN_MENU.Alarm;
+    public bool IsAlarmLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Alarm;
+        }
+    }
 
-    public bool IsMonitorLayout => Menu == EN_MENU.Monitor;
+    public bool IsMonitorLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Monitor;
+        }
+    }
 
-    public bool IsReviewLayout => Menu == EN_MENU.Review;
+    public bool IsReviewLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Review;
+        }
+    }
 
-    public bool IsCorrectionLayout => Menu == EN_MENU.Correction;
+    public bool IsCorrectionLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Correction;
+        }
+    }
 
-    public bool IsPmLayout => Menu == EN_MENU.Pm;
+    public bool IsPmLayout
+    {
+        get
+        {
+            return Menu == EN_MENU.Pm;
+        }
+    }
 
-    public bool IsGenericLayout =>
-        !IsMainLayout &&
+    public bool IsGenericLayout
+    {
+        get
+        {
+            return !IsMainLayout &&
         !IsManualLayout &&
         !IsRecipeLayout &&
         !IsSettingLayout &&
@@ -253,6 +463,8 @@ public sealed class CScreenViewModel(
         !IsReviewLayout &&
         !IsCorrectionLayout &&
         !IsPmLayout;
+        }
+    }
 }
 
 public sealed class CMenuItem(EN_MENU menu, string name)
@@ -261,22 +473,34 @@ public sealed class CMenuItem(EN_MENU menu, string name)
 
     public string Name { get; } = name;
 
-    public Geometry IconGeometry => CMenuIcon.Get(Menu);
-
-    public string Description => Menu switch
+    public Geometry IconGeometry
     {
-        EN_MENU.Main => "Auto",
-        EN_MENU.Manual => "Manual",
-        EN_MENU.Recipe => "Recipe",
-        EN_MENU.Setting => "Setting",
-        EN_MENU.Alarm => "Alarm",
-        EN_MENU.Monitor => "Monitor",
-        EN_MENU.Review => "Review",
-        EN_MENU.Correction => "Correction",
-        EN_MENU.Pm => "PM Lock",
-        EN_MENU.Exit => "Exit",
-        _ => string.Empty
-    };
+        get
+        {
+            return CMenuIcon.Get(Menu);
+        }
+    }
+
+    public string Description
+    {
+        get
+        {
+            return Menu switch
+            {
+                EN_MENU.Main => "Auto",
+                EN_MENU.Manual => "Manual",
+                EN_MENU.Recipe => "Recipe",
+                EN_MENU.Setting => "Setting",
+                EN_MENU.Alarm => "Alarm",
+                EN_MENU.Monitor => "Monitor",
+                EN_MENU.Review => "Review",
+                EN_MENU.Correction => "Correction",
+                EN_MENU.Pm => "PM Lock",
+                EN_MENU.Exit => "Exit",
+                _ => string.Empty
+            };
+        }
+    }
 }
 
 internal static class CMenuIcon

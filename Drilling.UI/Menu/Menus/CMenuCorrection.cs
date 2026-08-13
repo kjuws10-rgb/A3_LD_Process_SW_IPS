@@ -256,16 +256,27 @@ public sealed class CMenuCorrection : IMenu
         Tabs = CorrectionTabs
             .Select(tab => new ST_CORRECTION_TAB(tab, tab.Equals(selectedTab, StringComparison.OrdinalIgnoreCase)))
             .ToArray();
-
-        (SummaryItems, SourceRows, CandidateRows, ApplyRows, DetailItems, HistoryRows) = selectedTab switch
+        (IReadOnlyList<ST_DISPLAY_ITEM> Summary, IReadOnlyList<ST_CORRECTION_SOURCE_ROW> Source, IReadOnlyList<ST_CORRECTION_VALUE_ROW> Candidate, IReadOnlyList<ST_CORRECTION_VALUE_ROW> Apply, IReadOnlyList<ST_DISPLAY_ITEM> Detail, IReadOnlyList<ST_CORRECTION_HISTORY_ROW> History) EvaluateSelectedTabSwitch1()
         {
-            "ALIGN COMP" => CreateAlignCompData(),
-            "OFFSET COMP" => CreateOffsetCompData(),
-            "APC / ICR" => CreateApcIcrData(),
-            "ZERO DEFENSE" => CreateZeroDefenseData(),
-            "OUTPUT / HISTORY" => CreateOutputHistoryData(),
-            _ => CreateReviewData()
-        };
+            var switchValue = selectedTab;
+            switch (switchValue)
+            {
+                case "ALIGN COMP":
+                    return CreateAlignCompData();
+                case "OFFSET COMP":
+                    return CreateOffsetCompData();
+                case "APC / ICR":
+                    return CreateApcIcrData();
+                case "ZERO DEFENSE":
+                    return CreateZeroDefenseData();
+                case "OUTPUT / HISTORY":
+                    return CreateOutputHistoryData();
+                default:
+                    return CreateReviewData();
+            }
+        }
+
+        (SummaryItems, SourceRows, CandidateRows, ApplyRows, DetailItems, HistoryRows) = EvaluateSelectedTabSwitch1();
     }
 
     private async Task LoadReviewResult()
@@ -1053,29 +1064,54 @@ public sealed class CMenuCorrection : IMenu
 
     private static string GetSubtitle(string selectedTab)
     {
-        return selectedTab switch
+        string EvaluateSelectedTabSwitch2()
         {
-            "REVIEW DATA" => "Review result load, measurement error review and compensation point selection",
-            "ALIGN COMP" => "Align X/Y/Theta and distortion key compensation",
-            "OFFSET COMP" => "Recipe offset, head offset, cell shift and scanner default offset",
-            "APC / ICR" => "External APC / ICR precision correction file apply",
-            "ZERO DEFENSE" => "0-line review point check and defense offset apply",
-            "OUTPUT / HISTORY" => "Final correction output preview and apply history",
-            _ => "Correction operation"
-        };
+            var switchValue = selectedTab;
+            switch (switchValue)
+            {
+                case "REVIEW DATA":
+                    return "Review result load, measurement error review and compensation point selection";
+                case "ALIGN COMP":
+                    return "Align X/Y/Theta and distortion key compensation";
+                case "OFFSET COMP":
+                    return "Recipe offset, head offset, cell shift and scanner default offset";
+                case "APC / ICR":
+                    return "External APC / ICR precision correction file apply";
+                case "ZERO DEFENSE":
+                    return "0-line review point check and defense offset apply";
+                case "OUTPUT / HISTORY":
+                    return "Final correction output preview and apply history";
+                default:
+                    return "Correction operation";
+            }
+        }
+
+        return EvaluateSelectedTabSwitch2();
     }
 
     private static string GetSourceName(string selectedTab)
     {
-        return selectedTab switch
+        string EvaluateSelectedTabSwitch3()
         {
-            "APC / ICR" => "External",
-            "ALIGN COMP" => "Vision",
-            "OFFSET COMP" => "Recipe",
-            "ZERO DEFENSE" => "Review",
-            "OUTPUT / HISTORY" => "Mixed",
-            _ => "Review"
-        };
+            var switchValue = selectedTab;
+            switch (switchValue)
+            {
+                case "APC / ICR":
+                    return "External";
+                case "ALIGN COMP":
+                    return "Vision";
+                case "OFFSET COMP":
+                    return "Recipe";
+                case "ZERO DEFENSE":
+                    return "Review";
+                case "OUTPUT / HISTORY":
+                    return "Mixed";
+                default:
+                    return "Review";
+            }
+        }
+
+        return EvaluateSelectedTabSwitch3();
     }
 
     private static string GetStateName(string selectedTab)
@@ -1221,12 +1257,21 @@ public sealed record ST_CORRECTION_REVIEW_OFFSET_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch4()
             {
-                "PENDING" => CStatusBrush.Wait,
-                "SAVED" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "PENDING":
+                        return CStatusBrush.Wait;
+                    case "SAVED":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueSwitch4();
         }
     }
 

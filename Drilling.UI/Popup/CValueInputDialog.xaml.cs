@@ -47,12 +47,21 @@ public partial class CValueInputDialog : Window
 
     private void BuildKeys()
     {
-        var keys = _dataType switch
+        string[] Evaluate_dataTypeSwitch1()
         {
-            EN_RECIPE_DATA_TYPE.Int => ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", "-"],
-            EN_RECIPE_DATA_TYPE.Double => ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "-"],
-            _ => "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(value => value.ToString()).ToArray()
-        };
+            var switchValue = _dataType;
+            switch (switchValue)
+            {
+                case EN_RECIPE_DATA_TYPE.Int:
+                    return ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", "-"];
+                case EN_RECIPE_DATA_TYPE.Double:
+                    return ["7", "8", "9", "4", "5", "6", "1", "2", "3", "0", ".", "-"];
+                default:
+                    return "1234567890QWERTYUIOPASDFGHJKLZXCVBNM_-./:".Select(value => value.ToString()).ToArray();
+            }
+        }
+
+        var keys = Evaluate_dataTypeSwitch1();
 
         KeyGrid.Columns = _dataType == EN_RECIPE_DATA_TYPE.String ? 10 : 3;
         foreach (var key in keys)

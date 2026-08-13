@@ -267,22 +267,40 @@ public sealed class CMenuAlarm(
 
     private static string FormatSeverity(EN_ALARM_LEVEL severity)
     {
-        return severity switch
+        string EvaluateSeveritySwitch1()
         {
-            EN_ALARM_LEVEL.Warning => "WARN",
-            EN_ALARM_LEVEL.Critical => "CRITICAL",
-            _ => "INFO"
-        };
+            var switchValue = severity;
+            switch (switchValue)
+            {
+                case EN_ALARM_LEVEL.Warning:
+                    return "WARN";
+                case EN_ALARM_LEVEL.Critical:
+                    return "CRITICAL";
+                default:
+                    return "INFO";
+            }
+        }
+
+        return EvaluateSeveritySwitch1();
     }
 
     private static string SeverityState(EN_ALARM_LEVEL severity)
     {
-        return severity switch
+        string EvaluateSeveritySwitch2()
         {
-            EN_ALARM_LEVEL.Warning => "Warn",
-            EN_ALARM_LEVEL.Critical => "Critical",
-            _ => "Accent"
-        };
+            var switchValue = severity;
+            switch (switchValue)
+            {
+                case EN_ALARM_LEVEL.Warning:
+                    return "Warn";
+                case EN_ALARM_LEVEL.Critical:
+                    return "Critical";
+                default:
+                    return "Accent";
+            }
+        }
+
+        return EvaluateSeveritySwitch2();
     }
 }
 
@@ -299,13 +317,23 @@ public sealed record ST_ALARM_CURRENT_ROW(
     {
         get
         {
-            return Level switch
+            Brush EvaluateLevelSwitch3()
             {
-                "WARN" => CStatusBrush.Wait,
-                "CRITICAL" or "ERROR" => CStatusBrush.Offline,
-                "INFO" => CStatusBrush.Simul,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = Level;
+                switch (switchValue)
+                {
+                    case "WARN":
+                        return CStatusBrush.Wait;
+                    case "CRITICAL" or "ERROR":
+                        return CStatusBrush.Offline;
+                    case "INFO":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateLevelSwitch3();
         }
     }
 }
@@ -319,14 +347,25 @@ public sealed record ST_ALARM_DETAIL_ROW(
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch4()
             {
-                "Warn" => CStatusBrush.Wait,
-                "Critical" => CStatusBrush.Offline,
-                "Accent" => CStatusBrush.Simul,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Critical":
+                        return CStatusBrush.Offline;
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch4();
         }
     }
 }
@@ -343,13 +382,23 @@ public sealed record ST_ALARM_HISTORY_ROW(
     {
         get
         {
-            return Level switch
+            Brush EvaluateLevelSwitch5()
             {
-                "WARN" => CStatusBrush.Wait,
-                "CRITICAL" or "ERROR" => CStatusBrush.Offline,
-                "INFO" => CStatusBrush.Simul,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = Level;
+                switch (switchValue)
+                {
+                    case "WARN":
+                        return CStatusBrush.Wait;
+                    case "CRITICAL" or "ERROR":
+                        return CStatusBrush.Offline;
+                    case "INFO":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateLevelSwitch5();
         }
     }
 }
@@ -372,14 +421,25 @@ public sealed record ST_ALARM_SUMMARY_ITEM(
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch6()
             {
-                "Warn" => CStatusBrush.Wait,
-                "Critical" => CStatusBrush.Offline,
-                "Accent" => CStatusBrush.Simul,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Critical":
+                        return CStatusBrush.Offline;
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch6();
         }
     }
 }

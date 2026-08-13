@@ -420,12 +420,21 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private async Task SelectCell(object? parameter)
     {
-        var cellNo = parameter switch
+        int EvaluateParameterSwitch1()
         {
-            int number => number,
-            string text when int.TryParse(text, out var number) => number,
-            _ => 0
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case int number:
+                    return number;
+                case string text when int.TryParse(text, out var number):
+                    return number;
+                default:
+                    return 0;
+            }
+        }
+
+        var cellNo = EvaluateParameterSwitch1();
 
         if (cellNo <= 0)
         {
@@ -2085,12 +2094,21 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
 
     private static string GetRecipeIdFromParameter(object? parameter)
     {
-        var value = parameter switch
+        string EvaluateParameterSwitch2()
         {
-            ST_RECIPE_FILE recipeFile => recipeFile.FileName,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_RECIPE_FILE recipeFile:
+                    return recipeFile.FileName;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        var value = EvaluateParameterSwitch2();
 
         return Path.GetFileNameWithoutExtension(value.Trim());
     }
@@ -2232,14 +2250,23 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
             {
                 return "Recipe save blocked. Recipe Name cannot be empty.";
             }
-
-            var validationMessage = parameter.DataType switch
+            string EvaluateDataTypeSwitch3()
             {
-                EN_RECIPE_DATA_TYPE.Int => ValidateIntParameter(parameter, value),
-                EN_RECIPE_DATA_TYPE.Double => ValidateDoubleParameter(parameter, value),
-                EN_RECIPE_DATA_TYPE.Bool => ValidateBoolParameter(parameter, value),
-                _ => ""
-            };
+                var switchValue = parameter.DataType;
+                switch (switchValue)
+                {
+                    case EN_RECIPE_DATA_TYPE.Int:
+                        return ValidateIntParameter(parameter, value);
+                    case EN_RECIPE_DATA_TYPE.Double:
+                        return ValidateDoubleParameter(parameter, value);
+                    case EN_RECIPE_DATA_TYPE.Bool:
+                        return ValidateBoolParameter(parameter, value);
+                    default:
+                        return "";
+                }
+            }
+
+            var validationMessage = EvaluateDataTypeSwitch3();
 
             if (!string.IsNullOrWhiteSpace(validationMessage))
             {
@@ -2503,18 +2530,33 @@ public sealed class ST_RECIPE_CELL_OVERVIEW_ROW : CBindingBase
         }
 
         item.Value = value;
-        OnPropertyChanged(parameterName switch
+        string EvaluateParameterNameSwitch4()
         {
-            "ALIGN_TO_1ST_PIXEL_X" => nameof(FirstX),
-            "ALIGN_TO_1ST_PIXEL_Y" => nameof(FirstY),
-            "ROTATION" => nameof(Rotation),
-            "NUM_OF_PIXEL_X" => nameof(CountX),
-            "NUM_OF_PIXEL_Y" => nameof(CountY),
-            "PITCH_X" => nameof(PitchX),
-            "PITCH_Y" => nameof(PitchY),
-            "PIXEL_SIZE" => nameof(PixelSize),
-            _ => parameterName
-        });
+            var switchValue = parameterName;
+            switch (switchValue)
+            {
+                case "ALIGN_TO_1ST_PIXEL_X":
+                    return nameof(FirstX);
+                case "ALIGN_TO_1ST_PIXEL_Y":
+                    return nameof(FirstY);
+                case "ROTATION":
+                    return nameof(Rotation);
+                case "NUM_OF_PIXEL_X":
+                    return nameof(CountX);
+                case "NUM_OF_PIXEL_Y":
+                    return nameof(CountY);
+                case "PITCH_X":
+                    return nameof(PitchX);
+                case "PITCH_Y":
+                    return nameof(PitchY);
+                case "PIXEL_SIZE":
+                    return nameof(PixelSize);
+                default:
+                    return parameterName;
+            }
+        }
+
+        OnPropertyChanged(EvaluateParameterNameSwitch4());
     }
 }
 
@@ -2852,12 +2894,21 @@ public sealed class ST_RECIPE_MANAGED_ITEM : CBindingBase
     {
         get
         {
-            return ValueState switch
+            Brush EvaluateValueStateSwitch5()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = ValueState;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueStateSwitch5();
         }
     }
 
@@ -2894,13 +2945,23 @@ public sealed record ST_RECIPE_STATE_ROW(
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch6()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch6();
         }
     }
 }

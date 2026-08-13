@@ -66,19 +66,35 @@ public partial class CSettingView : UserControl
             }) return;
 
         e.Handled = true;
-        var currentValue = field switch
+        string EvaluateFieldSwitch1()
         {
-            "DEVICE" => row.Device,
-            "NUMBER" => row.Number,
-            "NICKNAME" => row.NickName,
-            "SYSTEM_SECTION" => row.SystemSection,
-            "ARG1" => row.Arg1,
-            "ARG2" => row.Arg2,
-            "ARG3" => row.Arg3,
-            "ARG4" => row.Arg4,
-            "ARG5" => row.Arg5,
-            _ => ""
-        };
+            var switchValue = field;
+            switch (switchValue)
+            {
+                case "DEVICE":
+                    return row.Device;
+                case "NUMBER":
+                    return row.Number;
+                case "NICKNAME":
+                    return row.NickName;
+                case "SYSTEM_SECTION":
+                    return row.SystemSection;
+                case "ARG1":
+                    return row.Arg1;
+                case "ARG2":
+                    return row.Arg2;
+                case "ARG3":
+                    return row.Arg3;
+                case "ARG4":
+                    return row.Arg4;
+                case "ARG5":
+                    return row.Arg5;
+                default:
+                    return "";
+            }
+        }
+
+        var currentValue = EvaluateFieldSwitch1();
         var dataType = field == "NUMBER" ? EN_RECIPE_DATA_TYPE.Int : EN_RECIPE_DATA_TYPE.String;
         var dialog = new CValueInputDialog(field, currentValue, dataType, 0, int.MaxValue)
         {

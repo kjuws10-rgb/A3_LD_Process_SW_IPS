@@ -875,13 +875,23 @@ public sealed class CRootView : CBindingBase
 
     private async Task SelectHead(object? parameter)
     {
-        var headNo = parameter switch
+        int EvaluateParameterSwitch1()
         {
-            int value => value,
-            string text when int.TryParse(text, out var parsed) => parsed,
-            ST_HEAD_PREVIEW head => head.HeadNo,
-            _ => _selectedHeadNo
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case int value:
+                    return value;
+                case string text when int.TryParse(text, out var parsed):
+                    return parsed;
+                case ST_HEAD_PREVIEW head:
+                    return head.HeadNo;
+                default:
+                    return _selectedHeadNo;
+            }
+        }
+
+        var headNo = EvaluateParameterSwitch1();
 
         if (headNo <= 0)
         {
@@ -919,14 +929,23 @@ public sealed class CRootView : CBindingBase
                 return;
             }
         }
-
-        var headNo = parameter switch
+        int EvaluateParameterSwitch2()
         {
-            int value => value,
-            string text when int.TryParse(text, out var parsed) => parsed,
-            ST_HEAD_PREVIEW head => head.HeadNo,
-            _ => 0
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case int value:
+                    return value;
+                case string text when int.TryParse(text, out var parsed):
+                    return parsed;
+                case ST_HEAD_PREVIEW head:
+                    return head.HeadNo;
+                default:
+                    return 0;
+            }
+        }
+
+        var headNo = EvaluateParameterSwitch2();
 
         if (headNo <= 0)
         {
@@ -1168,77 +1187,94 @@ public sealed class CRootView : CBindingBase
 
     private IReadOnlyList<ST_HEADER_STATUS_ITEM> CreateMonitorFooterStatusItems()
     {
-        return _selectedMonitorTab switch
+        IReadOnlyList<ST_HEADER_STATUS_ITEM> Evaluate_selectedMonitorTabSwitch3()
         {
-            "MOTOR" =>
-            [
-                new("SCREEN", "MONITOR / MOTOR", "SIM"),
+            var switchValue = _selectedMonitorTab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return [
+                        new("SCREEN", "MONITOR / MOTOR", "SIM"),
                 new("AXIS", "Selected Axis GX", "SIM"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "LASER" =>
-            [
-                new("SCREEN", "MONITOR / LASER", "SIM"),
+                    ];
+                case "LASER":
+                    return [
+                        new("SCREEN", "MONITOR / LASER", "SIM"),
                 new("LASER", "Laser SAFE", "ONLINE"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "CHILLER" =>
-            [
-                new("SCREEN", "MONITOR / CHILLER", "SIM"),
+                    ];
+                case "CHILLER":
+                    return [
+                        new("SCREEN", "MONITOR / CHILLER", "SIM"),
                 new("IO", "Selected IO -", "SIM"),
                 new("CHILLER", "Chiller RUN", "ONLINE"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "ATTENUATOR" =>
-            [
-                new("SCREEN", "MONITOR / ATTENUATOR", "SIM"),
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        new("SCREEN", "MONITOR / ATTENUATOR", "SIM"),
                 new("POSITION", "Position 55.000", "WARN"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "BET" =>
-            [
-                new("SCREEN", "MONITOR / BET", "SIM"),
+                    ];
+                case "BET":
+                    return [
+                        new("SCREEN", "MONITOR / BET", "SIM"),
                 new("BET", "MAG 1.000 / DIV 1.000", "ONLINE"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "PRODUCT" =>
-            [
-                new("SCREEN", "MONITOR / PRODUCT", "SIM"),
+                    ];
+                case "PRODUCT":
+                    return [
+                        new("SCREEN", "MONITOR / PRODUCT", "SIM"),
                 new("PRODUCT", "Product Tracking", "ONLINE"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "MELSEC" =>
-            [
-                new("SCREEN", "MONITOR / MELSEC", "SIM"),
+                    ];
+                case "MELSEC":
+                    return [
+                        new("SCREEN", "MONITOR / MELSEC", "SIM"),
                 new("PLC", "Read / Write Map", "WARN"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            "COORDINATE VIEWER" =>
-            [
-                new("SCREEN", "MONITOR / COORDINATE VIEWER", "SIM"),
+                    ];
+                case "COORDINATE VIEWER":
+                    return [
+                        new("SCREEN", "MONITOR / COORDINATE VIEWER", "SIM"),
                 new("VIEWER", "Coordinate Viewer", "SIM"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ],
-            _ =>
-            [
-                new("SCREEN", $"MONITOR / {_selectedMonitorTab}", "SIM"),
+                    ];
+                default:
+                    return [
+                        new("SCREEN", $"MONITOR / {_selectedMonitorTab}", "SIM"),
                 new("CONTROL", _selectedMonitorTab == "IO" ? "Direct ON/OFF Control" : "Status Monitor", "WARN"),
                 new("SIM", "Simulation PASS", "ONLINE")
-            ]
-        };
+                    ];
+            }
+        }
+
+        return Evaluate_selectedMonitorTabSwitch3();
     }
 
     private static string NormalizeMonitorTab(string tab)
     {
         var normalized = tab.Trim().ToUpperInvariant();
-        return normalized switch
+        string EvaluateNormalizedSwitch4()
         {
-            "ATT" => "ATTENUATOR",
-            "POWER" or "POWERMETER" or "POWER_METER" => "POWER METER",
-            "COORDINATE" or "COORDINATE_VIEWER" => "COORDINATE VIEWER",
-            "IO" or "MOTOR" or "LASER" or "CHILLER" or "ATTENUATOR" or "BET" or "POWER METER" or "PRODUCT" or "MELSEC" or "COORDINATE VIEWER" => normalized,
-            _ => "IO"
-        };
+            var switchValue = normalized;
+            switch (switchValue)
+            {
+                case "ATT":
+                    return "ATTENUATOR";
+                case "POWER" or "POWERMETER" or "POWER_METER":
+                    return "POWER METER";
+                case "COORDINATE" or "COORDINATE_VIEWER":
+                    return "COORDINATE VIEWER";
+                case "IO" or "MOTOR" or "LASER" or "CHILLER" or "ATTENUATOR" or "BET" or "POWER METER" or "PRODUCT" or "MELSEC" or "COORDINATE VIEWER":
+                    return normalized;
+                default:
+                    return "IO";
+            }
+        }
+
+        return EvaluateNormalizedSwitch4();
     }
 
     private static ST_SYSTEM_STATUS CreateFallbackST_SYSTEM_STATUS()
@@ -1376,40 +1412,75 @@ public sealed class CRootView : CBindingBase
 
     private static string ModuleDisplayName(EN_EQP_MODULE module)
     {
-        return module switch
+        string EvaluateModuleSwitch5()
         {
-            EN_EQP_MODULE.WonikCtrl => "WONIK CTRL",
-            EN_EQP_MODULE.Vision => "VISION",
-            EN_EQP_MODULE.Automation1 => "AUTOMATION",
-            EN_EQP_MODULE.Motion => "MOTION",
-            EN_EQP_MODULE.TalonLaser => "TALON LASER",
-            EN_EQP_MODULE.Chiller => "CHILLER",
-            EN_EQP_MODULE.Attenuator => "ATTENUATOR",
-            EN_EQP_MODULE.Bet => "BET",
-            EN_EQP_MODULE.PowerMeter => "POWER METER",
-            EN_EQP_MODULE.Melsec => "MELSEC",
-            _ => module.ToString().ToUpperInvariant()
-        };
+            var switchValue = module;
+            switch (switchValue)
+            {
+                case EN_EQP_MODULE.WonikCtrl:
+                    return "WONIK CTRL";
+                case EN_EQP_MODULE.Vision:
+                    return "VISION";
+                case EN_EQP_MODULE.Automation1:
+                    return "AUTOMATION";
+                case EN_EQP_MODULE.Motion:
+                    return "MOTION";
+                case EN_EQP_MODULE.TalonLaser:
+                    return "TALON LASER";
+                case EN_EQP_MODULE.Chiller:
+                    return "CHILLER";
+                case EN_EQP_MODULE.Attenuator:
+                    return "ATTENUATOR";
+                case EN_EQP_MODULE.Bet:
+                    return "BET";
+                case EN_EQP_MODULE.PowerMeter:
+                    return "POWER METER";
+                case EN_EQP_MODULE.Melsec:
+                    return "MELSEC";
+                default:
+                    return module.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateModuleSwitch5();
     }
 
     private static string ConnectionStateValue(EN_COMM_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch6()
         {
-            EN_COMM_STATE.Online => "ONLINE",
-            EN_COMM_STATE.Offline => "OFFLINE",
-            _ => "SIMULATION"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_COMM_STATE.Online:
+                    return "ONLINE";
+                case EN_COMM_STATE.Offline:
+                    return "OFFLINE";
+                default:
+                    return "SIMULATION";
+            }
+        }
+
+        return EvaluateStateSwitch6();
     }
 
     private static string OperationModeValue(EN_SYSTEM_MODE mode)
     {
-        return mode switch
+        string EvaluateModeSwitch7()
         {
-            EN_SYSTEM_MODE.Auto => "AUTO",
-            EN_SYSTEM_MODE.Manual => "MANUAL",
-            _ => "SIMULATION"
-        };
+            var switchValue = mode;
+            switch (switchValue)
+            {
+                case EN_SYSTEM_MODE.Auto:
+                    return "AUTO";
+                case EN_SYSTEM_MODE.Manual:
+                    return "MANUAL";
+                default:
+                    return "SIMULATION";
+            }
+        }
+
+        return EvaluateModeSwitch7();
     }
 
     private static string OperationModeState(EN_SYSTEM_MODE mode)
@@ -1424,20 +1495,37 @@ public sealed class CRootView : CBindingBase
 
     private static string GetMenuDisplayName(EN_MENU menu)
     {
-        return menu switch
+        string EvaluateMenuSwitch8()
         {
-            EN_MENU.Main => "MAIN",
-            EN_MENU.Manual => "MANUAL",
-            EN_MENU.Recipe => "RECIPE",
-            EN_MENU.Setting => "SETTING",
-            EN_MENU.Alarm => "ALARM",
-            EN_MENU.Monitor => "MONITOR",
-            EN_MENU.Review => "REVIEW",
-            EN_MENU.Correction => "CORRECTION",
-            EN_MENU.Pm => "PM",
-            EN_MENU.Exit => "EXIT",
-            _ => menu.ToString()
-        };
+            var switchValue = menu;
+            switch (switchValue)
+            {
+                case EN_MENU.Main:
+                    return "MAIN";
+                case EN_MENU.Manual:
+                    return "MANUAL";
+                case EN_MENU.Recipe:
+                    return "RECIPE";
+                case EN_MENU.Setting:
+                    return "SETTING";
+                case EN_MENU.Alarm:
+                    return "ALARM";
+                case EN_MENU.Monitor:
+                    return "MONITOR";
+                case EN_MENU.Review:
+                    return "REVIEW";
+                case EN_MENU.Correction:
+                    return "CORRECTION";
+                case EN_MENU.Pm:
+                    return "PM";
+                case EN_MENU.Exit:
+                    return "EXIT";
+                default:
+                    return menu.ToString();
+            }
+        }
+
+        return EvaluateMenuSwitch8();
     }
 }
 

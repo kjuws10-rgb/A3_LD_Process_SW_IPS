@@ -59,12 +59,21 @@ public partial class CInterfaceStatusDialog : Window
 
         private static string ToStateText(EN_COMM_STATE state)
         {
-            return state switch
+            string EvaluateStateSwitch1()
             {
-                EN_COMM_STATE.Online => "ONLINE",
-                EN_COMM_STATE.Offline => "OFFLINE",
-                _ => "SIMULATION"
-            };
+                var switchValue = state;
+                switch (switchValue)
+                {
+                    case EN_COMM_STATE.Online:
+                        return "ONLINE";
+                    case EN_COMM_STATE.Offline:
+                        return "OFFLINE";
+                    default:
+                        return "SIMULATION";
+                }
+            }
+
+            return EvaluateStateSwitch1();
         }
     }
 }

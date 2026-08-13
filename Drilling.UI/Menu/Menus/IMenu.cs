@@ -218,42 +218,79 @@ internal static class CStatusBrush
 
     public static Brush ForHeaderState(string state)
     {
-        return Normalize(state) switch
+        Brush EvaluateValueSwitch1()
         {
-            "RECIPE" => Recipe,
-            "ONLINE" or "CLEAR" or "READY" or "OK" or "RUN" or "SAFE" or "DONE" => Online,
-            "SIM" or "SIMUL" or "SIMULATION" => Simul,
-            "OFFLINE" or "OCCUR" or "ERROR" or "NG" or "FAILED" or "FAIL" or "ALARM" or "STOP" or "STOPPED" => Offline,
-            "WAIT" or "WAITING" or "WARN" or "WARNING" or "PENDING" => Wait,
-            "ACTIVE" or "RUNNING" => Active,
-            _ => Muted
-        };
+            var switchValue = Normalize(state);
+            switch (switchValue)
+            {
+                case "RECIPE":
+                    return Recipe;
+                case "ONLINE" or "CLEAR" or "READY" or "OK" or "RUN" or "SAFE" or "DONE":
+                    return Online;
+                case "SIM" or "SIMUL" or "SIMULATION":
+                    return Simul;
+                case "OFFLINE" or "OCCUR" or "ERROR" or "NG" or "FAILED" or "FAIL" or "ALARM" or "STOP" or "STOPPED":
+                    return Offline;
+                case "WAIT" or "WAITING" or "WARN" or "WARNING" or "PENDING":
+                    return Wait;
+                case "ACTIVE" or "RUNNING":
+                    return Active;
+                default:
+                    return Muted;
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     public static Brush ForDisplayState(string state)
     {
-        return Normalize(state) switch
+        Brush EvaluateValueSwitch2()
         {
-            "OK" or "DONE" or "COMPLETE" or "COMPLETED" or "CLEAR" or "READY" => Online,
-            "RUN" or "RUNNING" or "ACTIVE" or "CURRENT" => Active,
-            "WAIT" or "WAITING" or "PENDING" or "WARN" or "WARNING" => Wait,
-            "SKIP" or "SKIPPED" => Muted,
-            "ERROR" or "NG" or "FAILED" or "FAIL" or "ALARM" or "STOP" or "STOPPED" => Offline,
-            "SIM" or "SIMUL" or "SIMULATION" => Simul,
-            _ => Muted
-        };
+            var switchValue = Normalize(state);
+            switch (switchValue)
+            {
+                case "OK" or "DONE" or "COMPLETE" or "COMPLETED" or "CLEAR" or "READY":
+                    return Online;
+                case "RUN" or "RUNNING" or "ACTIVE" or "CURRENT":
+                    return Active;
+                case "WAIT" or "WAITING" or "PENDING" or "WARN" or "WARNING":
+                    return Wait;
+                case "SKIP" or "SKIPPED":
+                    return Muted;
+                case "ERROR" or "NG" or "FAILED" or "FAIL" or "ALARM" or "STOP" or "STOPPED":
+                    return Offline;
+                case "SIM" or "SIMUL" or "SIMULATION":
+                    return Simul;
+                default:
+                    return Muted;
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     public static Brush ForHeadStatus(string status)
     {
-        return Normalize(status) switch
+        Brush EvaluateValueSwitch3()
         {
-            "RUN" or "RUNNING" or "ACTIVE" => Active,
-            "WAIT" or "WAITING" or "IDLE" => Wait,
-            "SKIP" or "SKIPPED" => Muted,
-            "ERROR" or "ALARM" => Offline,
-            _ => Online
-        };
+            var switchValue = Normalize(status);
+            switch (switchValue)
+            {
+                case "RUN" or "RUNNING" or "ACTIVE":
+                    return Active;
+                case "WAIT" or "WAITING" or "IDLE":
+                    return Wait;
+                case "SKIP" or "SKIPPED":
+                    return Muted;
+                case "ERROR" or "ALARM":
+                    return Offline;
+                default:
+                    return Online;
+            }
+        }
+
+        return EvaluateValueSwitch3();
     }
 
     private static string Normalize(string value)
@@ -485,20 +522,37 @@ public sealed class CMenuItem(EN_MENU menu, string name)
     {
         get
         {
-            return Menu switch
+            string EvaluateMenuSwitch4()
             {
-                EN_MENU.Main => "Auto",
-                EN_MENU.Manual => "Manual",
-                EN_MENU.Recipe => "Recipe",
-                EN_MENU.Setting => "Setting",
-                EN_MENU.Alarm => "Alarm",
-                EN_MENU.Monitor => "Monitor",
-                EN_MENU.Review => "Review",
-                EN_MENU.Correction => "Correction",
-                EN_MENU.Pm => "PM Lock",
-                EN_MENU.Exit => "Exit",
-                _ => string.Empty
-            };
+                var switchValue = Menu;
+                switch (switchValue)
+                {
+                    case EN_MENU.Main:
+                        return "Auto";
+                    case EN_MENU.Manual:
+                        return "Manual";
+                    case EN_MENU.Recipe:
+                        return "Recipe";
+                    case EN_MENU.Setting:
+                        return "Setting";
+                    case EN_MENU.Alarm:
+                        return "Alarm";
+                    case EN_MENU.Monitor:
+                        return "Monitor";
+                    case EN_MENU.Review:
+                        return "Review";
+                    case EN_MENU.Correction:
+                        return "Correction";
+                    case EN_MENU.Pm:
+                        return "PM Lock";
+                    case EN_MENU.Exit:
+                        return "Exit";
+                    default:
+                        return string.Empty;
+                }
+            }
+
+            return EvaluateMenuSwitch4();
         }
     }
 }

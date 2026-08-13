@@ -665,80 +665,154 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static EN_INTERFACE_TYPE ParseInterfaceType(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_INTERFACE_TYPE EvaluateValueSwitch1()
         {
-            "OPCUA" => EN_INTERFACE_TYPE.OpcUa,
-            "MODBUS_SERIAL" => EN_INTERFACE_TYPE.ModbusSerial,
-            "MODBUS_TCP" => EN_INTERFACE_TYPE.ModbusTcp,
-            "SERIAL" => EN_INTERFACE_TYPE.Serial,
-            "SOCKET_C" => EN_INTERFACE_TYPE.SocketClient,
-            "SOCKET_S" => EN_INTERFACE_TYPE.SocketServer,
-            "SOCKET_C_UDP" => EN_INTERFACE_TYPE.SocketClientUdp,
-            "SOCKET_S_UDP" => EN_INTERFACE_TYPE.SocketServerUdp,
-            "ACS_NET" or "ACS" => EN_INTERFACE_TYPE.AcsNet,
-            "XPS_NET" or "XPS" or "NEWPORT_XPS" => EN_INTERFACE_TYPE.XpsNet,
-            "AUTOMATION1_NET" or "AUTOMATION1" or "A1_NET" or "AEROTECH_AUTOMATION1" => EN_INTERFACE_TYPE.Automation1Net,
-            "PICOMOTOR" or "PICO_MOTOR" or "PICO" => EN_INTERFACE_TYPE.PicoMotor,
-            _ => throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown TYPE: {value}")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "OPCUA":
+                    return EN_INTERFACE_TYPE.OpcUa;
+                case "MODBUS_SERIAL":
+                    return EN_INTERFACE_TYPE.ModbusSerial;
+                case "MODBUS_TCP":
+                    return EN_INTERFACE_TYPE.ModbusTcp;
+                case "SERIAL":
+                    return EN_INTERFACE_TYPE.Serial;
+                case "SOCKET_C":
+                    return EN_INTERFACE_TYPE.SocketClient;
+                case "SOCKET_S":
+                    return EN_INTERFACE_TYPE.SocketServer;
+                case "SOCKET_C_UDP":
+                    return EN_INTERFACE_TYPE.SocketClientUdp;
+                case "SOCKET_S_UDP":
+                    return EN_INTERFACE_TYPE.SocketServerUdp;
+                case "ACS_NET" or "ACS":
+                    return EN_INTERFACE_TYPE.AcsNet;
+                case "XPS_NET" or "XPS" or "NEWPORT_XPS":
+                    return EN_INTERFACE_TYPE.XpsNet;
+                case "AUTOMATION1_NET" or "AUTOMATION1" or "A1_NET" or "AEROTECH_AUTOMATION1":
+                    return EN_INTERFACE_TYPE.Automation1Net;
+                case "PICOMOTOR" or "PICO_MOTOR" or "PICO":
+                    return EN_INTERFACE_TYPE.PicoMotor;
+                default:
+                    throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown TYPE: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch1();
     }
 
     private static EN_EQP_MODULE ParseDevice(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        EN_EQP_MODULE EvaluateValueSwitch2()
         {
-            "WONIK_CONTROL" or "WONIK_CTRL" or "CONTROL" => EN_EQP_MODULE.WonikCtrl,
-            "WONIK_VISION" or "VISION" => EN_EQP_MODULE.Vision,
-            "AUTOMATION1" or "AUTOMATION_ONE" or "A1" => EN_EQP_MODULE.Automation1,
-            "MOTION" or "SCANNER" => EN_EQP_MODULE.Motion,
-            "TALON" or "TALON_LASER" or "LASER" => EN_EQP_MODULE.TalonLaser,
-            "CHILLER" or "ORION_CHILLER" or "SMCCHILLER" => EN_EQP_MODULE.Chiller,
-            "CONEX_AGP" or "ATTENUATOR" => EN_EQP_MODULE.Attenuator,
-            "BEAM_EXPANDER" or "BET" => EN_EQP_MODULE.Bet,
-            "POWER_METER" or "POWERMETER" or "POWERMAX" => EN_EQP_MODULE.PowerMeter,
-            "MELSEC" or "PLC" => EN_EQP_MODULE.Melsec,
-            "PICO_MOTOR" or "PICOMOTOR" or "PICO" => EN_EQP_MODULE.PicoMotor,
-            _ => throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown DEVICE: {value}")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "WONIK_CONTROL" or "WONIK_CTRL" or "CONTROL":
+                    return EN_EQP_MODULE.WonikCtrl;
+                case "WONIK_VISION" or "VISION":
+                    return EN_EQP_MODULE.Vision;
+                case "AUTOMATION1" or "AUTOMATION_ONE" or "A1":
+                    return EN_EQP_MODULE.Automation1;
+                case "MOTION" or "SCANNER":
+                    return EN_EQP_MODULE.Motion;
+                case "TALON" or "TALON_LASER" or "LASER":
+                    return EN_EQP_MODULE.TalonLaser;
+                case "CHILLER" or "ORION_CHILLER" or "SMCCHILLER":
+                    return EN_EQP_MODULE.Chiller;
+                case "CONEX_AGP" or "ATTENUATOR":
+                    return EN_EQP_MODULE.Attenuator;
+                case "BEAM_EXPANDER" or "BET":
+                    return EN_EQP_MODULE.Bet;
+                case "POWER_METER" or "POWERMETER" or "POWERMAX":
+                    return EN_EQP_MODULE.PowerMeter;
+                case "MELSEC" or "PLC":
+                    return EN_EQP_MODULE.Melsec;
+                case "PICO_MOTOR" or "PICOMOTOR" or "PICO":
+                    return EN_EQP_MODULE.PicoMotor;
+                default:
+                    throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown DEVICE: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static string InterfaceTypeText(EN_INTERFACE_TYPE type)
     {
-        return type switch
+        string EvaluateTypeSwitch3()
         {
-            EN_INTERFACE_TYPE.SocketClient => "SOCKET_C",
-            EN_INTERFACE_TYPE.SocketServer => "SOCKET_S",
-            EN_INTERFACE_TYPE.SocketClientUdp => "SOCKET_C_UDP",
-            EN_INTERFACE_TYPE.SocketServerUdp => "SOCKET_S_UDP",
-            EN_INTERFACE_TYPE.ModbusSerial => "MODBUS_SERIAL",
-            EN_INTERFACE_TYPE.ModbusTcp => "MODBUS_TCP",
-            EN_INTERFACE_TYPE.OpcUa => "OPCUA",
-            EN_INTERFACE_TYPE.Serial => "SERIAL",
-            EN_INTERFACE_TYPE.AcsNet => "ACS_NET",
-            EN_INTERFACE_TYPE.XpsNet => "XPS_NET",
-            EN_INTERFACE_TYPE.Automation1Net => "AUTOMATION1_NET",
-            EN_INTERFACE_TYPE.PicoMotor => "PICOMOTOR",
-            _ => type.ToString().ToUpperInvariant()
-        };
+            var switchValue = type;
+            switch (switchValue)
+            {
+                case EN_INTERFACE_TYPE.SocketClient:
+                    return "SOCKET_C";
+                case EN_INTERFACE_TYPE.SocketServer:
+                    return "SOCKET_S";
+                case EN_INTERFACE_TYPE.SocketClientUdp:
+                    return "SOCKET_C_UDP";
+                case EN_INTERFACE_TYPE.SocketServerUdp:
+                    return "SOCKET_S_UDP";
+                case EN_INTERFACE_TYPE.ModbusSerial:
+                    return "MODBUS_SERIAL";
+                case EN_INTERFACE_TYPE.ModbusTcp:
+                    return "MODBUS_TCP";
+                case EN_INTERFACE_TYPE.OpcUa:
+                    return "OPCUA";
+                case EN_INTERFACE_TYPE.Serial:
+                    return "SERIAL";
+                case EN_INTERFACE_TYPE.AcsNet:
+                    return "ACS_NET";
+                case EN_INTERFACE_TYPE.XpsNet:
+                    return "XPS_NET";
+                case EN_INTERFACE_TYPE.Automation1Net:
+                    return "AUTOMATION1_NET";
+                case EN_INTERFACE_TYPE.PicoMotor:
+                    return "PICOMOTOR";
+                default:
+                    return type.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateTypeSwitch3();
     }
 
     private static string DeviceText(EN_EQP_MODULE module)
     {
-        return module switch
+        string EvaluateModuleSwitch4()
         {
-            EN_EQP_MODULE.WonikCtrl => "WONIK_CONTROL",
-            EN_EQP_MODULE.Vision => "WONIK_VISION",
-            EN_EQP_MODULE.Automation1 => "AUTOMATION1",
-            EN_EQP_MODULE.Motion => "MOTION",
-            EN_EQP_MODULE.TalonLaser => "TALON",
-            EN_EQP_MODULE.Chiller => "CHILLER",
-            EN_EQP_MODULE.Attenuator => "CONEX_AGP",
-            EN_EQP_MODULE.Bet => "BEAM_EXPANDER",
-            EN_EQP_MODULE.PowerMeter => "POWER_METER",
-            EN_EQP_MODULE.PicoMotor => "PICO_MOTOR",
-            EN_EQP_MODULE.Melsec => "MELSEC",
-            _ => module.ToString().ToUpperInvariant()
-        };
+            var switchValue = module;
+            switch (switchValue)
+            {
+                case EN_EQP_MODULE.WonikCtrl:
+                    return "WONIK_CONTROL";
+                case EN_EQP_MODULE.Vision:
+                    return "WONIK_VISION";
+                case EN_EQP_MODULE.Automation1:
+                    return "AUTOMATION1";
+                case EN_EQP_MODULE.Motion:
+                    return "MOTION";
+                case EN_EQP_MODULE.TalonLaser:
+                    return "TALON";
+                case EN_EQP_MODULE.Chiller:
+                    return "CHILLER";
+                case EN_EQP_MODULE.Attenuator:
+                    return "CONEX_AGP";
+                case EN_EQP_MODULE.Bet:
+                    return "BEAM_EXPANDER";
+                case EN_EQP_MODULE.PowerMeter:
+                    return "POWER_METER";
+                case EN_EQP_MODULE.PicoMotor:
+                    return "PICO_MOTOR";
+                case EN_EQP_MODULE.Melsec:
+                    return "MELSEC";
+                default:
+                    return module.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateModuleSwitch4();
     }
 
     private static string InterfaceRowLabel(ST_SETTING_INTERFACE_ROW row)
@@ -758,12 +832,21 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static bool ReadBool(string value, string nickName, string fieldName)
     {
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch5()
         {
-            "1" or "TRUE" or "ON" or "YES" or "USE" or "SIMUL" or "SIMULATION" or "SIM" => true,
-            "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL" => false,
-            _ => throw new InvalidDataException($"JHMI_INTERFACE save blocked. {nickName}/{fieldName} must be 1/0 or ON/OFF.")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES" or "USE" or "SIMUL" or "SIMULATION" or "SIM":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL":
+                    return false;
+                default:
+                    throw new InvalidDataException($"JHMI_INTERFACE save blocked. {nickName}/{fieldName} must be 1/0 or ON/OFF.");
+            }
+        }
+
+        return EvaluateValueSwitch5();
     }
 
     private static int ReadInt(string value, string nickName, string fieldName)
@@ -827,23 +910,42 @@ public sealed class CMenuSetting : CBindingBase, IMenu
 
     private static EN_SETTING_TAB ToSection(string tab)
     {
-        return tab.Trim().ToUpperInvariant() switch
+        EN_SETTING_TAB EvaluateValueSwitch6()
         {
-            "INTERFACE" => EN_SETTING_TAB.Interface,
-            "IO" => EN_SETTING_TAB.Io,
-            "MOTOR" => EN_SETTING_TAB.Motor,
-            "ALARM" => EN_SETTING_TAB.Alarm,
-            _ => EN_SETTING_TAB.Option
-        };
+            var switchValue = tab.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "INTERFACE":
+                    return EN_SETTING_TAB.Interface;
+                case "IO":
+                    return EN_SETTING_TAB.Io;
+                case "MOTOR":
+                    return EN_SETTING_TAB.Motor;
+                case "ALARM":
+                    return EN_SETTING_TAB.Alarm;
+                default:
+                    return EN_SETTING_TAB.Option;
+            }
+        }
+
+        return EvaluateValueSwitch6();
     }
 
     private static string ToTabText(EN_SETTING_TAB section)
     {
-        return section switch
+        string EvaluateSectionSwitch7()
         {
-            EN_SETTING_TAB.Io => "IO",
-            _ => section.ToString().ToUpperInvariant()
-        };
+            var switchValue = section;
+            switch (switchValue)
+            {
+                case EN_SETTING_TAB.Io:
+                    return "IO";
+                default:
+                    return section.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateSectionSwitch7();
     }
 
     private static string GetDefaultGroup()
@@ -1022,12 +1124,21 @@ public sealed class ST_SYSTEM_PARAMETER_ROW : CBindingBase
     {
         get
         {
-            return ValueState switch
+            Brush EvaluateValueStateSwitch8()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = ValueState;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueStateSwitch8();
         }
     }
 
@@ -1066,11 +1177,19 @@ public sealed record ST_SETTING_HISTORY_ROW(
     {
         get
         {
-            return AfterState switch
+            Brush EvaluateAfterStateSwitch9()
             {
-                "Accent" => CStatusBrush.Simul,
-                _ => CStatusBrush.Wait
-            };
+                var switchValue = AfterState;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateAfterStateSwitch9();
         }
     }
 }
@@ -1084,13 +1203,23 @@ public sealed record ST_SETTING_SUMMARY_ROW(
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch10()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch10();
         }
     }
 }
@@ -1357,11 +1486,19 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
     {
         get
         {
-            return Simul.Trim().ToUpperInvariant() switch
+            bool EvaluateValueSwitch11()
             {
-                "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL" => false,
-                _ => true
-            };
+                var switchValue = Simul.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "0" or "FALSE" or "OFF" or "NO" or "ONLINE" or "LIVE" or "REAL":
+                        return false;
+                    default:
+                        return true;
+                }
+            }
+
+            return EvaluateValueSwitch11();
         }
     }
 
@@ -1385,11 +1522,19 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
     {
         get
         {
-            return Simul.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch12()
             {
-                "SIMULATION" or "SIMUL" or "SIM" or "1" => CStatusBrush.Simul,
-                _ => CStatusBrush.Online
-            };
+                var switchValue = Simul.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "SIMULATION" or "SIMUL" or "SIM" or "1":
+                        return CStatusBrush.Simul;
+                    default:
+                        return CStatusBrush.Online;
+                }
+            }
+
+            return EvaluateValueSwitch12();
         }
     }
 

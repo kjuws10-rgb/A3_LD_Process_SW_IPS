@@ -1612,12 +1612,21 @@ public sealed class CMenuManual : CBindingBase, IMenu
 
     private static string GetManualSettingNameFromParameter(object? parameter)
     {
-        var value = parameter switch
+        string EvaluateParameterSwitch1()
         {
-            ST_MANUAL_SETTING_FILE settingFile => settingFile.Name,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_MANUAL_SETTING_FILE settingFile:
+                    return settingFile.Name;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        var value = EvaluateParameterSwitch1();
 
         return NormalizeManualSettingNameInput(value);
     }
@@ -1769,17 +1778,29 @@ public sealed class CMenuManual : CBindingBase, IMenu
     private static string NormalizeShapeName(string shapeName)
     {
         var normalized = shapeName.Trim();
-
-        return normalized.ToUpperInvariant() switch
+        string EvaluateValueSwitch2()
         {
-            "DOT" => "Dot",
-            "CROSS" => "Cross",
-            "RECT" or "RECTANGLE" => "Rect",
-            "GRID" => "Grid",
-            "H-LINE" or "HLINE" or "H_LINE" => "H-Line",
-            "V-LINE" or "VLINE" or "V_LINE" => "V-Line",
-            _ => "Circle"
-        };
+            var switchValue = normalized.ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "DOT":
+                    return "Dot";
+                case "CROSS":
+                    return "Cross";
+                case "RECT" or "RECTANGLE":
+                    return "Rect";
+                case "GRID":
+                    return "Grid";
+                case "H-LINE" or "HLINE" or "H_LINE":
+                    return "H-Line";
+                case "V-LINE" or "VLINE" or "V_LINE":
+                    return "V-Line";
+                default:
+                    return "Circle";
+            }
+        }
+
+        return EvaluateValueSwitch2();
     }
 
     private static string FormatDouble(

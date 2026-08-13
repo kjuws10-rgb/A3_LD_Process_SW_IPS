@@ -799,11 +799,19 @@ public sealed class CMenuMain(
 
     public static string FormatScriptStatus(EN_SCRIPT_STATUS status)
     {
-        return status switch
+        string EvaluateStatusSwitch1()
         {
-            EN_SCRIPT_STATUS.NotCreated => "Not Created",
-            _ => status.ToString()
-        };
+            var switchValue = status;
+            switch (switchValue)
+            {
+                case EN_SCRIPT_STATUS.NotCreated:
+                    return "Not Created";
+                default:
+                    return status.ToString();
+            }
+        }
+
+        return EvaluateStatusSwitch1();
     }
 
     private static ST_DISPLAY_ITEM ToDisplayItem(ST_PROCESS_DISPLAY_ITEM item)
@@ -842,13 +850,21 @@ public sealed class CMenuMain(
     private static string NormalizeAutoStepKey(string value)
     {
         var normalized = value.Trim().ToUpperInvariant().Replace(" ", "_", StringComparison.Ordinal);
-
-        return normalized switch
+        string EvaluateNormalizedSwitch2()
         {
-            "POWERCHECK" => AutoStepPowerCheck,
-            "POWER_CHECK" => AutoStepPowerCheck,
-            _ => normalized
-        };
+            var switchValue = normalized;
+            switch (switchValue)
+            {
+                case "POWERCHECK":
+                    return AutoStepPowerCheck;
+                case "POWER_CHECK":
+                    return AutoStepPowerCheck;
+                default:
+                    return normalized;
+            }
+        }
+
+        return EvaluateNormalizedSwitch2();
     }
 
     private async Task<IReadOnlyDictionary<string, bool>> LoadAutoStepOptions(CancellationToken cancellationToken)
@@ -1551,25 +1567,44 @@ public sealed class CMenuMain(
         {
             return defaultValue;
         }
-
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch3()
         {
-            "1" or "Y" or "YES" or "TRUE" or "ON" or "USE" => true,
-            "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP" => false,
-            _ => defaultValue
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "Y" or "YES" or "TRUE" or "ON" or "USE":
+                    return true;
+                case "0" or "N" or "NO" or "FALSE" or "OFF" or "SKIP":
+                    return false;
+                default:
+                    return defaultValue;
+            }
+        }
+
+        return EvaluateValueSwitch3();
     }
 
     private static string FormatAutoStepOptionName(string settingKey)
     {
-        return settingKey.Trim().ToUpperInvariant() switch
+        string EvaluateValueSwitch4()
         {
-            SettingAutoPowerCheckUse => "POWER CHECK",
-            SettingAutoAlignUse => "ALIGN",
-            SettingAutoProcessUse => "PROCESS",
-            SettingAutoInspectionUse => "INSPECTION",
-            _ => settingKey
-        };
+            var switchValue = settingKey.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case SettingAutoPowerCheckUse:
+                    return "POWER CHECK";
+                case SettingAutoAlignUse:
+                    return "ALIGN";
+                case SettingAutoProcessUse:
+                    return "PROCESS";
+                case SettingAutoInspectionUse:
+                    return "INSPECTION";
+                default:
+                    return settingKey;
+            }
+        }
+
+        return EvaluateValueSwitch4();
     }
 
     private (
@@ -1705,14 +1740,25 @@ public sealed class CMenuMain(
 
     private static string ToInspectionStateText(EN_REVIEW_POINT_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch5()
         {
-            EN_REVIEW_POINT_STATE.Current => "Current",
-            EN_REVIEW_POINT_STATE.Ok => "OK",
-            EN_REVIEW_POINT_STATE.Ng => "NG",
-            EN_REVIEW_POINT_STATE.Skip => "Skip",
-            _ => "Ready"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Current:
+                    return "Current";
+                case EN_REVIEW_POINT_STATE.Ok:
+                    return "OK";
+                case EN_REVIEW_POINT_STATE.Ng:
+                    return "NG";
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return "Skip";
+                default:
+                    return "Ready";
+            }
+        }
+
+        return EvaluateStateSwitch5();
     }
 
     private static ST_INTERLOCK_ITEM ToInterlockItem(Drilling.Common.InterLock.ST_INTERLOCK_ITEM item)
@@ -1726,13 +1772,23 @@ public sealed class CMenuMain(
 
     private static string FormatInterLockState(Drilling.Common.InterLock.ST_INTERLOCK_ITEM item)
     {
-        return item.Level switch
+        string EvaluateLevelSwitch6()
         {
-            EN_INTERLOCK_LEVEL.Ok => item.State,
-            EN_INTERLOCK_LEVEL.Warn => "WARN",
-            EN_INTERLOCK_LEVEL.Error => "ERROR",
-            _ => item.State
-        };
+            var switchValue = item.Level;
+            switch (switchValue)
+            {
+                case EN_INTERLOCK_LEVEL.Ok:
+                    return item.State;
+                case EN_INTERLOCK_LEVEL.Warn:
+                    return "WARN";
+                case EN_INTERLOCK_LEVEL.Error:
+                    return "ERROR";
+                default:
+                    return item.State;
+            }
+        }
+
+        return EvaluateLevelSwitch6();
     }
 
     private static string FormatProcessResult(ST_STATION_PROCESS_STATUS snapshot)
@@ -2571,14 +2627,25 @@ public sealed record ST_SCRIPT_TASK_STATUS_ITEM(
 
     private static Brush TaskStateBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch7()
         {
-            "RUNNING" => CStatusBrush.Wait,
-            "OK" or "DONE" or "READY" => CStatusBrush.Online,
-            "IDLE" or "SIM" or "UNKNOWN" => CStatusBrush.Muted,
-            "STOP" or "STOPPED" or "ERROR" or "FAULT" or "OFFLINE" => CStatusBrush.Offline,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "RUNNING":
+                    return CStatusBrush.Wait;
+                case "OK" or "DONE" or "READY":
+                    return CStatusBrush.Online;
+                case "IDLE" or "SIM" or "UNKNOWN":
+                    return CStatusBrush.Muted;
+                case "STOP" or "STOPPED" or "ERROR" or "FAULT" or "OFFLINE":
+                    return CStatusBrush.Offline;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch7();
     }
 }
 
@@ -2804,14 +2871,25 @@ public sealed record ST_OPTIC_PARAMETER_ITEM(
 
     public static Brush OpticStateBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch8()
         {
-            "OK" or "ON" or "OPEN" or "RUN" or "READY" or "SAFE" or "CLOSE" or "DONE" => CStatusBrush.Online,
-            "MOVING" or "WARN" or "WAIT" or "STOP" => CStatusBrush.Wait,
-            "ALARM" or "ERROR" or "NG" or "OFFLINE" => CStatusBrush.Offline,
-            "N/C" => CStatusBrush.Muted,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "OK" or "ON" or "OPEN" or "RUN" or "READY" or "SAFE" or "CLOSE" or "DONE":
+                    return CStatusBrush.Online;
+                case "MOVING" or "WARN" or "WAIT" or "STOP":
+                    return CStatusBrush.Wait;
+                case "ALARM" or "ERROR" or "NG" or "OFFLINE":
+                    return CStatusBrush.Offline;
+                case "N/C":
+                    return CStatusBrush.Muted;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch8();
     }
 }
 
@@ -2871,12 +2949,22 @@ public sealed record ST_SCANNER_AXIS_STATUS_ITEM(
 
     private static Brush ScannerStateBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch9()
         {
-            "ABLE" or "HOME" or "OK" => CStatusBrush.Online,
-            "DISABLE" or "WAIT" => CStatusBrush.Wait,
-            "ERROR" or "OFFLINE" => CStatusBrush.Offline,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "ABLE" or "HOME" or "OK":
+                    return CStatusBrush.Online;
+                case "DISABLE" or "WAIT":
+                    return CStatusBrush.Wait;
+                case "ERROR" or "OFFLINE":
+                    return CStatusBrush.Offline;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch9();
     }
 }

@@ -312,12 +312,21 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     {
         get
         {
-            return SelectedTab switch
+            string EvaluateSelectedTabSwitch1()
             {
-                "ATTENUATOR" => "Attenuator Head",
-                "BET" => "BET Head",
-                _ => "Laser Head"
-            };
+                var switchValue = SelectedTab;
+                switch (switchValue)
+                {
+                    case "ATTENUATOR":
+                        return "Attenuator Head";
+                    case "BET":
+                        return "BET Head";
+                    default:
+                        return "Laser Head";
+                }
+            }
+
+            return EvaluateSelectedTabSwitch1();
         }
     }
 
@@ -1030,13 +1039,23 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private async Task SelectHeadDevice(object? parameter)
     {
-        var number = parameter switch
+        int EvaluateParameterSwitch2()
         {
-            ST_MONITOR_HEAD_SELECT_ROW row => row.Number,
-            int value => value,
-            string text when int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) => value,
-            _ => GetSelectedHeadNumber(SelectedTab)
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_MONITOR_HEAD_SELECT_ROW row:
+                    return row.Number;
+                case int value:
+                    return value;
+                case string text when int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value):
+                    return value;
+                default:
+                    return GetSelectedHeadNumber(SelectedTab);
+            }
+        }
+
+        var number = EvaluateParameterSwitch2();
 
         number = Math.Clamp(number, 0, LaserHeadCount - 1);
 
@@ -1060,12 +1079,21 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private async Task SelectCoordinateBasis(object? parameter)
     {
-        var basis = parameter switch
+        string EvaluateParameterSwitch3()
         {
-            ST_MONITOR_COORDINATE_BASIS_OPTION option => option.Key,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_MONITOR_COORDINATE_BASIS_OPTION option:
+                    return option.Key;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        var basis = EvaluateParameterSwitch3();
 
         var normalized = NormalizeCoordinateBasis(basis);
         if (string.IsNullOrWhiteSpace(normalized))
@@ -1080,12 +1108,21 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private async Task SelectCoordinateCell(object? parameter)
     {
-        var cellNo = parameter switch
+        int EvaluateParameterSwitch4()
         {
-            int value => value,
-            string text when int.TryParse(text.Replace("CELL", "", StringComparison.OrdinalIgnoreCase), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) => value,
-            _ => _coordinateSelectedCellNo
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case int value:
+                    return value;
+                case string text when int.TryParse(text.Replace("CELL", "", StringComparison.OrdinalIgnoreCase), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value):
+                    return value;
+                default:
+                    return _coordinateSelectedCellNo;
+            }
+        }
+
+        var cellNo = EvaluateParameterSwitch4();
 
         _coordinateSelectedCellNo = Math.Max(1, cellNo);
         _coordinateSelectedHoleKey = "";
@@ -1096,12 +1133,21 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private async Task SelectCoordinateHole(object? parameter)
     {
-        var holeKey = parameter switch
+        string EvaluateParameterSwitch5()
         {
-            ST_MONITOR_COORDINATE_HOLE_BUTTON row => row.HoleKey,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_MONITOR_COORDINATE_HOLE_BUTTON row:
+                    return row.HoleKey;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        var holeKey = EvaluateParameterSwitch5();
 
         if (string.IsNullOrWhiteSpace(holeKey))
         {
@@ -1248,18 +1294,31 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 true,
                 $"Motion {_selectedAxisId} status refreshed.");
         }
-
-        var command = key switch
+        (EN_MOTION_COMMAND Command, double Parameter, string Name) EvaluateKeySwitch6()
         {
-            "SERVOON" => (Command: EN_MOTION_COMMAND.ServoOn, Parameter: 0.0, Name: "SERVO ON"),
-            "SERVOOFF" => (Command: EN_MOTION_COMMAND.ServoOff, Parameter: 0.0, Name: "SERVO OFF"),
-            "HOME" => (Command: EN_MOTION_COMMAND.Home, Parameter: 0.0, Name: "HOME"),
-            "ABSMOVE" => (Command: EN_MOTION_COMMAND.MoveAbs, Parameter: ReadOperationField("Target Position", 0.0), Name: "ABS MOVE"),
-            "RELMOVE" => (Command: EN_MOTION_COMMAND.MoveRel, Parameter: ReadOperationField("Relative Distance", 0.0), Name: "REL MOVE"),
-            "STOP" => (Command: EN_MOTION_COMMAND.Stop, Parameter: 0.0, Name: "STOP"),
-            "RESETALARM" => (Command: EN_MOTION_COMMAND.ResetAlarm, Parameter: 0.0, Name: "RESET ALARM"),
-            _ => (Command: EN_MOTION_COMMAND.Refresh, Parameter: 0.0, Name: "")
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "SERVOON":
+                    return (Command: EN_MOTION_COMMAND.ServoOn, Parameter: 0.0, Name: "SERVO ON");
+                case "SERVOOFF":
+                    return (Command: EN_MOTION_COMMAND.ServoOff, Parameter: 0.0, Name: "SERVO OFF");
+                case "HOME":
+                    return (Command: EN_MOTION_COMMAND.Home, Parameter: 0.0, Name: "HOME");
+                case "ABSMOVE":
+                    return (Command: EN_MOTION_COMMAND.MoveAbs, Parameter: ReadOperationField("Target Position", 0.0), Name: "ABS MOVE");
+                case "RELMOVE":
+                    return (Command: EN_MOTION_COMMAND.MoveRel, Parameter: ReadOperationField("Relative Distance", 0.0), Name: "REL MOVE");
+                case "STOP":
+                    return (Command: EN_MOTION_COMMAND.Stop, Parameter: 0.0, Name: "STOP");
+                case "RESETALARM":
+                    return (Command: EN_MOTION_COMMAND.ResetAlarm, Parameter: 0.0, Name: "RESET ALARM");
+                default:
+                    return (Command: EN_MOTION_COMMAND.Refresh, Parameter: 0.0, Name: "");
+            }
+        }
+
+        var command = EvaluateKeySwitch6();
 
         if (string.IsNullOrWhiteSpace(command.Name))
         {
@@ -1306,22 +1365,39 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 true,
                 $"{SelectedLaserName} Talon laser refreshed. Power {status.OutputPower.ToString("F3", CultureInfo.InvariantCulture)} W.");
         }
-
-        var command = key switch
+        (EN_TALON_COMMAND Command, double Parameter, string Name) EvaluateKeySwitch7()
         {
-            "LASERON" => (Command: EN_TALON_COMMAND.SetLaserOnOff, Parameter: 1.0, Name: "LASER ON"),
-            "LASEROFF" => (Command: EN_TALON_COMMAND.SetLaserOnOff, Parameter: 0.0, Name: "LASER OFF"),
-            "GATEON" => (Command: EN_TALON_COMMAND.SetGateOpenClose, Parameter: 1.0, Name: "GATE ON"),
-            "GATEOFF" => (Command: EN_TALON_COMMAND.SetGateOpenClose, Parameter: 0.0, Name: "GATE OFF"),
-            "SHUTTEROPEN" => (Command: EN_TALON_COMMAND.SetShutterOpenClose, Parameter: 1.0, Name: "SHUTTER OPEN"),
-            "SHUTTERCLOSE" => (Command: EN_TALON_COMMAND.SetShutterOpenClose, Parameter: 0.0, Name: "SHUTTER CLOSE"),
-            "SETQSW" => (Command: EN_TALON_COMMAND.SetQsw, Parameter: ReadOperationField("QSW", 20000.0), Name: "SET QSW"),
-            "SETEPRF" => (Command: EN_TALON_COMMAND.SetEprf, Parameter: ReadOperationField("EPRF", 20000.0), Name: "SET EPRF"),
-            "SETSHG" => (Command: EN_TALON_COMMAND.SetShg, Parameter: ReadOperationField("SHG Count", 0.0), Name: "SET SHG"),
-            "SETQMODE" => (Command: EN_TALON_COMMAND.SetQMode, Parameter: ReadOperationField("Q Mode", 0.0), Name: "SET Q MODE"),
-            "SAVE" => (Command: EN_TALON_COMMAND.RequestSave, Parameter: 0.0, Name: "SAVE"),
-            _ => (Command: EN_TALON_COMMAND.RequestStatusString, Parameter: 0.0, Name: "")
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "LASERON":
+                    return (Command: EN_TALON_COMMAND.SetLaserOnOff, Parameter: 1.0, Name: "LASER ON");
+                case "LASEROFF":
+                    return (Command: EN_TALON_COMMAND.SetLaserOnOff, Parameter: 0.0, Name: "LASER OFF");
+                case "GATEON":
+                    return (Command: EN_TALON_COMMAND.SetGateOpenClose, Parameter: 1.0, Name: "GATE ON");
+                case "GATEOFF":
+                    return (Command: EN_TALON_COMMAND.SetGateOpenClose, Parameter: 0.0, Name: "GATE OFF");
+                case "SHUTTEROPEN":
+                    return (Command: EN_TALON_COMMAND.SetShutterOpenClose, Parameter: 1.0, Name: "SHUTTER OPEN");
+                case "SHUTTERCLOSE":
+                    return (Command: EN_TALON_COMMAND.SetShutterOpenClose, Parameter: 0.0, Name: "SHUTTER CLOSE");
+                case "SETQSW":
+                    return (Command: EN_TALON_COMMAND.SetQsw, Parameter: ReadOperationField("QSW", 20000.0), Name: "SET QSW");
+                case "SETEPRF":
+                    return (Command: EN_TALON_COMMAND.SetEprf, Parameter: ReadOperationField("EPRF", 20000.0), Name: "SET EPRF");
+                case "SETSHG":
+                    return (Command: EN_TALON_COMMAND.SetShg, Parameter: ReadOperationField("SHG Count", 0.0), Name: "SET SHG");
+                case "SETQMODE":
+                    return (Command: EN_TALON_COMMAND.SetQMode, Parameter: ReadOperationField("Q Mode", 0.0), Name: "SET Q MODE");
+                case "SAVE":
+                    return (Command: EN_TALON_COMMAND.RequestSave, Parameter: 0.0, Name: "SAVE");
+                default:
+                    return (Command: EN_TALON_COMMAND.RequestStatusString, Parameter: 0.0, Name: "");
+            }
+        }
+
+        var command = EvaluateKeySwitch7();
 
         if (string.IsNullOrWhiteSpace(command.Name))
         {
@@ -1353,16 +1429,27 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 true,
                 $"Chiller refreshed. Temp {status.LiquidTempC.ToString("F1", CultureInfo.InvariantCulture)} C.");
         }
-
-        var command = key switch
+        (EN_CHILLER_COMMAND Command, double Parameter, string Name) EvaluateKeySwitch8()
         {
-            "RUN" => (Command: EN_CHILLER_COMMAND.Run, Parameter: 0.0, Name: "RUN"),
-            "STOP" => (Command: EN_CHILLER_COMMAND.Stop, Parameter: 0.0, Name: "STOP"),
-            "PUMPONLY" => (Command: EN_CHILLER_COMMAND.PumpOnly, Parameter: 0.0, Name: "PUMP ONLY"),
-            "SETTEMP" => (Command: EN_CHILLER_COMMAND.SetTemperature, Parameter: ReadOperationField("Set Temperature", 22.0), Name: "SET TEMP"),
-            "RESETALARM" => (Command: EN_CHILLER_COMMAND.ResetAlarm, Parameter: 0.0, Name: "RESET ALARM"),
-            _ => (Command: EN_CHILLER_COMMAND.PollLiquidTemp, Parameter: 0.0, Name: "")
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "RUN":
+                    return (Command: EN_CHILLER_COMMAND.Run, Parameter: 0.0, Name: "RUN");
+                case "STOP":
+                    return (Command: EN_CHILLER_COMMAND.Stop, Parameter: 0.0, Name: "STOP");
+                case "PUMPONLY":
+                    return (Command: EN_CHILLER_COMMAND.PumpOnly, Parameter: 0.0, Name: "PUMP ONLY");
+                case "SETTEMP":
+                    return (Command: EN_CHILLER_COMMAND.SetTemperature, Parameter: ReadOperationField("Set Temperature", 22.0), Name: "SET TEMP");
+                case "RESETALARM":
+                    return (Command: EN_CHILLER_COMMAND.ResetAlarm, Parameter: 0.0, Name: "RESET ALARM");
+                default:
+                    return (Command: EN_CHILLER_COMMAND.PollLiquidTemp, Parameter: 0.0, Name: "");
+            }
+        }
+
+        var command = EvaluateKeySwitch8();
 
         if (string.IsNullOrWhiteSpace(command.Name))
         {
@@ -1394,16 +1481,27 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 true,
                 $"H{_selectedAttenuatorNumber + 1:00} CONEX_AGP refreshed. Position {status.CurrentPosition.ToString("F3", CultureInfo.InvariantCulture)} DEG.");
         }
-
-        var command = key switch
+        (EN_ATTENUATOR_COMMAND Command, double Parameter, string Name) EvaluateKeySwitch9()
         {
-            "MOVEABS" => (Command: EN_ATTENUATOR_COMMAND.MoveAbs, Parameter: ReadOperationField("Target Position", 55.0), Name: "MOVE ABS"),
-            "MOVEREL" => (Command: EN_ATTENUATOR_COMMAND.MoveRel, Parameter: ReadOperationField("Relative Move", 0.0), Name: "MOVE REL"),
-            "HOME" => (Command: EN_ATTENUATOR_COMMAND.Home, Parameter: 0.0, Name: "HOME"),
-            "STOP" => (Command: EN_ATTENUATOR_COMMAND.Stop, Parameter: 0.0, Name: "STOP"),
-            "RESETALARM" => (Command: EN_ATTENUATOR_COMMAND.ResetAlarm, Parameter: 0.0, Name: "RESET ALARM"),
-            _ => (Command: EN_ATTENUATOR_COMMAND.Refresh, Parameter: 0.0, Name: "")
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "MOVEABS":
+                    return (Command: EN_ATTENUATOR_COMMAND.MoveAbs, Parameter: ReadOperationField("Target Position", 55.0), Name: "MOVE ABS");
+                case "MOVEREL":
+                    return (Command: EN_ATTENUATOR_COMMAND.MoveRel, Parameter: ReadOperationField("Relative Move", 0.0), Name: "MOVE REL");
+                case "HOME":
+                    return (Command: EN_ATTENUATOR_COMMAND.Home, Parameter: 0.0, Name: "HOME");
+                case "STOP":
+                    return (Command: EN_ATTENUATOR_COMMAND.Stop, Parameter: 0.0, Name: "STOP");
+                case "RESETALARM":
+                    return (Command: EN_ATTENUATOR_COMMAND.ResetAlarm, Parameter: 0.0, Name: "RESET ALARM");
+                default:
+                    return (Command: EN_ATTENUATOR_COMMAND.Refresh, Parameter: 0.0, Name: "");
+            }
+        }
+
+        var command = EvaluateKeySwitch9();
 
         if (string.IsNullOrWhiteSpace(command.Name))
         {
@@ -1475,15 +1573,27 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
         var targetMag = ReadOperationField("Target MAG POS", 1020.0);
         var targetDiv = ReadOperationField("Target DIV POS", 1626.0);
-        var command = key switch
+        (EN_BET_COMMAND Command, double Parameter1, double Parameter2, string Name) EvaluateKeySwitch10()
         {
-            "SETMAG" or "MOVEMAG" => (Command: EN_BET_COMMAND.MoveMagnification, Parameter1: targetMag, Parameter2: 0.0, Name: "MOVE MAG"),
-            "SETDIV" or "MOVEDIV" => (Command: EN_BET_COMMAND.MoveDivergence, Parameter1: 0.0, Parameter2: targetDiv, Name: "MOVE DIV"),
-            "HOME" => (Command: EN_BET_COMMAND.InitMotor, Parameter1: 0.0, Parameter2: 0.0, Name: "HOME"),
-            "STOP" => (Command: EN_BET_COMMAND.Stop, Parameter1: 0.0, Parameter2: 0.0, Name: "STOP"),
-            "RESETALARM" => (Command: EN_BET_COMMAND.ResetAlarm, Parameter1: 0.0, Parameter2: 0.0, Name: "RESET ALARM"),
-            _ => (Command: EN_BET_COMMAND.Refresh, Parameter1: 0.0, Parameter2: 0.0, Name: "")
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "SETMAG" or "MOVEMAG":
+                    return (Command: EN_BET_COMMAND.MoveMagnification, Parameter1: targetMag, Parameter2: 0.0, Name: "MOVE MAG");
+                case "SETDIV" or "MOVEDIV":
+                    return (Command: EN_BET_COMMAND.MoveDivergence, Parameter1: 0.0, Parameter2: targetDiv, Name: "MOVE DIV");
+                case "HOME":
+                    return (Command: EN_BET_COMMAND.InitMotor, Parameter1: 0.0, Parameter2: 0.0, Name: "HOME");
+                case "STOP":
+                    return (Command: EN_BET_COMMAND.Stop, Parameter1: 0.0, Parameter2: 0.0, Name: "STOP");
+                case "RESETALARM":
+                    return (Command: EN_BET_COMMAND.ResetAlarm, Parameter1: 0.0, Parameter2: 0.0, Name: "RESET ALARM");
+                default:
+                    return (Command: EN_BET_COMMAND.Refresh, Parameter1: 0.0, Parameter2: 0.0, Name: "");
+            }
+        }
+
+        var command = EvaluateKeySwitch10();
 
         if (string.IsNullOrWhiteSpace(command.Name))
         {
@@ -1569,16 +1679,27 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 ? new ST_DEVICE_COMMAND_RESULT(true, "PowerMeter measure sequence stopped.")
                 : new ST_DEVICE_COMMAND_RESULT(false, $"PowerMeter stop failed. {stopResult.Message}");
         }
-
-        var command = key switch
+        (EN_POWER_METER_COMMAND Command, double Parameter, string Name) EvaluateKeySwitch11()
         {
-            "GETPOWER" or "READPOWER" => (Command: EN_POWER_METER_COMMAND.ReadPower, Parameter: 0.0, Name: "GET POWER"),
-            "GETSERIAL" => (Command: EN_POWER_METER_COMMAND.QuerySerialNumber, Parameter: 0.0, Name: "GET SERIAL"),
-            "GETWAVELENGTH" => (Command: EN_POWER_METER_COMMAND.QueryWaveLength, Parameter: 0.0, Name: "GET WAVELENGTH"),
-            "SETWAVELENGTH" or "SETWAVE" => (Command: EN_POWER_METER_COMMAND.SetWaveLength, Parameter: ReadPwmSetting("WAVELENGTH", 355.0), Name: "SET WAVELENGTH"),
-            "RESET" => (Command: EN_POWER_METER_COMMAND.Reset, Parameter: 0.0, Name: "RESET"),
-            _ => (Command: EN_POWER_METER_COMMAND.Refresh, Parameter: 0.0, Name: "")
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "GETPOWER" or "READPOWER":
+                    return (Command: EN_POWER_METER_COMMAND.ReadPower, Parameter: 0.0, Name: "GET POWER");
+                case "GETSERIAL":
+                    return (Command: EN_POWER_METER_COMMAND.QuerySerialNumber, Parameter: 0.0, Name: "GET SERIAL");
+                case "GETWAVELENGTH":
+                    return (Command: EN_POWER_METER_COMMAND.QueryWaveLength, Parameter: 0.0, Name: "GET WAVELENGTH");
+                case "SETWAVELENGTH" or "SETWAVE":
+                    return (Command: EN_POWER_METER_COMMAND.SetWaveLength, Parameter: ReadPwmSetting("WAVELENGTH", 355.0), Name: "SET WAVELENGTH");
+                case "RESET":
+                    return (Command: EN_POWER_METER_COMMAND.Reset, Parameter: 0.0, Name: "RESET");
+                default:
+                    return (Command: EN_POWER_METER_COMMAND.Refresh, Parameter: 0.0, Name: "");
+            }
+        }
+
+        var command = EvaluateKeySwitch11();
 
         if (string.IsNullOrWhiteSpace(command.Name))
         {
@@ -1653,23 +1774,39 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             _picoAllMoveTask = RunPicoMotorAllMove(selectedMotors, position, setCount);
             return new ST_DEVICE_COMMAND_RESULT(true, "PICO_MOTOR ALL_MOVE started.");
         }
-
-        var command = key switch
+        (EN_PICO_MOTOR_COMMAND, double) EvaluateKeySwitch12()
         {
-            "CONNECT" => (EN_PICO_MOTOR_COMMAND.Connect, 0.0),
-            "DISCONNECT" => (EN_PICO_MOTOR_COMMAND.Disconnect, 0.0),
-            "HOME" => (EN_PICO_MOTOR_COMMAND.Home, 0.0),
-            "STOPMOTION" => (EN_PICO_MOTOR_COMMAND.StopMotion, 0.0),
-            "STOP" or "ALLSTOP" => (EN_PICO_MOTOR_COMMAND.AllMotorStop, 0.0),
-            "REL" or "REL+" => label.Contains('+', StringComparison.Ordinal)
-                ? (EN_PICO_MOTOR_COMMAND.MoveRelativePositive, Math.Abs(ReadOperationField("Relative Move", 0.0)))
-                : (EN_PICO_MOTOR_COMMAND.MoveRelativeNegative, Math.Abs(ReadOperationField("Relative Move", 0.0))),
-            "ABSMOVE" => (EN_PICO_MOTOR_COMMAND.MoveAbsolute, ReadOperationField("Absolute Move", 0.0)),
-            "SETVEL" or "SETVELOCITY" or "PICOSETVEL" => (EN_PICO_MOTOR_COMMAND.SetVelocity, ReadOperationField("Set Velocity", 0.0)),
-            "SETACC" or "SETACCELERATION" or "PICOSETACC" => (EN_PICO_MOTOR_COMMAND.SetAcceleration, ReadOperationField("Set Acceleration", 0.0)),
-            "REFRESH" => (EN_PICO_MOTOR_COMMAND.Refresh, 0.0),
-            _ => ((EN_PICO_MOTOR_COMMAND)(-1), 0.0)
-        };
+            var switchValue = key;
+            switch (switchValue)
+            {
+                case "CONNECT":
+                    return (EN_PICO_MOTOR_COMMAND.Connect, 0.0);
+                case "DISCONNECT":
+                    return (EN_PICO_MOTOR_COMMAND.Disconnect, 0.0);
+                case "HOME":
+                    return (EN_PICO_MOTOR_COMMAND.Home, 0.0);
+                case "STOPMOTION":
+                    return (EN_PICO_MOTOR_COMMAND.StopMotion, 0.0);
+                case "STOP" or "ALLSTOP":
+                    return (EN_PICO_MOTOR_COMMAND.AllMotorStop, 0.0);
+                case "REL" or "REL+":
+                    return label.Contains('+', StringComparison.Ordinal)
+                        ? (EN_PICO_MOTOR_COMMAND.MoveRelativePositive, Math.Abs(ReadOperationField("Relative Move", 0.0)))
+                        : (EN_PICO_MOTOR_COMMAND.MoveRelativeNegative, Math.Abs(ReadOperationField("Relative Move", 0.0)));
+                case "ABSMOVE":
+                    return (EN_PICO_MOTOR_COMMAND.MoveAbsolute, ReadOperationField("Absolute Move", 0.0));
+                case "SETVEL" or "SETVELOCITY" or "PICOSETVEL":
+                    return (EN_PICO_MOTOR_COMMAND.SetVelocity, ReadOperationField("Set Velocity", 0.0));
+                case "SETACC" or "SETACCELERATION" or "PICOSETACC":
+                    return (EN_PICO_MOTOR_COMMAND.SetAcceleration, ReadOperationField("Set Acceleration", 0.0));
+                case "REFRESH":
+                    return (EN_PICO_MOTOR_COMMAND.Refresh, 0.0);
+                default:
+                    return ((EN_PICO_MOTOR_COMMAND)(-1), 0.0);
+            }
+        }
+
+        var command = EvaluateKeySwitch12();
 
         if ((int)command.Item1 < 0)
         {
@@ -2257,18 +2394,28 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         string basis,
         IReadOnlyDictionary<string, string> parameters)
     {
-        return NormalizeCoordinateBasis(basis) switch
+        IReadOnlyList<ST_REVIEW_GLASS_AXIS_INDICATOR> EvaluateValueSwitch13()
         {
-            "DESIGN" => [new ST_REVIEW_GLASS_AXIS_INDICATOR("X+", "Y+", true, true)],
-            "STAGE" => [new ST_REVIEW_GLASS_AXIS_INDICATOR("", "Y+", true, true)],
-            "SCANNER" =>
-            [
-                CreateScannerAxisIndicator(parameters, 1, "TOP_RIGHT", "H01/03/05/07"),
+            var switchValue = NormalizeCoordinateBasis(basis);
+            switch (switchValue)
+            {
+                case "DESIGN":
+                    return [new ST_REVIEW_GLASS_AXIS_INDICATOR("X+", "Y+", true, true)];
+                case "STAGE":
+                    return [new ST_REVIEW_GLASS_AXIS_INDICATOR("", "Y+", true, true)];
+                case "SCANNER":
+                    return [
+                        CreateScannerAxisIndicator(parameters, 1, "TOP_RIGHT", "H01/03/05/07"),
                 CreateScannerAxisIndicator(parameters, 2, "BOTTOM_LEFT", "H02/04/06/08")
-            ],
-            "REVIEW_CAMERA" => [new ST_REVIEW_GLASS_AXIS_INDICATOR("Cam X+", "", true, true)],
-            _ => []
-        };
+                    ];
+                case "REVIEW_CAMERA":
+                    return [new ST_REVIEW_GLASS_AXIS_INDICATOR("Cam X+", "", true, true)];
+                default:
+                    return [];
+            }
+        }
+
+        return EvaluateValueSwitch13();
     }
 
     private static ST_REVIEW_GLASS_AXIS_INDICATOR CreateScannerAxisIndicator(
@@ -2310,24 +2457,33 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return false;
         }
-
-        return NormalizeCoordinateBasis(_coordinateBasis) switch
+        bool EvaluateValueSwitch14()
         {
-            "STAGE" => key.Contains("STAGESTARTPOS", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("STAGESCANDIRECTION", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("HEADGAP", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("REVIEWTOHEAD", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("AKPOSITION", StringComparison.OrdinalIgnoreCase),
-            "SCANNER" => key.Contains("HEADGAP", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("REVIEWTOHEAD", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("AKPOSITION", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("SCANENCODER", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("STAGESCANDIRECTION", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("STAGEXTOGX", StringComparison.OrdinalIgnoreCase) ||
-                key.Contains("STAGEYTOGY", StringComparison.OrdinalIgnoreCase),
-            "REVIEW_CAMERA" => false,
-            _ => false
-        };
+            var switchValue = NormalizeCoordinateBasis(_coordinateBasis);
+            switch (switchValue)
+            {
+                case "STAGE":
+                    return key.Contains("STAGESTARTPOS", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("STAGESCANDIRECTION", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("HEADGAP", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("REVIEWTOHEAD", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("AKPOSITION", StringComparison.OrdinalIgnoreCase);
+                case "SCANNER":
+                    return key.Contains("HEADGAP", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("REVIEWTOHEAD", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("AKPOSITION", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("SCANENCODER", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("STAGESCANDIRECTION", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("STAGEXTOGX", StringComparison.OrdinalIgnoreCase) ||
+                        key.Contains("STAGEYTOGY", StringComparison.OrdinalIgnoreCase);
+                case "REVIEW_CAMERA":
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        return EvaluateValueSwitch14();
     }
 
     private bool IsCoordinateRecipeParameter(
@@ -2490,49 +2646,90 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private static string NormalizeCoordinateBasis(string basis)
     {
         var normalized = (basis ?? "").Trim().Replace("_", " ", StringComparison.OrdinalIgnoreCase).ToUpperInvariant();
-        return normalized switch
+        string EvaluateNormalizedSwitch15()
         {
-            "DESIGN" => "DESIGN",
-            "STAGE" => "STAGE",
-            "HEAD" or "SCANNER" => "SCANNER",
-            "CAMERA" or "VISION" or "REVIEW CAMERA" or "REVIEWCAMERA" => "REVIEW_CAMERA",
-            _ => ""
-        };
+            var switchValue = normalized;
+            switch (switchValue)
+            {
+                case "DESIGN":
+                    return "DESIGN";
+                case "STAGE":
+                    return "STAGE";
+                case "HEAD" or "SCANNER":
+                    return "SCANNER";
+                case "CAMERA" or "VISION" or "REVIEW CAMERA" or "REVIEWCAMERA":
+                    return "REVIEW_CAMERA";
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateNormalizedSwitch15();
     }
 
     private static string GetCoordinateBasisName(string basis)
     {
-        return NormalizeCoordinateBasis(basis) switch
+        string EvaluateValueSwitch16()
         {
-            "STAGE" => "Stage",
-            "SCANNER" => "Scanner",
-            "REVIEW_CAMERA" => "Review Camera",
-            _ => "Design"
-        };
+            var switchValue = NormalizeCoordinateBasis(basis);
+            switch (switchValue)
+            {
+                case "STAGE":
+                    return "Stage";
+                case "SCANNER":
+                    return "Scanner";
+                case "REVIEW_CAMERA":
+                    return "Review Camera";
+                default:
+                    return "Design";
+            }
+        }
+
+        return EvaluateValueSwitch16();
     }
 
     private static string GetCoordinateBasisDescription(string basis)
     {
-        return NormalizeCoordinateBasis(basis) switch
+        string EvaluateValueSwitch17()
         {
-            "STAGE" => "Stage coordinate used for process movement",
-            "SCANNER" => "Head local scanner coordinate: GX / GY",
-            "REVIEW_CAMERA" => "Review camera X and stage Y target coordinate",
-            _ => "Recipe design coordinate from Align Key / Glass"
-        };
+            var switchValue = NormalizeCoordinateBasis(basis);
+            switch (switchValue)
+            {
+                case "STAGE":
+                    return "Stage coordinate used for process movement";
+                case "SCANNER":
+                    return "Head local scanner coordinate: GX / GY";
+                case "REVIEW_CAMERA":
+                    return "Review camera X and stage Y target coordinate";
+                default:
+                    return "Recipe design coordinate from Align Key / Glass";
+            }
+        }
+
+        return EvaluateValueSwitch17();
     }
 
     private static (double X, double Y) GetCoordinateBasisPosition(
         string basis,
         ST_RECIPE_HOLE_POINT point)
     {
-        return NormalizeCoordinateBasis(basis) switch
+        (double X, double Y) EvaluateValueSwitch18()
         {
-            "STAGE" => (point.StageX, point.StageY),
-            "SCANNER" => GetViewerScannerPosition(point),
-            "REVIEW_CAMERA" => (point.DesignX, point.DesignY),
-            _ => GetOffsetAppliedDesignPosition(point)
-        };
+            var switchValue = NormalizeCoordinateBasis(basis);
+            switch (switchValue)
+            {
+                case "STAGE":
+                    return (point.StageX, point.StageY);
+                case "SCANNER":
+                    return GetViewerScannerPosition(point);
+                case "REVIEW_CAMERA":
+                    return (point.DesignX, point.DesignY);
+                default:
+                    return GetOffsetAppliedDesignPosition(point);
+            }
+        }
+
+        return EvaluateValueSwitch18();
     }
 
     private static (double Gx, double Gy) GetViewerScannerPosition(ST_RECIPE_HOLE_POINT point)
@@ -3209,15 +3406,25 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static string GetMonitorOperationLabel(object? parameter)
     {
-        return parameter switch
+        string EvaluateParameterSwitch19()
         {
-            ST_MONITOR_OPERATION_BUTTON button => string.IsNullOrWhiteSpace(button.CommandKey)
-                ? button.Label
-                : button.CommandKey,
-            ST_MONITOR_BET_TABLE_ROW row => row.MoveCommandLabel,
-            string text => text,
-            _ => ""
-        };
+            var switchValue = parameter;
+            switch (switchValue)
+            {
+                case ST_MONITOR_OPERATION_BUTTON button:
+                    return string.IsNullOrWhiteSpace(button.CommandKey)
+                        ? button.Label
+                        : button.CommandKey;
+                case ST_MONITOR_BET_TABLE_ROW row:
+                    return row.MoveCommandLabel;
+                case string text:
+                    return text;
+                default:
+                    return "";
+            }
+        }
+
+        return EvaluateParameterSwitch19();
     }
 
     private static string NormalizeMonitorOperation(string label)
@@ -3389,115 +3596,221 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     private static string NormalizeMonitorTab(string? tab)
     {
         var normalized = (tab ?? "IO").Trim().ToUpperInvariant();
-        return normalized switch
+        string EvaluateNormalizedSwitch20()
         {
-            "ATT" => "ATTENUATOR",
-            "POWER" or "POWERMETER" or "POWER_METER" => "POWER METER",
-            "PICO" or "PICOMOTOR" or "PICO_MOTOR" => "PICO MOTOR",
-            "COORDINATE" or "COORDINATE_VIEWER" => "COORDINATE VIEWER",
-            "IO" or "MOTOR" or "LASER" or "CHILLER" or "ATTENUATOR" or "BET" or "POWER METER" or "PICO MOTOR" or "PRODUCT" or "MELSEC" or "COORDINATE VIEWER" => normalized,
-            _ => "IO"
-        };
+            var switchValue = normalized;
+            switch (switchValue)
+            {
+                case "ATT":
+                    return "ATTENUATOR";
+                case "POWER" or "POWERMETER" or "POWER_METER":
+                    return "POWER METER";
+                case "PICO" or "PICOMOTOR" or "PICO_MOTOR":
+                    return "PICO MOTOR";
+                case "COORDINATE" or "COORDINATE_VIEWER":
+                    return "COORDINATE VIEWER";
+                case "IO" or "MOTOR" or "LASER" or "CHILLER" or "ATTENUATOR" or "BET" or "POWER METER" or "PICO MOTOR" or "PRODUCT" or "MELSEC" or "COORDINATE VIEWER":
+                    return normalized;
+                default:
+                    return "IO";
+            }
+        }
+
+        return EvaluateNormalizedSwitch20();
     }
 
     private static string GetSubtitle(string tab)
     {
-        return tab switch
+        string EvaluateTabSwitch21()
         {
-            "IO" => "Digital input/output monitor and direct ON/OFF operation",
-            "MOTOR" => "Axis position monitor and motor service operation",
-            "LASER" => "Talon laser status monitor and laser service operation",
-            "CHILLER" => "Chiller status monitor and service operation",
-            "ATTENUATOR" => "Conex AGP attenuator position monitor and service operation",
-            "BET" => "Beam expander magnification and divergence monitor",
-            "POWER METER" => "Power meter measurement monitor and Stage PC measurement-position command",
-            "PICO MOTOR" => "PicoMotor controller position and service operation",
-            "PRODUCT" => "Active product status, head result, and product history monitor",
-            "MELSEC" => "PLC MELSEC map monitor and direct read/write operation",
-            "COORDINATE VIEWER" => "Coordinate system viewer",
-            _ => "Auxiliary monitor status and service information"
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "IO":
+                    return "Digital input/output monitor and direct ON/OFF operation";
+                case "MOTOR":
+                    return "Axis position monitor and motor service operation";
+                case "LASER":
+                    return "Talon laser status monitor and laser service operation";
+                case "CHILLER":
+                    return "Chiller status monitor and service operation";
+                case "ATTENUATOR":
+                    return "Conex AGP attenuator position monitor and service operation";
+                case "BET":
+                    return "Beam expander magnification and divergence monitor";
+                case "POWER METER":
+                    return "Power meter measurement monitor and Stage PC measurement-position command";
+                case "PICO MOTOR":
+                    return "PicoMotor controller position and service operation";
+                case "PRODUCT":
+                    return "Active product status, head result, and product history monitor";
+                case "MELSEC":
+                    return "PLC MELSEC map monitor and direct read/write operation";
+                case "COORDINATE VIEWER":
+                    return "Coordinate system viewer";
+                default:
+                    return "Auxiliary monitor status and service information";
+            }
+        }
+
+        return EvaluateTabSwitch21();
     }
 
     private static string GetStatusPanelTitle(string tab)
     {
-        return tab switch
+        string EvaluateTabSwitch22()
         {
-            "LASER" => "Laser Status",
-            "CHILLER" => "Chiller Status",
-            "ATTENUATOR" => "Attenuator Status",
-            "BET" => "BET Status",
-            "POWER METER" => "PowerMeter Status",
-            "PICO MOTOR" => "PicoMotor Status",
-            "PRODUCT" => "Product Status",
-            "MELSEC" => "MELSEC Status",
-            _ => "Monitor Status"
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "LASER":
+                    return "Laser Status";
+                case "CHILLER":
+                    return "Chiller Status";
+                case "ATTENUATOR":
+                    return "Attenuator Status";
+                case "BET":
+                    return "BET Status";
+                case "POWER METER":
+                    return "PowerMeter Status";
+                case "PICO MOTOR":
+                    return "PicoMotor Status";
+                case "PRODUCT":
+                    return "Product Status";
+                case "MELSEC":
+                    return "MELSEC Status";
+                default:
+                    return "Monitor Status";
+            }
+        }
+
+        return EvaluateTabSwitch22();
     }
 
     private static string GetOperationPanelTitle(string tab)
     {
-        return tab switch
+        string EvaluateTabSwitch23()
         {
-            "MOTOR" => "Axis Operation",
-            "LASER" => "Laser Operation",
-            "CHILLER" => "Chiller Operation",
-            "ATTENUATOR" => "Attenuator Operation",
-            "BET" => "BET Operation",
-            "POWER METER" => "PowerMeter Operation",
-            "PICO MOTOR" => "PicoMotor Operation",
-            "MELSEC" => "MELSEC Read / Write",
-            _ => "Monitor Operation"
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return "Axis Operation";
+                case "LASER":
+                    return "Laser Operation";
+                case "CHILLER":
+                    return "Chiller Operation";
+                case "ATTENUATOR":
+                    return "Attenuator Operation";
+                case "BET":
+                    return "BET Operation";
+                case "POWER METER":
+                    return "PowerMeter Operation";
+                case "PICO MOTOR":
+                    return "PicoMotor Operation";
+                case "MELSEC":
+                    return "MELSEC Read / Write";
+                default:
+                    return "Monitor Operation";
+            }
+        }
+
+        return EvaluateTabSwitch23();
     }
 
     private static string GetParameterPanelTitle(string tab)
     {
-        return tab switch
+        string EvaluateTabSwitch24()
         {
-            "MOTOR" => "Motor Parameter",
-            "LASER" => "Laser Parameter",
-            "CHILLER" => "Chiller Parameter",
-            "ATTENUATOR" => "Attenuator Parameter",
-            "BET" => "BET Table",
-            "POWER METER" => "PowerMeter Parameter",
-            "PICO MOTOR" => "PicoMotor Position",
-            "PRODUCT" => "Head Result",
-            "MELSEC" => "MELSEC Map",
-            _ => "Monitor Parameter"
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return "Motor Parameter";
+                case "LASER":
+                    return "Laser Parameter";
+                case "CHILLER":
+                    return "Chiller Parameter";
+                case "ATTENUATOR":
+                    return "Attenuator Parameter";
+                case "BET":
+                    return "BET Table";
+                case "POWER METER":
+                    return "PowerMeter Parameter";
+                case "PICO MOTOR":
+                    return "PicoMotor Position";
+                case "PRODUCT":
+                    return "Head Result";
+                case "MELSEC":
+                    return "MELSEC Map";
+                default:
+                    return "Monitor Parameter";
+            }
+        }
+
+        return EvaluateTabSwitch24();
     }
 
     private static string GetTrendPanelTitle(string tab)
     {
-        return tab switch
+        string EvaluateTabSwitch25()
         {
-            "LASER" => "Laser Trend",
-            "CHILLER" => "Temperature / Flow Trend",
-            "ATTENUATOR" => "Current Position",
-            "BET" => "Beam Expander Position",
-            "POWER METER" => "Power Trend",
-            "PICO MOTOR" => "Motor Position",
-            "MELSEC" => "MELSEC Signal",
-            _ => "Signal Trend"
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "LASER":
+                    return "Laser Trend";
+                case "CHILLER":
+                    return "Temperature / Flow Trend";
+                case "ATTENUATOR":
+                    return "Current Position";
+                case "BET":
+                    return "Beam Expander Position";
+                case "POWER METER":
+                    return "Power Trend";
+                case "PICO MOTOR":
+                    return "Motor Position";
+                case "MELSEC":
+                    return "MELSEC Signal";
+                default:
+                    return "Signal Trend";
+            }
+        }
+
+        return EvaluateTabSwitch25();
     }
 
     private static string GetHistoryPanelTitle(string tab)
     {
-        return tab switch
+        string EvaluateTabSwitch26()
         {
-            "MOTOR" => "Motor Command History",
-            "LASER" => "Laser Command History",
-            "CHILLER" => "Chiller Command History",
-            "ATTENUATOR" => "Attenuator Command History",
-            "BET" => "BET Command History",
-            "POWER METER" => "PowerMeter Command History",
-            "PICO MOTOR" => "PicoMotor Command History",
-            "PRODUCT" => "Product History",
-            "MELSEC" => "MELSEC Command History",
-            _ => "Command History"
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return "Motor Command History";
+                case "LASER":
+                    return "Laser Command History";
+                case "CHILLER":
+                    return "Chiller Command History";
+                case "ATTENUATOR":
+                    return "Attenuator Command History";
+                case "BET":
+                    return "BET Command History";
+                case "POWER METER":
+                    return "PowerMeter Command History";
+                case "PICO MOTOR":
+                    return "PicoMotor Command History";
+                case "PRODUCT":
+                    return "Product History";
+                case "MELSEC":
+                    return "MELSEC Command History";
+                default:
+                    return "Command History";
+            }
+        }
+
+        return EvaluateTabSwitch26();
     }
 
     private static IReadOnlyList<ST_MONITOR_IO_ROW> CreateInputRows(ST_DEVICE_STATUS snapshot)
@@ -3564,12 +3877,14 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
             : module is null
             ? "-"
             : ToCommunicationText(GetModuleState(communication, module.Value));
-
-        return tab switch
+        IReadOnlyList<ST_MONITOR_STATUS_ROW> EvaluateTabSwitch27()
         {
-            "LASER" =>
-            [
-                new("Output Power", snapshot.Laser.OutputPower.ToString("F3"), snapshot.Laser.PowerOn ? "ON" : "SAFE", "W", "Measured output power"),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "LASER":
+                    return [
+                        new("Output Power", snapshot.Laser.OutputPower.ToString("F3"), snapshot.Laser.PowerOn ? "ON" : "SAFE", "W", "Measured output power"),
                 new("Set Power", "1.200", "-", "W", "Target output power"),
                 new("Frequency", "20.000", "-", "kHz", "Pulse frequency"),
                 new("Gate", snapshot.Laser.GateOn ? "OPEN" : "CLOSE", snapshot.Laser.GateOn ? "OPEN" : "CLOSE", "-", "Laser gate state"),
@@ -3577,18 +3892,18 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Laser Mode", snapshot.Laser.PowerOn ? "ON" : "SAFE", snapshot.Laser.PowerOn ? "ON" : "SAFE", "-", "Laser operating mode"),
                 new("Diode State", "OK", "OK", "-", "Diode status"),
                 new("Temperature", "24.6", "OK", "C", "Laser head temperature")
-            ],
-            "CHILLER" =>
-            [
-                new("Connection", communicationText, communicationText, "-", "Controller connection"),
+                    ];
+                case "CHILLER":
+                    return [
+                        new("Connection", communicationText, communicationText, "-", "Controller connection"),
                 new("Run State", snapshot.Chiller.RunState, snapshot.Chiller.Running ? "RUN" : snapshot.Chiller.RunState, "-", "Run mode"),
                 new("Cur Temp", snapshot.Chiller.Temperature.ToString("F1"), snapshot.Chiller.AlarmOn ? "ALARM" : "NORMAL", "C", "Current water temperature"),
                 new("Set Temp", snapshot.Chiller.SetTemperature.ToString("F1"), "SET", "C", "Target water temperature"),
                 new("Alarm Code", string.IsNullOrWhiteSpace(snapshot.Chiller.AlarmCode) ? "0" : snapshot.Chiller.AlarmCode, snapshot.Chiller.AlarmOn ? "ALARM" : "NORMAL", "-", "Active alarm code")
-            ],
-            "ATTENUATOR" =>
-            [
-                new("Connection", communicationText, communicationText, "-", "Controller connection state"),
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        new("Connection", communicationText, communicationText, "-", "Controller connection state"),
                 new("Controller", "CONEX_AGP", "OK", "-", "Attenuator controller"),
                 new("Current Position", snapshot.Attenuator.CurrentPosition.ToString("F3"), "OK", "DEG", "Current attenuator position"),
                 new("Target Position", snapshot.Attenuator.TargetPosition.ToString("F3"), "OK", "DEG", "Target attenuator position"),
@@ -3600,10 +3915,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Alarm Code", "0", "OK", "-", "Current alarm code"),
                 new("Last Command", snapshot.Attenuator.CommandState, "OK", "-", "Last command name"),
                 new("Communication State", communicationText, communicationText, "-", "Communication status")
-            ],
-            "BET" =>
-            [
-                new("Connection", communicationText, communicationText, "-", "Beam expander controller link"),
+                    ];
+                case "BET":
+                    return [
+                        new("Connection", communicationText, communicationText, "-", "Beam expander controller link"),
                 new("Controller", "BET_CTRL", "OK", "-", "Beam expander controller"),
                 new("MAG POS", snapshot.Bet.CurrentMagnification.ToString("F3"), "", "step", "Current MAG motor position"),
                 new("DIV POS", snapshot.Bet.CurrentDivergence.ToString("F3"), "", "step", "Current DIV motor position"),
@@ -3615,10 +3930,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Alarm Code", snapshot.Bet.AlarmOn ? "1" : "0", snapshot.Bet.AlarmOn ? "ALARM" : "OK", "-", "Current alarm code"),
                 new("Last Command", string.IsNullOrWhiteSpace(snapshot.Bet.LastCommand) ? "-" : snapshot.Bet.LastCommand, "", "-", "Last command name"),
                 new("Communication State", communicationText, communicationText, "-", "Communication status")
-            ],
-            "POWER METER" =>
-            [
-                new("Connection", communicationText, communicationText, "-", "Power meter controller connection"),
+                    ];
+                case "POWER METER":
+                    return [
+                        new("Connection", communicationText, communicationText, "-", "Power meter controller connection"),
                 new("Model", snapshot.PowerMeter.ModelName, string.IsNullOrWhiteSpace(snapshot.PowerMeter.ModelName) ? "WARN" : "OK", "-", "Power meter model"),
                 new("Serial No", snapshot.PowerMeter.SerialNumber, string.IsNullOrWhiteSpace(snapshot.PowerMeter.SerialNumber) || snapshot.PowerMeter.SerialNumber == "-" ? "WARN" : "OK", "-", "Power meter serial number"),
                 new("Current Power", snapshot.PowerMeter.MeasuredPower.ToString("F4", CultureInfo.InvariantCulture), "OK", snapshot.PowerMeter.Unit, "Latest measured power"),
@@ -3631,39 +3946,57 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Sample Count", snapshot.PowerMeter.SampleCount.ToString(CultureInfo.InvariantCulture), "OK", "ea", "Accumulated sample count"),
                 new("Measure State", snapshot.PowerMeter.IsMeasuring ? "RUN" : "IDLE", snapshot.PowerMeter.IsMeasuring ? "RUN" : "IDLE", "-", "Measurement state"),
                 new("Last Command", string.IsNullOrWhiteSpace(snapshot.PowerMeter.LastCommand) ? "-" : snapshot.PowerMeter.LastCommand, snapshot.PowerMeter.LastError == EN_POWER_METER_ERROR.Ok ? "OK" : "ERROR", "-", "Last command name")
-            ],
-            "MELSEC" =>
-            [
-                new("Connection", communicationText, communicationText, "-", "MELSEC PLC connection"),
+                    ];
+                case "MELSEC":
+                    return [
+                        new("Connection", communicationText, communicationText, "-", "MELSEC PLC connection"),
                 new("Device", "MELSEC_0", communicationText, "-", "Selected MELSEC device"),
                 new("Map Source", "JHMI_MELSEC_MAP.csv", "OK", "-", "MELSEC map file"),
                 new("Read", "ID based", "READY", "-", "Read by map ID"),
                 new("Write", "ACCESS W/RW", "READY", "-", "Write is enabled only for writable rows")
-            ],
-            _ =>
-            [
-                new("System Mode", "SIM", "SIM", "-", "Device-free monitor mode"),
+                    ];
+                default:
+                    return [
+                        new("System Mode", "SIM", "SIM", "-", "Device-free monitor mode"),
                 new("Update Rate", "500", "OK", "ms", "Monitor refresh interval"),
                 new("Data Source", "Simulation", "OK", "-", "Current data provider"),
                 new("Operator", "Engineer", "OK", "-", "Current user level")
-            ]
-        };
+                    ];
+            }
+        }
+
+        return EvaluateTabSwitch27();
     }
 
     private static EN_EQP_MODULE? GetMonitorModule(string tab)
     {
-        return tab switch
+        EN_EQP_MODULE? EvaluateTabSwitch28()
         {
-            "MOTOR" => EN_EQP_MODULE.Motion,
-            "LASER" => EN_EQP_MODULE.TalonLaser,
-            "CHILLER" => EN_EQP_MODULE.Chiller,
-            "ATTENUATOR" => EN_EQP_MODULE.Attenuator,
-            "BET" => EN_EQP_MODULE.Bet,
-            "POWER METER" => EN_EQP_MODULE.PowerMeter,
-            "PICO MOTOR" => EN_EQP_MODULE.PicoMotor,
-            "MELSEC" => EN_EQP_MODULE.Melsec,
-            _ => null
-        };
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return EN_EQP_MODULE.Motion;
+                case "LASER":
+                    return EN_EQP_MODULE.TalonLaser;
+                case "CHILLER":
+                    return EN_EQP_MODULE.Chiller;
+                case "ATTENUATOR":
+                    return EN_EQP_MODULE.Attenuator;
+                case "BET":
+                    return EN_EQP_MODULE.Bet;
+                case "POWER METER":
+                    return EN_EQP_MODULE.PowerMeter;
+                case "PICO MOTOR":
+                    return EN_EQP_MODULE.PicoMotor;
+                case "MELSEC":
+                    return EN_EQP_MODULE.Melsec;
+                default:
+                    return null;
+            }
+        }
+
+        return EvaluateTabSwitch28();
     }
 
     private static EN_COMM_STATE GetModuleState(
@@ -3676,23 +4009,35 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static string ToCommunicationText(EN_COMM_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch29()
         {
-            EN_COMM_STATE.Online => "ONLINE",
-            EN_COMM_STATE.Simulation => "SIMULATION",
-            _ => "OFFLINE"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_COMM_STATE.Online:
+                    return "ONLINE";
+                case EN_COMM_STATE.Simulation:
+                    return "SIMULATION";
+                default:
+                    return "OFFLINE";
+            }
+        }
+
+        return EvaluateStateSwitch29();
     }
 
     private static IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> CreateOperationButtons(
         string tab,
         ST_LASER_STATUS laserStatus)
     {
-        return tab switch
+        IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> EvaluateTabSwitch30()
         {
-            "MOTOR" =>
-            [
-                new("SERVO ON", "Servo", "Green"),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return [
+                        new("SERVO ON", "Servo", "Green"),
                 new("SERVO OFF", "Servo", "Dark"),
                 new("HOME", "Home", "Blue"),
                 new("ABS MOVE", "Abs", "Blue"),
@@ -3700,43 +4045,50 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("STOP", "Stop", "Red"),
                 new("RESET ALARM", "Alarm", "Dark"),
                 new("REFRESH", "Refresh", "Dark")
-            ],
-            "LASER" => CreateLaserOperationButtons(laserStatus),
-            "CHILLER" =>
-            [
-                new("RUN", "Run", "Green"),
+                    ];
+                case "LASER":
+                    return CreateLaserOperationButtons(laserStatus);
+                case "CHILLER":
+                    return [
+                        new("RUN", "Run", "Green"),
                 new("STOP", "Stop", "Red"),
                 new("PUMP ONLY", "Pump", "Blue")
-            ],
-            "ATTENUATOR" =>
-            [
-                new("MOVE ABS", "Move", "Blue"),
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        new("MOVE ABS", "Move", "Blue"),
                 new("MOVE REL", "Move", "Blue"),
                 new("HOME", "Home", "Blue"),
                 new("STOP", "Stop", "Red"),
                 new("RESET ALARM", "Alarm", "Dark")
-            ],
-            "BET" =>
-            [
-                new("HOME", "Home", "Blue"),
+                    ];
+                case "BET":
+                    return [
+                        new("HOME", "Home", "Blue"),
                 new("STOP", "Stop", "Red"),
                 new("RESET ALARM", "Alarm", "Dark")
-            ],
-            _ =>
-            [
-                new("REFRESH", "Refresh", "Blue"),
+                    ];
+                default:
+                    return [
+                        new("REFRESH", "Refresh", "Blue"),
                 new("RESET", "Reset", "Dark")
-            ]
-        };
+                    ];
+            }
+        }
+
+        return EvaluateTabSwitch30();
     }
 
     private static IReadOnlyList<ST_MONITOR_PARAMETER_ROW> CreateParameterRows(string tab)
     {
-        return tab switch
+        IReadOnlyList<ST_MONITOR_PARAMETER_ROW> EvaluateTabSwitch31()
         {
-            "MOTOR" =>
-            [
-                new("Home Speed", "100.000", "mm/sec", "Warn"),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return [
+                        new("Home Speed", "100.000", "mm/sec", "Warn"),
                 new("Move Speed", "300.000", "mm/sec", "Warn"),
                 new("Accel", "500.000", "mm/sec2", "Warn"),
                 new("Decel", "500.000", "mm/sec2", "Warn"),
@@ -3746,10 +4098,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Negative Limit", "-120.000", "mm"),
                 new("On Delay", "10", "ms"),
                 new("Off Delay", "10", "ms")
-            ],
-            "LASER" =>
-            [
-                new("Laser Power", "1.200", "W", "Warn"),
+                    ];
+                case "LASER":
+                    return [
+                        new("Laser Power", "1.200", "W", "Warn"),
                 new("Frequency", "20.000", "kHz", "Warn"),
                 new("Mark Speed", "900", "mm/s", "Warn"),
                 new("Jump Speed", "1500", "mm/s"),
@@ -3758,22 +4110,22 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Shot Count", "48000", "count"),
                 new("Time Mode", "10", "ms"),
                 new("Count Mode", "48000", "count")
-            ],
-            "CHILLER" =>
-            [
-                new("Set Temperature", "22.0", "C", "Warn")
-            ],
-            "ATTENUATOR" =>
-            [
-                new("Process Target Position", "55.000", "DEG", "Warn"),
+                    ];
+                case "CHILLER":
+                    return [
+                        new("Set Temperature", "22.0", "C", "Warn")
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        new("Process Target Position", "55.000", "DEG", "Warn"),
                 new("Position Tolerance", "0.100", "DEG", "Warn"),
                 new("Negative Limit", "-120.000", "DEG"),
                 new("Positive Limit", "360.000", "DEG"),
                 new("Move Timeout", "30.000", "sec", "Warn")
-            ],
-            "BET" =>
-            [
-                new("Default Magnification", "1.000", "x", "Warn"),
+                    ];
+                case "BET":
+                    return [
+                        new("Default Magnification", "1.000", "x", "Warn"),
                 new("Default Divergence", "1.000", "x", "Warn"),
                 new("Mag Move Speed", "0.250", "x/sec", "Warn"),
                 new("Div Move Speed", "0.250", "x/sec", "Warn"),
@@ -3784,10 +4136,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Move Timeout", "20.000", "sec", "Warn"),
                 new("On Delay", "20", "ms"),
                 new("Off Delay", "20", "ms")
-            ],
-            "POWER METER" =>
-            [
-                new("WaveLength", "355.0", "nm", "Warn"),
+                    ];
+                case "POWER METER":
+                    return [
+                        new("WaveLength", "355.0", "nm", "Warn"),
                 new("Power High Limit", "1.5000", "W", "Warn"),
                 new("Power Low Limit", "0.8000", "W", "Warn"),
                 new("Average Count", "10", "count", "Warn"),
@@ -3799,10 +4151,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Stage Z Target", "0.000", "mm"),
                 new("Read Command", "pw?", "-"),
                 new("Position Command", "pos", "-")
-            ],
-            "MELSEC" =>
-            [
-                new("Map File", "JHMI_MELSEC_MAP.csv", "-"),
+                    ];
+                case "MELSEC":
+                    return [
+                        new("Map File", "JHMI_MELSEC_MAP.csv", "-"),
                 new("Call Rule", "ID", "-", "Accent"),
                 new("Bit Write", "ON/OFF or 1/0", "-"),
                 new("Numeric Write", "Invariant Number", "-"),
@@ -3810,62 +4162,68 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Write Access", "W / RW", "-"),
                 new("Scale", "CSV SCALE", "-"),
                 new("Device No", "MELSEC instance number", "-")
-            ],
-            _ =>
-            [
-                new("Refresh Interval", "500", "ms", "Warn"),
+                    ];
+                default:
+                    return [
+                        new("Refresh Interval", "500", "ms", "Warn"),
                 new("Log Retention", "30", "day")
-            ]
-        };
+                    ];
+            }
+        }
+
+        return EvaluateTabSwitch31();
     }
 
     private IReadOnlyList<ST_MONITOR_PARAMETER_ROW> CreateOperationFields(
         string tab,
         ST_PICO_MOTOR_STATUS picoStatus)
     {
-        return tab switch
+        IReadOnlyList<ST_MONITOR_PARAMETER_ROW> EvaluateTabSwitch32()
         {
-            "MOTOR" =>
-            [
-                CreateOperationField(tab, "Target Position", "12.340", ""),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return [
+                        CreateOperationField(tab, "Target Position", "12.340", ""),
                 CreateOperationField(tab, "Relative Distance", "0.000", ""),
                 CreateOperationField(tab, "Speed", "300.000", ""),
                 CreateOperationField(tab, "Accel", "500.000", ""),
                 CreateOperationField(tab, "Decel", "500.000", "")
-            ],
-            "LASER" =>
-            [
-                CreateOperationField(tab, "QSW", "20000", "Hz"),
+                    ];
+                case "LASER":
+                    return [
+                        CreateOperationField(tab, "QSW", "20000", "Hz"),
                 CreateOperationField(tab, "EPRF", "20000", "Hz"),
                 CreateOperationField(tab, "SHG Count", "0", "count"),
                 CreateOperationField(tab, "Q Mode", "0", "-")
-            ],
-            "CHILLER" =>
-            [
-                CreateOperationField(tab, "Set Temperature", "22.0", "C")
-            ],
-            "ATTENUATOR" =>
-            [
-                CreateOperationField(tab, "Target Position", "55.000", "DEG"),
+                    ];
+                case "CHILLER":
+                    return [
+                        CreateOperationField(tab, "Set Temperature", "22.0", "C")
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        CreateOperationField(tab, "Target Position", "55.000", "DEG"),
                 CreateOperationField(tab, "Relative Move", "0.000", "DEG")
-            ],
-            "BET" =>
-            [
-                CreateOperationField(tab, "Target MAG POS", "1020.000", "step"),
+                    ];
+                case "BET":
+                    return [
+                        CreateOperationField(tab, "Target MAG POS", "1020.000", "step"),
                 CreateOperationField(tab, "Target DIV POS", "1626.000", "step")
-            ],
-            "POWER METER" =>
-            [
-                CreateOperationField(tab, "WaveLength", "355.0", "nm"),
+                    ];
+                case "POWER METER":
+                    return [
+                        CreateOperationField(tab, "WaveLength", "355.0", "nm"),
                 CreateOperationField(tab, "Stage X", "0.000", "mm"),
                 CreateOperationField(tab, "Stage Y", "0.000", "mm"),
                 CreateOperationField(tab, "Stage Z", "0.000", "mm"),
                 CreateOperationField(tab, "Measure Time", "1000", "ms"),
                 CreateOperationField(tab, "Sample Count", "10", "ea")
-            ],
-            "PICO MOTOR" =>
-            [
-                new("Current Velocity", picoStatus.CurrentVelocity.ToString("F2", CultureInfo.InvariantCulture), "mm/sec"),
+                    ];
+                case "PICO MOTOR":
+                    return [
+                        new("Current Velocity", picoStatus.CurrentVelocity.ToString("F2", CultureInfo.InvariantCulture), "mm/sec"),
                 CreateOperationField(tab, "Set Velocity", "0.00", "mm/sec"),
                 new("Current Acceleration", picoStatus.CurrentAcceleration.ToString("F2", CultureInfo.InvariantCulture), "msec"),
                 CreateOperationField(tab, "Set Acceleration", "0.00", "msec"),
@@ -3875,13 +4233,16 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("Cur Count", picoStatus.AllMoveCurrentCount.ToString(CultureInfo.InvariantCulture), "count"),
                 CreateOperationField(tab, "Set Count", "1", "count"),
                 CreateOperationField(tab, "Position", "0.000", "mm")
-            ],
-            _ =>
-            [
-                CreateOperationField(tab, "Refresh Interval", "500", "ms"),
+                    ];
+                default:
+                    return [
+                        CreateOperationField(tab, "Refresh Interval", "500", "ms"),
                 CreateOperationField(tab, "Timeout", "3000", "ms")
-            ]
-        };
+                    ];
+            }
+        }
+
+        return EvaluateTabSwitch32();
     }
 
     private static IReadOnlyList<ST_MONITOR_OPERATION_BUTTON> CreateLaserOperationButtons(ST_LASER_STATUS status)
@@ -3997,23 +4358,42 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private int GetSelectedHeadNumber(string tab)
     {
-        return NormalizeMonitorTab(tab) switch
+        int EvaluateValueSwitch33()
         {
-            "ATTENUATOR" => _selectedAttenuatorNumber,
-            "BET" => _selectedBetNumber,
-            _ => _selectedLaserNumber
-        };
+            var switchValue = NormalizeMonitorTab(tab);
+            switch (switchValue)
+            {
+                case "ATTENUATOR":
+                    return _selectedAttenuatorNumber;
+                case "BET":
+                    return _selectedBetNumber;
+                default:
+                    return _selectedLaserNumber;
+            }
+        }
+
+        return EvaluateValueSwitch33();
     }
 
     private ST_INTERFACE_DATA? GetSelectedHeadInterfaceData(string tab)
     {
-        return NormalizeMonitorTab(tab) switch
+        ST_INTERFACE_DATA? EvaluateValueSwitch34()
         {
-            "LASER" => _interfaceManager.GetInterfaceData(EN_EQP_MODULE.TalonLaser, _selectedLaserNumber),
-            "ATTENUATOR" => _interfaceManager.GetInterfaceData(EN_EQP_MODULE.Attenuator, _selectedAttenuatorNumber),
-            "BET" => _interfaceManager.GetInterfaceData(EN_EQP_MODULE.Bet, _selectedBetNumber),
-            _ => null
-        };
+            var switchValue = NormalizeMonitorTab(tab);
+            switch (switchValue)
+            {
+                case "LASER":
+                    return _interfaceManager.GetInterfaceData(EN_EQP_MODULE.TalonLaser, _selectedLaserNumber);
+                case "ATTENUATOR":
+                    return _interfaceManager.GetInterfaceData(EN_EQP_MODULE.Attenuator, _selectedAttenuatorNumber);
+                case "BET":
+                    return _interfaceManager.GetInterfaceData(EN_EQP_MODULE.Bet, _selectedBetNumber);
+                default:
+                    return null;
+            }
+        }
+
+        return EvaluateValueSwitch34();
     }
 
     private string? GetSelectedHeadConnectionText(string tab)
@@ -4037,23 +4417,42 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static EN_EQP_MODULE? GetHeadDeviceModule(string tab)
     {
-        return NormalizeMonitorTab(tab) switch
+        EN_EQP_MODULE? EvaluateValueSwitch35()
         {
-            "LASER" => EN_EQP_MODULE.TalonLaser,
-            "ATTENUATOR" => EN_EQP_MODULE.Attenuator,
-            "BET" => EN_EQP_MODULE.Bet,
-            _ => null
-        };
+            var switchValue = NormalizeMonitorTab(tab);
+            switch (switchValue)
+            {
+                case "LASER":
+                    return EN_EQP_MODULE.TalonLaser;
+                case "ATTENUATOR":
+                    return EN_EQP_MODULE.Attenuator;
+                case "BET":
+                    return EN_EQP_MODULE.Bet;
+                default:
+                    return null;
+            }
+        }
+
+        return EvaluateValueSwitch35();
     }
 
     private static string GetHeadDeviceNickPrefix(string tab)
     {
-        return NormalizeMonitorTab(tab) switch
+        string EvaluateValueSwitch36()
         {
-            "ATTENUATOR" => "ATT",
-            "BET" => "BET",
-            _ => "TALON"
-        };
+            var switchValue = NormalizeMonitorTab(tab);
+            switch (switchValue)
+            {
+                case "ATTENUATOR":
+                    return "ATT";
+                case "BET":
+                    return "BET";
+                default:
+                    return "TALON";
+            }
+        }
+
+        return EvaluateValueSwitch36();
     }
 
     private IReadOnlyList<ST_MONITOR_HEAD_SELECT_ROW> CreateHeadSelectRows(
@@ -4267,20 +4666,22 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return rows;
         }
-
-        return tab switch
+        IReadOnlyList<ST_MONITOR_COMMAND_HISTORY_ROW> EvaluateTabSwitch37()
         {
-            "MOTOR" =>
-            [
-                new("2026-05-15 10:24:12", "ENG1", "GX", "ABS MOVE", "12.340", "OK"),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "MOTOR":
+                    return [
+                        new("2026-05-15 10:24:12", "ENG1", "GX", "ABS MOVE", "12.340", "OK"),
                 new("2026-05-15 10:23:58", "ENG1", "GY", "HOME", "0.000", "OK"),
                 new("2026-05-15 10:23:43", "ENG1", "ATTENUATOR", "STOP", "-", "OK"),
                 new("2026-05-15 10:23:28", "ENG1", "SCANNER_01_GX", "ABS MOVE", "12.340", "OK"),
                 new("2026-05-15 10:23:15", "ENG1", "SCANNER_02_GY", "REL MOVE", "-2.000", "OK")
-            ],
-            "LASER" =>
-            [
-                new("10:24:12.345", "ENG1", "LASER OFF", "-", "-", "OK"),
+                    ];
+                case "LASER":
+                    return [
+                        new("10:24:12.345", "ENG1", "LASER OFF", "-", "-", "OK"),
                 new("10:23:58.112", "ENG1", "GATE OFF", "-", "-", "OK"),
                 new("10:23:35.876", "ENG1", "SET QSW", "20000 Hz", "-", "OK"),
                 new("10:23:18.552", "ENG1", "SHUTTER CLOSE", "-", "-", "OK"),
@@ -4288,10 +4689,10 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("10:22:32.009", "ENG1", "RESET ERROR", "0", "-", "OK"),
                 new("10:22:01.678", "ENG1", "SET Q MODE", "0", "-", "OK"),
                 new("10:21:44.210", "ENG1", "GATE ON", "-", "-", "OK")
-            ],
-            "CHILLER" =>
-            [
-                new("2026-05-15 10:24:12", "ENG1", "RUN", "-", "-", "OK"),
+                    ];
+                case "CHILLER":
+                    return [
+                        new("2026-05-15 10:24:12", "ENG1", "RUN", "-", "-", "OK"),
                 new("2026-05-15 10:22:45", "ENG1", "SET TEMP", "22.0 C", "-", "OK"),
                 new("2026-05-15 10:21:31", "ENG1", "RESET ALARM", "-", "-", "OK"),
                 new("2026-05-15 10:20:18", "ENG1", "PUMP ONLY", "-", "-", "OK"),
@@ -4299,51 +4700,54 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
                 new("2026-05-15 10:17:32", "ENG1", "REFRESH", "-", "-", "OK"),
                 new("2026-05-15 10:16:05", "ENG1", "SET TEMP", "21.5 C", "-", "OK"),
                 new("2026-05-15 10:14:41", "ENG1", "RUN", "-", "-", "OK")
-            ],
-            "ATTENUATOR" =>
-            [
-                new("10:24:12.345", "ENG1", "MOVE ABS", "55.000", "-", "OK"),
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        new("10:24:12.345", "ENG1", "MOVE ABS", "55.000", "-", "OK"),
                 new("10:23:45.112", "ENG1", "HOME", "-", "-", "OK"),
                 new("10:23:12.876", "ENG1", "STOP", "-", "-", "OK"),
                 new("10:22:58.552", "ENG1", "RESET ALARM", "-", "-", "OK"),
                 new("10:22:31.231", "ENG1", "REFRESH", "-", "-", "OK"),
                 new("10:22:10.009", "ENG1", "MOVE REL", "+10.000", "-", "OK"),
                 new("10:21:44.210", "ENG1", "MOVE ABS", "40.000", "-", "OK")
-            ],
-            "BET" =>
-            [
-                new("10:24:12.345", "ENG1", "BET_CTRL", "#1:1626! / #2:1020!", "OK", "OK"),
+                    ];
+                case "BET":
+                    return [
+                        new("10:24:12.345", "ENG1", "BET_CTRL", "#1:1626! / #2:1020!", "OK", "OK"),
                 new("10:23:45.112", "ENG1", "BET_CTRL", "#1:1118! / #2:2351!", "OK", "OK"),
                 new("10:23:12.876", "ENG1", "HOME", "-", "-", "OK"),
                 new("10:22:58.552", "ENG1", "RESET ALARM", "-", "-", "OK"),
                 new("10:22:31.231", "ENG1", "REFRESH", "-", "-", "OK"),
                 new("10:22:10.009", "ENG1", "BET_CTRL", "#7:$7:500", "M1:1626.000", "OK"),
                 new("10:21:44.210", "ENG1", "BET_CTRL", "#8:$8:500", "M2:1020.000", "OK")
-            ],
-            "POWER METER" =>
-            [
-                new("10:24:12.345", "ENG1", "READ POWER", "1.2040 W", "-", "OK"),
+                    ];
+                case "POWER METER":
+                    return [
+                        new("10:24:12.345", "ENG1", "READ POWER", "1.2040 W", "-", "OK"),
                 new("10:23:58.112", "ENG1", "SET WAVE", "355.0 nm", "-", "OK"),
                 new("10:23:35.876", "ENG1", "GET SERIAL", "PM-20260515-01", "-", "OK"),
                 new("10:23:18.552", "ENG1", "GET WAVELENGTH", "355.0 nm", "-", "OK"),
                 new("10:22:45.231", "ENG1", "STEP ADD", "PWM_HEAD05", "-", "OK"),
                 new("10:22:32.009", "ENG1", "START", "POWER_CHECK.PWM", "-", "OK"),
                 new("10:22:01.678", "ENG1", "STOP", "POWER_CHECK.PWM", "-", "OK")
-            ],
-            "MELSEC" =>
-            [
-                new("10:24:12.345", "ENG1", "MELSEC_0", "READ BIT", "PROCESS_ALIVE", "OK"),
+                    ];
+                case "MELSEC":
+                    return [
+                        new("10:24:12.345", "ENG1", "MELSEC_0", "READ BIT", "PROCESS_ALIVE", "OK"),
                 new("10:23:58.112", "ENG1", "MELSEC_0", "WRITE BIT", "REVIEW_START_REQ=ON", "OK"),
                 new("10:23:35.876", "ENG1", "MELSEC_0", "WRITE DOUBLE", "STAGE_Y_TARGET_POS=0.000", "OK"),
                 new("10:23:18.552", "ENG1", "MELSEC_0", "READ STRING", "GLASS_ID", "OK")
-            ],
-            _ =>
-            [
-                new("10:24:12.345", "ENG1", tab, "REFRESH", "-", "OK"),
+                    ];
+                default:
+                    return [
+                        new("10:24:12.345", "ENG1", tab, "REFRESH", "-", "OK"),
                 new("10:23:58.112", "ENG1", tab, "STATUS READ", "-", "OK"),
                 new("10:23:35.876", "ENG1", tab, "PARAMETER LOAD", "-", "OK")
-            ]
-        };
+                    ];
+            }
+        }
+
+        return EvaluateTabSwitch37();
     }
 
     private static bool IsCommandHistoryVisible(
@@ -4491,77 +4895,90 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static IReadOnlyList<ST_MONITOR_TREND_POINT> CreateTrendPoints(string tab)
     {
-        return tab switch
+        IReadOnlyList<ST_MONITOR_TREND_POINT> EvaluateTabSwitch38()
         {
-            "CHILLER" =>
-            [
-                new("09:54", 128, 132, 154),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "CHILLER":
+                    return [
+                        new("09:54", 128, 132, 154),
                 new("10:00", 126, 132, 154),
                 new("10:06", 127, 132, 154),
                 new("10:12", 125, 132, 154),
                 new("10:18", 126, 132, 154),
                 new("10:24", 126, 132, 154)
-            ],
-            "POWER METER" =>
-            [
-                new("09:54", 126, 130, 134),
+                    ];
+                case "POWER METER":
+                    return [
+                        new("09:54", 126, 130, 134),
                 new("10:00", 124, 129, 132),
                 new("10:06", 128, 131, 136),
                 new("10:12", 122, 128, 131),
                 new("10:18", 125, 130, 135),
                 new("10:24", 127, 132, 138)
-            ],
-            _ =>
-            [
-                new("09:54", 112, 134, 0),
+                    ];
+                default:
+                    return [
+                        new("09:54", 112, 134, 0),
                 new("10:00", 110, 132, 0),
                 new("10:06", 108, 134, 0),
                 new("10:12", 106, 132, 0),
                 new("10:18", 108, 133, 0),
                 new("10:24", 107, 132, 0)
-            ]
-        };
+                    ];
+            }
+        }
+
+        return EvaluateTabSwitch38();
     }
 
     private static IReadOnlyList<ST_MONITOR_SUMMARY_ITEM> CreateSummaryItems(string tab, ST_DEVICE_STATUS snapshot)
     {
-        return tab switch
+        IReadOnlyList<ST_MONITOR_SUMMARY_ITEM> EvaluateTabSwitch39()
         {
-            "LASER" =>
-            [
-                new("Output Power", snapshot.Laser.OutputPower.ToString("F3"), "W", "Accent"),
+            var switchValue = tab;
+            switch (switchValue)
+            {
+                case "LASER":
+                    return [
+                        new("Output Power", snapshot.Laser.OutputPower.ToString("F3"), "W", "Accent"),
                 new("Temperature", "24.6", "C", "Warn")
-            ],
-            "CHILLER" =>
-            [
-                new("Cur Temp", snapshot.Chiller.Temperature.ToString("F1"), "C", "Accent"),
+                    ];
+                case "CHILLER":
+                    return [
+                        new("Cur Temp", snapshot.Chiller.Temperature.ToString("F1"), "C", "Accent"),
                 new("Set Temp", snapshot.Chiller.SetTemperature.ToString("F1"), "C", "Warn"),
                 new("Run State", snapshot.Chiller.RunState, "", snapshot.Chiller.Running ? "Ok" : "Warn"),
                 new("Alarm", snapshot.Chiller.AlarmOn ? "OCCUR" : "CLEAR", "", snapshot.Chiller.AlarmOn ? "Warn" : "Ok")
-            ],
-            "ATTENUATOR" =>
-            [
-                new("Cur Pos", snapshot.Attenuator.CurrentPosition.ToString("F3"), "DEG", "Accent"),
+                    ];
+                case "ATTENUATOR":
+                    return [
+                        new("Cur Pos", snapshot.Attenuator.CurrentPosition.ToString("F3"), "DEG", "Accent"),
                 new("In Position", IsInPosition(snapshot.Attenuator.CurrentPosition, snapshot.Attenuator.TargetPosition) ? "YES" : "NO", "", IsInPosition(snapshot.Attenuator.CurrentPosition, snapshot.Attenuator.TargetPosition) ? "Ok" : "Warn"),
                 new("State", snapshot.Attenuator.CommandState, "", IsAttenuatorMoving(snapshot.Attenuator.CommandState) ? "Warn" : "Ok"),
                 new("Moving", IsAttenuatorMoving(snapshot.Attenuator.CommandState) ? "MOVING" : "IDLE", "", IsAttenuatorMoving(snapshot.Attenuator.CommandState) ? "Warn" : "Ok")
-            ],
-            "BET" =>
-            [
-                new("MAG Pos", snapshot.Bet.CurrentMagnification.ToString("F3"), "step", "Accent"),
+                    ];
+                case "BET":
+                    return [
+                        new("MAG Pos", snapshot.Bet.CurrentMagnification.ToString("F3"), "step", "Accent"),
                 new("DIV Pos", snapshot.Bet.CurrentDivergence.ToString("F3"), "step", "Accent"),
                 new("State", snapshot.Bet.IsMoving ? "MOVING" : "IDLE", "", snapshot.Bet.IsMoving ? "Warn" : "Ok"),
                 new("Alarm", snapshot.Bet.AlarmOn ? "OCCUR" : "CLEAR", "", snapshot.Bet.AlarmOn ? "Warn" : "Ok")
-            ],
-            "POWER METER" =>
-            [
-                new("Current Power", snapshot.PowerMeter.MeasuredPower.ToString("F4", CultureInfo.InvariantCulture), snapshot.PowerMeter.Unit, "Accent"),
+                    ];
+                case "POWER METER":
+                    return [
+                        new("Current Power", snapshot.PowerMeter.MeasuredPower.ToString("F4", CultureInfo.InvariantCulture), snapshot.PowerMeter.Unit, "Accent"),
                 new("Average", snapshot.PowerMeter.AveragePower.ToString("F4", CultureInfo.InvariantCulture), snapshot.PowerMeter.Unit, "Ok"),
                 new("Max", snapshot.PowerMeter.MaxPower.ToString("F4", CultureInfo.InvariantCulture), snapshot.PowerMeter.Unit, "Warn"),
                 new("Min", snapshot.PowerMeter.MinPower.ToString("F4", CultureInfo.InvariantCulture), snapshot.PowerMeter.Unit, "Accent")
-            ],
-            _ => []
-        };
+                    ];
+                default:
+                    return [];
+            }
+        }
+
+        return EvaluateTabSwitch39();
     }
 
     private static IReadOnlyList<ST_MONITOR_POSITION_ROW> CreatePositionRows(string tab, ST_DEVICE_STATUS snapshot)
@@ -4947,24 +5364,42 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return "Error";
         }
-
-        return state switch
+        string EvaluateStateSwitch40()
         {
-            EN_PRODUCT_STATE.Running => "Accent",
-            EN_PRODUCT_STATE.Completed => "Ok",
-            EN_PRODUCT_STATE.Error or EN_PRODUCT_STATE.Scrapped or EN_PRODUCT_STATE.Stopped => "Error",
-            _ => "Warn"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_PRODUCT_STATE.Running:
+                    return "Accent";
+                case EN_PRODUCT_STATE.Completed:
+                    return "Ok";
+                case EN_PRODUCT_STATE.Error or EN_PRODUCT_STATE.Scrapped or EN_PRODUCT_STATE.Stopped:
+                    return "Error";
+                default:
+                    return "Warn";
+            }
+        }
+
+        return EvaluateStateSwitch40();
     }
 
     private static string ProductResultTone(EN_PRODUCT_RESULT result)
     {
-        return result switch
+        string EvaluateResultSwitch41()
         {
-            EN_PRODUCT_RESULT.OK => "Ok",
-            EN_PRODUCT_RESULT.NG => "Error",
-            _ => "Warn"
-        };
+            var switchValue = result;
+            switch (switchValue)
+            {
+                case EN_PRODUCT_RESULT.OK:
+                    return "Ok";
+                case EN_PRODUCT_RESULT.NG:
+                    return "Error";
+                default:
+                    return "Warn";
+            }
+        }
+
+        return EvaluateResultSwitch41();
     }
 
     private static string FormatProductDateTime(DateTimeOffset? value)
@@ -4979,23 +5414,42 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
 
     private static bool ParseMelsecBit(string value)
     {
-        return value.Trim().ToUpperInvariant() switch
+        bool EvaluateValueSwitch42()
         {
-            "1" or "TRUE" or "ON" or "YES" => true,
-            "0" or "FALSE" or "OFF" or "NO" => false,
-            _ => throw new FormatException($"MELSEC BIT value must be ON/OFF or 1/0: {value}")
-        };
+            var switchValue = value.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "1" or "TRUE" or "ON" or "YES":
+                    return true;
+                case "0" or "FALSE" or "OFF" or "NO":
+                    return false;
+                default:
+                    throw new FormatException($"MELSEC BIT value must be ON/OFF or 1/0: {value}");
+            }
+        }
+
+        return EvaluateValueSwitch42();
     }
 
     private static string MelsecAccessText(EN_MELSEC_ACCESS access)
     {
-        return access switch
+        string EvaluateAccessSwitch43()
         {
-            EN_MELSEC_ACCESS.Read => "R",
-            EN_MELSEC_ACCESS.Write => "W",
-            EN_MELSEC_ACCESS.ReadWrite => "RW",
-            _ => access.ToString().ToUpperInvariant()
-        };
+            var switchValue = access;
+            switch (switchValue)
+            {
+                case EN_MELSEC_ACCESS.Read:
+                    return "R";
+                case EN_MELSEC_ACCESS.Write:
+                    return "W";
+                case EN_MELSEC_ACCESS.ReadWrite:
+                    return "RW";
+                default:
+                    return access.ToString().ToUpperInvariant();
+            }
+        }
+
+        return EvaluateAccessSwitch43();
     }
 
     private static string DefaultMelsecWriteValue(ST_MELSEC_MAP_DATA data)
@@ -5004,13 +5458,21 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return "";
         }
-
-        return data.DataType switch
+        string EvaluateDataTypeSwitch44()
         {
-            EN_MELSEC_DATA_TYPE.Bit => "ON",
-            EN_MELSEC_DATA_TYPE.String => "",
-            _ => "0"
-        };
+            var switchValue = data.DataType;
+            switch (switchValue)
+            {
+                case EN_MELSEC_DATA_TYPE.Bit:
+                    return "ON";
+                case EN_MELSEC_DATA_TYPE.String:
+                    return "";
+                default:
+                    return "0";
+            }
+        }
+
+        return EvaluateDataTypeSwitch44();
     }
 
     private string MelsecWriteValue(ST_MELSEC_MAP_DATA data)
@@ -5031,13 +5493,21 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
         {
             return "DISABLED";
         }
-
-        return data.Access switch
+        string EvaluateAccessSwitch45()
         {
-            EN_MELSEC_ACCESS.Read => "READ",
-            EN_MELSEC_ACCESS.Write => "WRITE",
-            _ => "READY"
-        };
+            var switchValue = data.Access;
+            switch (switchValue)
+            {
+                case EN_MELSEC_ACCESS.Read:
+                    return "READ";
+                case EN_MELSEC_ACCESS.Write:
+                    return "WRITE";
+                default:
+                    return "READY";
+            }
+        }
+
+        return EvaluateAccessSwitch45();
     }
 
     private static string FormatAxisPosition(string axisId, double value)
@@ -5175,14 +5645,25 @@ public sealed record ST_MONITOR_PRODUCT_ITEM(
     {
         get
         {
-            return Tone switch
+            Brush EvaluateToneSwitch46()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                "Error" => CStatusBrush.Offline,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = Tone;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    case "Error":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateToneSwitch46();
         }
     }
 }
@@ -5200,12 +5681,21 @@ public sealed record ST_MONITOR_PRODUCT_HEAD_ROW(
     {
         get
         {
-            return Result.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch47()
             {
-                "OK" => CStatusBrush.Online,
-                "NG" => CStatusBrush.Offline,
-                _ => CStatusBrush.Wait
-            };
+                var switchValue = Result.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "OK":
+                        return CStatusBrush.Online;
+                    case "NG":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateValueSwitch47();
         }
     }
 
@@ -5213,13 +5703,23 @@ public sealed record ST_MONITOR_PRODUCT_HEAD_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch48()
             {
-                "COMPLETED" or "READY" => CStatusBrush.Online,
-                "RUNNING" => CStatusBrush.Simul,
-                "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.Wait
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "COMPLETED" or "READY":
+                        return CStatusBrush.Online;
+                    case "RUNNING":
+                        return CStatusBrush.Simul;
+                    case "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateValueSwitch48();
         }
     }
 }
@@ -5237,12 +5737,21 @@ public sealed record ST_MONITOR_PRODUCT_HISTORY_ROW(
     {
         get
         {
-            return Result.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch49()
             {
-                "OK" => CStatusBrush.Online,
-                "NG" => CStatusBrush.Offline,
-                _ => CStatusBrush.Wait
-            };
+                var switchValue = Result.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "OK":
+                        return CStatusBrush.Online;
+                    case "NG":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateValueSwitch49();
         }
     }
 }
@@ -5334,12 +5843,21 @@ public sealed class ST_MONITOR_MELSEC_ROW
     {
         get
         {
-            return DataType switch
+            EN_RECIPE_DATA_TYPE EvaluateDataTypeSwitch50()
             {
-                "WORD" or "DWORD" => EN_RECIPE_DATA_TYPE.Int,
-                "DOUBLE" or "FLOAT" => EN_RECIPE_DATA_TYPE.Double,
-                _ => EN_RECIPE_DATA_TYPE.String
-            };
+                var switchValue = DataType;
+                switch (switchValue)
+                {
+                    case "WORD" or "DWORD":
+                        return EN_RECIPE_DATA_TYPE.Int;
+                    case "DOUBLE" or "FLOAT":
+                        return EN_RECIPE_DATA_TYPE.Double;
+                    default:
+                        return EN_RECIPE_DATA_TYPE.String;
+                }
+            }
+
+            return EvaluateDataTypeSwitch50();
         }
     }
 
@@ -5367,13 +5885,23 @@ public sealed class ST_MONITOR_MELSEC_ROW
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch51()
             {
-                "READY" or "READ" => CStatusBrush.Online,
-                "WRITE" => CStatusBrush.Wait,
-                "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.Muted
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "READY" or "READ":
+                        return CStatusBrush.Online;
+                    case "WRITE":
+                        return CStatusBrush.Wait;
+                    case "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.Muted;
+                }
+            }
+
+            return EvaluateValueSwitch51();
         }
     }
 
@@ -5418,13 +5946,23 @@ public sealed record ST_MONITOR_IO_ROW(
 
     private static Brush MonitorStatusBrush(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch52()
         {
-            "ON" or "ONLINE" or "OK" or "READY" or "RUN" or "NORMAL" or "SAFE" or "YES" or "DONE" or "IDLE" => CStatusBrush.Online,
-            "OFF" or "CLOSE" or "ERROR" or "ALARM" => CStatusBrush.Offline,
-            "WARN" or "WARNING" or "SET" or "WAIT" => CStatusBrush.Wait,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "ON" or "ONLINE" or "OK" or "READY" or "RUN" or "NORMAL" or "SAFE" or "YES" or "DONE" or "IDLE":
+                    return CStatusBrush.Online;
+                case "OFF" or "CLOSE" or "ERROR" or "ALARM":
+                    return CStatusBrush.Offline;
+                case "WARN" or "WARNING" or "SET" or "WAIT":
+                    return CStatusBrush.Wait;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateValueSwitch52();
     }
 }
 
@@ -5446,12 +5984,21 @@ public sealed record ST_MONITOR_AXIS_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch53()
             {
-                "READY" or "OK" => CStatusBrush.Online,
-                "ALARM" or "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.Wait
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "READY" or "OK":
+                        return CStatusBrush.Online;
+                    case "ALARM" or "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateValueSwitch53();
         }
     }
 
@@ -5483,13 +6030,23 @@ public sealed record ST_MONITOR_STATUS_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch54()
             {
-                "ON" or "ONLINE" or "OK" or "READY" or "RUN" or "NORMAL" or "SAFE" or "YES" or "DONE" or "IDLE" => CStatusBrush.Online,
-                "OFF" or "CLOSE" or "ERROR" or "ALARM" => CStatusBrush.Offline,
-                "WARN" or "WARNING" or "SET" or "WAIT" or "SIMULATION" or "SIM" => CStatusBrush.Wait,
-                _ => CStatusBrush.Muted
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "ON" or "ONLINE" or "OK" or "READY" or "RUN" or "NORMAL" or "SAFE" or "YES" or "DONE" or "IDLE":
+                        return CStatusBrush.Online;
+                    case "OFF" or "CLOSE" or "ERROR" or "ALARM":
+                        return CStatusBrush.Offline;
+                    case "WARN" or "WARNING" or "SET" or "WAIT" or "SIMULATION" or "SIM":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.Muted;
+                }
+            }
+
+            return EvaluateValueSwitch54();
         }
     }
 
@@ -5497,11 +6054,19 @@ public sealed record ST_MONITOR_STATUS_ROW(
     {
         get
         {
-            return Value.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch55()
             {
-                "22.4" or "55.000" or "1.200" or "20.000" or "900" or "50.000" or "30.000" => CStatusBrush.Wait,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = Value.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "22.4" or "55.000" or "1.200" or "20.000" or "900" or "50.000" or "30.000":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueSwitch55();
         }
     }
 }
@@ -5516,13 +6081,23 @@ public sealed record ST_MONITOR_OPERATION_BUTTON(
     {
         get
         {
-            return Tone switch
+            Brush EvaluateToneSwitch56()
             {
-                "Green" => CStatusBrush.CommandGreen,
-                "Red" => CStatusBrush.CommandRed,
-                "Blue" => CStatusBrush.CommandBlue,
-                _ => CStatusBrush.CommandDark
-            };
+                var switchValue = Tone;
+                switch (switchValue)
+                {
+                    case "Green":
+                        return CStatusBrush.CommandGreen;
+                    case "Red":
+                        return CStatusBrush.CommandRed;
+                    case "Blue":
+                        return CStatusBrush.CommandBlue;
+                    default:
+                        return CStatusBrush.CommandDark;
+                }
+            }
+
+            return EvaluateToneSwitch56();
         }
     }
 
@@ -5530,13 +6105,23 @@ public sealed record ST_MONITOR_OPERATION_BUTTON(
     {
         get
         {
-            return Tone switch
+            Brush EvaluateToneSwitch57()
             {
-                "Green" => CStatusBrush.CommandGreenBorder,
-                "Red" => CStatusBrush.CommandRedBorder,
-                "Blue" => CStatusBrush.CommandBlueBorder,
-                _ => CStatusBrush.CommandDarkBorder
-            };
+                var switchValue = Tone;
+                switch (switchValue)
+                {
+                    case "Green":
+                        return CStatusBrush.CommandGreenBorder;
+                    case "Red":
+                        return CStatusBrush.CommandRedBorder;
+                    case "Blue":
+                        return CStatusBrush.CommandBlueBorder;
+                    default:
+                        return CStatusBrush.CommandDarkBorder;
+                }
+            }
+
+            return EvaluateToneSwitch57();
         }
     }
 
@@ -5561,12 +6146,21 @@ public sealed record ST_MONITOR_HEAD_SELECT_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch58()
             {
-                "ONLINE" => CStatusBrush.Online,
-                "SIMULATION" or "SIMUL" or "SIM" => CStatusBrush.Wait,
-                _ => CStatusBrush.Offline
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "ONLINE":
+                        return CStatusBrush.Online;
+                    case "SIMULATION" or "SIMUL" or "SIM":
+                        return CStatusBrush.Wait;
+                    default:
+                        return CStatusBrush.Offline;
+                }
+            }
+
+            return EvaluateValueSwitch58();
         }
     }
 
@@ -5623,12 +6217,21 @@ public sealed record ST_MONITOR_LASER_CONTROL_ROW(
     {
         get
         {
-            return Tone switch
+            Brush EvaluateToneSwitch59()
             {
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = Tone;
+                switch (switchValue)
+                {
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateToneSwitch59();
         }
     }
 
@@ -5636,13 +6239,23 @@ public sealed record ST_MONITOR_LASER_CONTROL_ROW(
     {
         get
         {
-            return Tone switch
+            Brush EvaluateToneSwitch60()
             {
-                "Green" => CStatusBrush.CommandGreen,
-                "Red" => CStatusBrush.CommandRed,
-                "Blue" or "Warn" => CStatusBrush.CommandBlue,
-                _ => CStatusBrush.CommandDark
-            };
+                var switchValue = Tone;
+                switch (switchValue)
+                {
+                    case "Green":
+                        return CStatusBrush.CommandGreen;
+                    case "Red":
+                        return CStatusBrush.CommandRed;
+                    case "Blue" or "Warn":
+                        return CStatusBrush.CommandBlue;
+                    default:
+                        return CStatusBrush.CommandDark;
+                }
+            }
+
+            return EvaluateToneSwitch60();
         }
     }
 
@@ -5650,13 +6263,23 @@ public sealed record ST_MONITOR_LASER_CONTROL_ROW(
     {
         get
         {
-            return Tone switch
+            Brush EvaluateToneSwitch61()
             {
-                "Green" => CStatusBrush.CommandGreenBorder,
-                "Red" => CStatusBrush.CommandRedBorder,
-                "Blue" or "Warn" => CStatusBrush.CommandBlueBorder,
-                _ => CStatusBrush.CommandDarkBorder
-            };
+                var switchValue = Tone;
+                switch (switchValue)
+                {
+                    case "Green":
+                        return CStatusBrush.CommandGreenBorder;
+                    case "Red":
+                        return CStatusBrush.CommandRedBorder;
+                    case "Blue" or "Warn":
+                        return CStatusBrush.CommandBlueBorder;
+                    default:
+                        return CStatusBrush.CommandDarkBorder;
+                }
+            }
+
+            return EvaluateToneSwitch61();
         }
     }
 
@@ -5695,13 +6318,23 @@ public sealed class ST_MONITOR_PARAMETER_ROW
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch62()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch62();
         }
     }
 }
@@ -5718,13 +6351,23 @@ public sealed record ST_MONITOR_COMMAND_HISTORY_ROW(
     {
         get
         {
-            return Result.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch63()
             {
-                "OK" => CStatusBrush.Online,
-                "WARN" => CStatusBrush.Wait,
-                "NG" or "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = Result.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "OK":
+                        return CStatusBrush.Online;
+                    case "WARN":
+                        return CStatusBrush.Wait;
+                    case "NG" or "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueSwitch63();
         }
     }
 }
@@ -5821,13 +6464,23 @@ public sealed class ST_MONITOR_BET_TABLE_ROW : INotifyPropertyChanged
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch64()
             {
-                "ACTIVE" or "SELECTED" or "OK" => CStatusBrush.Online,
-                "WARN" => CStatusBrush.Wait,
-                "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "ACTIVE" or "SELECTED" or "OK":
+                        return CStatusBrush.Online;
+                    case "WARN":
+                        return CStatusBrush.Wait;
+                    case "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueSwitch64();
         }
     }
 
@@ -5868,13 +6521,23 @@ public sealed record ST_PWM_PROCESS_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch65()
             {
-                "LOADED" or "READY" => CStatusBrush.Online,
-                "WAIT" => CStatusBrush.Wait,
-                "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "LOADED" or "READY":
+                        return CStatusBrush.Online;
+                    case "WAIT":
+                        return CStatusBrush.Wait;
+                    case "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateValueSwitch65();
         }
     }
 
@@ -5929,14 +6592,25 @@ public sealed record ST_PWM_STEP_ROW(
     {
         get
         {
-            return State.Trim().ToUpperInvariant() switch
+            Brush EvaluateValueSwitch66()
             {
-                "READY" or "OK" => CStatusBrush.Online,
-                "RUN" or "RUNNING" => CStatusBrush.Simul,
-                "SKIP" => CStatusBrush.Muted,
-                "ERROR" => CStatusBrush.Offline,
-                _ => CStatusBrush.Wait
-            };
+                var switchValue = State.Trim().ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "READY" or "OK":
+                        return CStatusBrush.Online;
+                    case "RUN" or "RUNNING":
+                        return CStatusBrush.Simul;
+                    case "SKIP":
+                        return CStatusBrush.Muted;
+                    case "ERROR":
+                        return CStatusBrush.Offline;
+                    default:
+                        return CStatusBrush.Wait;
+                }
+            }
+
+            return EvaluateValueSwitch66();
         }
     }
 
@@ -5985,12 +6659,21 @@ public sealed class ST_PWM_SETTING_ROW(
     {
         get
         {
-            return Parameter.ToUpperInvariant() switch
+            IReadOnlyList<string> EvaluateValueSwitch67()
             {
-                "POWER OUT" => ["ON", "OFF"],
-                "POWER UNIT" => ["W", "mW"],
-                _ => []
-            };
+                var switchValue = Parameter.ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "POWER OUT":
+                        return ["ON", "OFF"];
+                    case "POWER UNIT":
+                        return ["W", "mW"];
+                    default:
+                        return [];
+                }
+            }
+
+            return EvaluateValueSwitch67();
         }
     }
 
@@ -6006,12 +6689,21 @@ public sealed class ST_PWM_SETTING_ROW(
     {
         get
         {
-            return Parameter.ToUpperInvariant() switch
+            EN_RECIPE_DATA_TYPE EvaluateValueSwitch68()
             {
-                "OPTION NAME" => EN_RECIPE_DATA_TYPE.String,
-                "MEASURE CYCLE" or "MEASURE TIME" or "MEASURE INTERVAL" or "START DELAY" or "COOLING TIME" => EN_RECIPE_DATA_TYPE.Int,
-                _ => EN_RECIPE_DATA_TYPE.Double
-            };
+                var switchValue = Parameter.ToUpperInvariant();
+                switch (switchValue)
+                {
+                    case "OPTION NAME":
+                        return EN_RECIPE_DATA_TYPE.String;
+                    case "MEASURE CYCLE" or "MEASURE TIME" or "MEASURE INTERVAL" or "START DELAY" or "COOLING TIME":
+                        return EN_RECIPE_DATA_TYPE.Int;
+                    default:
+                        return EN_RECIPE_DATA_TYPE.Double;
+                }
+            }
+
+            return EvaluateValueSwitch68();
         }
     }
 
@@ -6063,13 +6755,23 @@ public sealed record ST_MONITOR_SUMMARY_ITEM(
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch69()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch69();
         }
     }
 }
@@ -6084,13 +6786,23 @@ public sealed record ST_MONITOR_POSITION_ROW(
     {
         get
         {
-            return State switch
+            Brush EvaluateStateSwitch70()
             {
-                "Accent" => CStatusBrush.Simul,
-                "Warn" => CStatusBrush.Wait,
-                "Ok" => CStatusBrush.Online,
-                _ => CStatusBrush.PrimaryText
-            };
+                var switchValue = State;
+                switch (switchValue)
+                {
+                    case "Accent":
+                        return CStatusBrush.Simul;
+                    case "Warn":
+                        return CStatusBrush.Wait;
+                    case "Ok":
+                        return CStatusBrush.Online;
+                    default:
+                        return CStatusBrush.PrimaryText;
+                }
+            }
+
+            return EvaluateStateSwitch70();
         }
     }
 }

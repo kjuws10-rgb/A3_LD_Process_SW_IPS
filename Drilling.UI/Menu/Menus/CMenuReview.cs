@@ -304,16 +304,29 @@ public sealed class CMenuReview : IMenu
     {
         get
         {
-            return _selectedRuleType switch
+            string Evaluate_selectedRuleTypeSwitch1()
             {
-                EN_REVIEW_RULE_TYPE.AllPoint => "Select every Hole in every Cell.",
-                EN_REVIEW_RULE_TYPE.Edge => "Select the outer row and column Holes of each Cell.",
-                EN_REVIEW_RULE_TYPE.Center => "Select all inner Holes except the outer Edge row and column of each Cell.",
-                EN_REVIEW_RULE_TYPE.HeadPoint => $"Select Holes assigned to H{_sampleRuleHeadNo:00}.",
-                EN_REVIEW_RULE_TYPE.CellPoint => $"Select every Hole in Cell{_sampleRuleCellNo}.",
-                EN_REVIEW_RULE_TYPE.ZeroLine => "Select reference line Holes.",
-                _ => "Select or clear individual Holes in a Cell."
-            };
+                var switchValue = _selectedRuleType;
+                switch (switchValue)
+                {
+                    case EN_REVIEW_RULE_TYPE.AllPoint:
+                        return "Select every Hole in every Cell.";
+                    case EN_REVIEW_RULE_TYPE.Edge:
+                        return "Select the outer row and column Holes of each Cell.";
+                    case EN_REVIEW_RULE_TYPE.Center:
+                        return "Select all inner Holes except the outer Edge row and column of each Cell.";
+                    case EN_REVIEW_RULE_TYPE.HeadPoint:
+                        return $"Select Holes assigned to H{_sampleRuleHeadNo:00}.";
+                    case EN_REVIEW_RULE_TYPE.CellPoint:
+                        return $"Select every Hole in Cell{_sampleRuleCellNo}.";
+                    case EN_REVIEW_RULE_TYPE.ZeroLine:
+                        return "Select reference line Holes.";
+                    default:
+                        return "Select or clear individual Holes in a Cell.";
+                }
+            }
+
+            return Evaluate_selectedRuleTypeSwitch1();
         }
     }
 
@@ -705,18 +718,36 @@ public sealed class CMenuReview : IMenu
         }
 
         _selectedMode = mode;
-        _selectedRuleType = mode.Trim().ToUpperInvariant() switch
+        EN_REVIEW_RULE_TYPE EvaluateValueSwitch2()
         {
-            "ALL HOLE" => EN_REVIEW_RULE_TYPE.AllPoint,
-            "ZERO DEFENSE" => EN_REVIEW_RULE_TYPE.ZeroLine,
-            _ => EN_REVIEW_RULE_TYPE.SamplePoint
-        };
-        _selectionRuleText = _selectedRuleType switch
+            var switchValue = mode.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "ALL HOLE":
+                    return EN_REVIEW_RULE_TYPE.AllPoint;
+                case "ZERO DEFENSE":
+                    return EN_REVIEW_RULE_TYPE.ZeroLine;
+                default:
+                    return EN_REVIEW_RULE_TYPE.SamplePoint;
+            }
+        }
+
+        _selectedRuleType = EvaluateValueSwitch2();
+        string Evaluate_selectedRuleTypeSwitch3()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "All Hole",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "0-Line",
-            _ => _selectionRuleText is "All Hole" or "0-Line" ? "Manual Sample" : _selectionRuleText
-        };
+            var switchValue = _selectedRuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "All Hole";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "0-Line";
+                default:
+                    return _selectionRuleText is "All Hole" or "0-Line" ? "Manual Sample" : _selectionRuleText;
+            }
+        }
+
+        _selectionRuleText = Evaluate_selectedRuleTypeSwitch3();
         _isRunCellDetailVisible = false;
         _selectedRunHoleKey = "";
         _statusReporter($"Review mode selected: {_selectedMode}");
@@ -1357,28 +1388,49 @@ public sealed class CMenuReview : IMenu
         _selectedSampleHoleKeys.Clear();
 
         var allPlan = _lastAllPlan;
-        var selectedKeys = rule.RuleType switch
+        IEnumerable<string> EvaluateRuleTypeSwitch4()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint when allPlan is not null => allPlan.Points.Select(point => point.HoleKey),
-            EN_REVIEW_RULE_TYPE.Edge when allPlan is not null => SelectEdgeKeys(allPlan),
-            EN_REVIEW_RULE_TYPE.Center when allPlan is not null => SelectCenterKeys(allPlan),
-            EN_REVIEW_RULE_TYPE.HeadPoint when allPlan is not null => allPlan.Points.Where(point => point.HeadNo == _sampleRuleHeadNo).Select(point => point.HoleKey),
-            EN_REVIEW_RULE_TYPE.CellPoint when allPlan is not null => allPlan.Points.Where(point => point.CellNo == _sampleRuleCellNo).Select(point => point.HoleKey),
-            EN_REVIEW_RULE_TYPE.ZeroLine when allPlan is not null => SelectZeroLineKeys(allPlan, rule.ZeroPointCount),
-            _ => rule.HoleKeys
-        };
+            var switchValue = rule.RuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint when allPlan is not null:
+                    return allPlan.Points.Select(point => point.HoleKey);
+                case EN_REVIEW_RULE_TYPE.Edge when allPlan is not null:
+                    return SelectEdgeKeys(allPlan);
+                case EN_REVIEW_RULE_TYPE.Center when allPlan is not null:
+                    return SelectCenterKeys(allPlan);
+                case EN_REVIEW_RULE_TYPE.HeadPoint when allPlan is not null:
+                    return allPlan.Points.Where(point => point.HeadNo == _sampleRuleHeadNo).Select(point => point.HoleKey);
+                case EN_REVIEW_RULE_TYPE.CellPoint when allPlan is not null:
+                    return allPlan.Points.Where(point => point.CellNo == _sampleRuleCellNo).Select(point => point.HoleKey);
+                case EN_REVIEW_RULE_TYPE.ZeroLine when allPlan is not null:
+                    return SelectZeroLineKeys(allPlan, rule.ZeroPointCount);
+                default:
+                    return rule.HoleKeys;
+            }
+        }
+
+        var selectedKeys = EvaluateRuleTypeSwitch4();
 
         foreach (var holeKey in selectedKeys.Select(CReviewManager.NormalizeHoleKey).Where(key => !string.IsNullOrWhiteSpace(key)))
         {
             _selectedSampleHoleKeys.Add(holeKey);
         }
-
-        _selectedMode = rule.RuleType switch
+        string EvaluateRuleTypeSwitch5()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "ALL HOLE",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "ZERO DEFENSE",
-            _ => "SAMPLE HOLE"
-        };
+            var switchValue = rule.RuleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "ALL HOLE";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "ZERO DEFENSE";
+                default:
+                    return "SAMPLE HOLE";
+            }
+        }
+
+        _selectedMode = EvaluateRuleTypeSwitch5();
         _selectionRuleText = string.IsNullOrWhiteSpace(rule.RuleName)
             ? ToRuleText(rule.RuleType)
             : rule.RuleName;
@@ -1750,14 +1802,23 @@ public sealed class CMenuReview : IMenu
 
     private static string ToRunHoleDetail(ST_REVIEW_PLAN_POINT point)
     {
-        return point.State switch
+        string EvaluateStateSwitch6()
         {
-            EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng =>
-                $"X {FormatSigned(point.ErrorX)} / Y {FormatSigned(point.ErrorY)}",
-            EN_REVIEW_POINT_STATE.Current => "CURRENT",
-            EN_REVIEW_POINT_STATE.Skip => "SKIP",
-            _ => "READY"
-        };
+            var switchValue = point.State;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Ok or EN_REVIEW_POINT_STATE.Ng:
+                    return $"X {FormatSigned(point.ErrorX)} / Y {FormatSigned(point.ErrorY)}";
+                case EN_REVIEW_POINT_STATE.Current:
+                    return "CURRENT";
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return "SKIP";
+                default:
+                    return "READY";
+            }
+        }
+
+        return EvaluateStateSwitch6();
     }
 
     private static int CalculateHoleMapColumnCount(
@@ -1969,16 +2030,29 @@ public sealed class CMenuReview : IMenu
 
     private static string ToRuleText(EN_REVIEW_RULE_TYPE ruleType)
     {
-        return ruleType switch
+        string EvaluateRuleTypeSwitch7()
         {
-            EN_REVIEW_RULE_TYPE.AllPoint => "All Hole",
-            EN_REVIEW_RULE_TYPE.Edge => "Edge",
-            EN_REVIEW_RULE_TYPE.Center => "Center",
-            EN_REVIEW_RULE_TYPE.HeadPoint => "Head Hole",
-            EN_REVIEW_RULE_TYPE.CellPoint => "Cell Hole",
-            EN_REVIEW_RULE_TYPE.ZeroLine => "0-Line",
-            _ => "Sample Hole"
-        };
+            var switchValue = ruleType;
+            switch (switchValue)
+            {
+                case EN_REVIEW_RULE_TYPE.AllPoint:
+                    return "All Hole";
+                case EN_REVIEW_RULE_TYPE.Edge:
+                    return "Edge";
+                case EN_REVIEW_RULE_TYPE.Center:
+                    return "Center";
+                case EN_REVIEW_RULE_TYPE.HeadPoint:
+                    return "Head Hole";
+                case EN_REVIEW_RULE_TYPE.CellPoint:
+                    return "Cell Hole";
+                case EN_REVIEW_RULE_TYPE.ZeroLine:
+                    return "0-Line";
+                default:
+                    return "Sample Hole";
+            }
+        }
+
+        return EvaluateRuleTypeSwitch7();
     }
 
     private static string? ShowReviewRuleNameDialog(
@@ -2039,14 +2113,25 @@ public sealed class CMenuReview : IMenu
 
     private static string ToStateText(EN_REVIEW_POINT_STATE state)
     {
-        return state switch
+        string EvaluateStateSwitch8()
         {
-            EN_REVIEW_POINT_STATE.Current => "Current",
-            EN_REVIEW_POINT_STATE.Ok => "OK",
-            EN_REVIEW_POINT_STATE.Ng => "NG",
-            EN_REVIEW_POINT_STATE.Skip => "Skip",
-            _ => "Ready"
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Current:
+                    return "Current";
+                case EN_REVIEW_POINT_STATE.Ok:
+                    return "OK";
+                case EN_REVIEW_POINT_STATE.Ng:
+                    return "NG";
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return "Skip";
+                default:
+                    return "Ready";
+            }
+        }
+
+        return EvaluateStateSwitch8();
     }
 
     private static string ToMatrixHoleName(ST_REVIEW_PLAN_POINT point)
@@ -2158,28 +2243,52 @@ internal static class CReviewStatusBrush
 
     public static Brush ForState(string state)
     {
-        return state.Trim().ToUpperInvariant() switch
+        Brush EvaluateValueSwitch9()
         {
-            "READY" => Ready,
-            "CURRENT" => Current,
-            "OK" => Ok,
-            "NG" => Ng,
-            "SKIP" => CStatusBrush.Muted,
-            _ => CStatusBrush.ForDisplayState(state)
-        };
+            var switchValue = state.Trim().ToUpperInvariant();
+            switch (switchValue)
+            {
+                case "READY":
+                    return Ready;
+                case "CURRENT":
+                    return Current;
+                case "OK":
+                    return Ok;
+                case "NG":
+                    return Ng;
+                case "SKIP":
+                    return CStatusBrush.Muted;
+                default:
+                    return CStatusBrush.ForDisplayState(state);
+            }
+        }
+
+        return EvaluateValueSwitch9();
     }
 
     public static Brush ForState(EN_REVIEW_POINT_STATE state)
     {
-        return state switch
+        Brush EvaluateStateSwitch10()
         {
-            EN_REVIEW_POINT_STATE.Ready => Ready,
-            EN_REVIEW_POINT_STATE.Current => Current,
-            EN_REVIEW_POINT_STATE.Ok => Ok,
-            EN_REVIEW_POINT_STATE.Ng => Ng,
-            EN_REVIEW_POINT_STATE.Skip => CStatusBrush.Muted,
-            _ => CStatusBrush.Muted
-        };
+            var switchValue = state;
+            switch (switchValue)
+            {
+                case EN_REVIEW_POINT_STATE.Ready:
+                    return Ready;
+                case EN_REVIEW_POINT_STATE.Current:
+                    return Current;
+                case EN_REVIEW_POINT_STATE.Ok:
+                    return Ok;
+                case EN_REVIEW_POINT_STATE.Ng:
+                    return Ng;
+                case EN_REVIEW_POINT_STATE.Skip:
+                    return CStatusBrush.Muted;
+                default:
+                    return CStatusBrush.Muted;
+            }
+        }
+
+        return EvaluateStateSwitch10();
     }
 
     public static Brush ForPreviewBaseState(EN_REVIEW_POINT_STATE state)

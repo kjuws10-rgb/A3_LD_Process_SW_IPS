@@ -11,6 +11,12 @@ namespace Drilling.Common.Motion;
 internal sealed class CACSMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("ACS", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "ACS";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "ACS";
+        }
+    }
 }
 

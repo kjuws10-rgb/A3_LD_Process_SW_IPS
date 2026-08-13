@@ -1169,9 +1169,15 @@ internal sealed class CAutomation1Comm(
 
     private sealed record CAutoAxis(string AxisName, int? AxisNo)
     {
-        public string CommandText => AxisNo.HasValue
+        public string CommandText
+        {
+            get
+            {
+                return AxisNo.HasValue
             ? AxisNo.Value.ToString(CultureInfo.InvariantCulture)
             : AxisName;
+            }
+        }
     }
 
     private sealed record CBufferedRunRequest(
@@ -1192,6 +1198,12 @@ internal sealed class CAutomation1Comm(
         int NumberOfUnexecutedCommands,
         string Error)
     {
-        public bool HasQueueEmptiedAfterStart => NumberOfTimesEmptied > InitialNumberOfTimesEmptied;
+        public bool HasQueueEmptiedAfterStart
+        {
+            get
+            {
+                return NumberOfTimesEmptied > InitialNumberOfTimesEmptied;
+            }
+        }
     }
 }

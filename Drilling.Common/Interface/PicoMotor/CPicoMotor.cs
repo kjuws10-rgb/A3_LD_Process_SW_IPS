@@ -163,9 +163,21 @@ public sealed class CPicoMotorCommandSession : IDisposable
     private CmdLib8742? _cmdLib;
     private string _deviceKey = string.Empty;
 
-    public bool IsConnected => _cmdLib is not null && !string.IsNullOrWhiteSpace(_deviceKey);
+    public bool IsConnected
+    {
+        get
+        {
+            return _cmdLib is not null && !string.IsNullOrWhiteSpace(_deviceKey);
+        }
+    }
 
-    public string DeviceKey => _deviceKey;
+    public string DeviceKey
+    {
+        get
+        {
+            return _deviceKey;
+        }
+    }
 
     public bool Connect(int discoveryDelayMs = 5000)
     {

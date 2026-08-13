@@ -11,7 +11,13 @@ namespace Drilling.Common.Motion;
 internal sealed class CXpsMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("XPS", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "XPS";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "XPS";
+        }
+    }
 
     public override async Task<ST_MOTOR_AXIS_STATUS?> ReadAxisStatus(
         ST_MOTOR_DATA axis,

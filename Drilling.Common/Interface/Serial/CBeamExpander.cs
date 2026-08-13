@@ -502,9 +502,15 @@ public sealed record ST_BET_TABLE_DATA(
 {
     private const double DefaultRowBeamSize = 32.64;
 
-    public double SpotSize => Magnification == 0.0
+    public double SpotSize
+    {
+        get
+        {
+            return Magnification == 0.0
         ? 0.001
         : (DefaultRowBeamSize / Magnification) / 1000.0;
+        }
+    }
 }
 
 

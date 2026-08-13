@@ -4,14 +4,26 @@ namespace Drilling.Common.Log;
 
 public static class CProgramOpenLog
 {
-    private static string LogDirectory => Path.Combine(
+    private static string LogDirectory
+    {
+        get
+        {
+            return Path.Combine(
         FindProjectRoot(),
         "Log",
         "ProgramOpen");
+        }
+    }
 
-    public static string LogPath => Path.Combine(
+    public static string LogPath
+    {
+        get
+        {
+            return Path.Combine(
         LogDirectory,
         $"ProgramOpen_{DateTime.Now:yyyyMMdd}.log");
+        }
+    }
 
     public static void Write(
         string title,

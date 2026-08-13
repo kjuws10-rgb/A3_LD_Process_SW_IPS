@@ -253,7 +253,13 @@ public sealed class CMotionManager : IMotionManager
         }
     }
 
-    public bool IsSimulation => _simulationMode || _controllers.Values.All(controller => controller.IsSimulation());
+    public bool IsSimulation
+    {
+        get
+        {
+            return _simulationMode || _controllers.Values.All(controller => controller.IsSimulation());
+        }
+    }
 
     public void SetSimulationMode(bool enabled)
     {

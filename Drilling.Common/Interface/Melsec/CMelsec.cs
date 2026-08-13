@@ -105,11 +105,17 @@ public sealed class CMelsec : IMelsec, IDisposable
         ReloadMap(map ?? []);
     }
 
-    public IReadOnlyList<ST_MELSEC_MAP_DATA> Map => _map.Values
+    public IReadOnlyList<ST_MELSEC_MAP_DATA> Map
+    {
+        get
+        {
+            return _map.Values
         .OrderBy(data => data.Group, StringComparer.OrdinalIgnoreCase)
         .ThenBy(data => data.DeviceNo)
         .ThenBy(data => data.Id, StringComparer.OrdinalIgnoreCase)
         .ToArray();
+        }
+    }
 
     public void ReloadMap(IReadOnlyList<ST_MELSEC_MAP_DATA> map)
     {

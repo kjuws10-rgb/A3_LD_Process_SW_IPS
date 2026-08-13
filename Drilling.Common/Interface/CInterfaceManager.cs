@@ -90,7 +90,13 @@ public sealed record ST_INTERFACE_COMM_STATUS(
     string LastError,
     DateTimeOffset? LastChangedAt)
 {
-    public string InstanceKey => $"{Module}[{Number}]";
+    public string InstanceKey
+    {
+        get
+        {
+            return $"{Module}[{Number}]";
+        }
+    }
 }
 
 public sealed record ST_INTERFACE_RECEIVED_MESSAGE(
@@ -112,7 +118,13 @@ public sealed record ST_INTERFACE_DATA(
     IReadOnlyList<string> Arguments,
     IReadOnlyDictionary<string, string>? Extra = null)
 {
-    public string InstanceKey => $"{Device}[{Number}]";
+    public string InstanceKey
+    {
+        get
+        {
+            return $"{Device}[{Number}]";
+        }
+    }
 }
 
 public sealed record ST_DEVICE_COMMAND_RESULT(
@@ -433,13 +445,31 @@ public sealed class CInterfaceManager : IInterfaceManager
         _melsec = new CMelsec(this, _logManager, melsecMap);
     }
 
-    public bool IsSimulation => _devices.Count == 0
+    public bool IsSimulation
+    {
+        get
+        {
+            return _devices.Count == 0
         ? _simulationMode ?? true
         : _devices.Values.All(device => device.IsSimulation);
+        }
+    }
 
-    public IReadOnlyList<IInterfaceDevice> Devices => _devices.Values.ToArray();
+    public IReadOnlyList<IInterfaceDevice> Devices
+    {
+        get
+        {
+            return _devices.Values.ToArray();
+        }
+    }
 
-    public IMelsec Melsec => _melsec;
+    public IMelsec Melsec
+    {
+        get
+        {
+            return _melsec;
+        }
+    }
 
     public void SetSimulationMode(bool enabled)
     {
@@ -1996,13 +2026,17 @@ public sealed class CInterfaceManager : IInterfaceManager
     }
 
     public Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(
-        CancellationToken cancellationToken = default) =>
-        GetPicoMotorStatus(cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        return GetPicoMotorStatus(cancellationToken);
+    }
 
     public Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(
         int number,
-        CancellationToken cancellationToken = default) =>
-        GetPicoMotorStatus(number, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        return GetPicoMotorStatus(number, cancellationToken);
+    }
 
     public async Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
         EN_PICO_MOTOR_COMMAND command,
@@ -2407,11 +2441,23 @@ public sealed class CInterfaceDevice : IInterfaceDevice
 
     public ST_INTERFACE_CONNECT_OPTION ConnectOption { get; }
 
-    public EN_COMM_STATE ConnectionState => _simulationMode
+    public EN_COMM_STATE ConnectionState
+    {
+        get
+        {
+            return _simulationMode
         ? EN_COMM_STATE.Simulation
         : _comm.ConnectionState;
+        }
+    }
 
-    public bool IsSimulation => _simulationMode;
+    public bool IsSimulation
+    {
+        get
+        {
+            return _simulationMode;
+        }
+    }
 
     public ST_INTERFACE_COMM_STATUS GetCommunicationStatus()
     {

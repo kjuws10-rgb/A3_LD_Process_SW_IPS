@@ -277,13 +277,15 @@ public sealed class CPicoMotorService : IDisposable
         }
     }
 
-    private static bool IsMoveCommand(EN_PICO_MOTOR_COMMAND command) =>
-        command is EN_PICO_MOTOR_COMMAND.Home
+    private static bool IsMoveCommand(EN_PICO_MOTOR_COMMAND command)
+    {
+        return command is EN_PICO_MOTOR_COMMAND.Home
             or EN_PICO_MOTOR_COMMAND.JogNegative
             or EN_PICO_MOTOR_COMMAND.JogPositive
             or EN_PICO_MOTOR_COMMAND.MoveRelativeNegative
             or EN_PICO_MOTOR_COMMAND.MoveRelativePositive
             or EN_PICO_MOTOR_COMMAND.MoveAbsolute;
+    }
 
     private bool ValidateSimulationMove(int number, out ST_DEVICE_COMMAND_RESULT error)
     {
@@ -387,8 +389,10 @@ public sealed class CPicoMotorService : IDisposable
         }
     }
 
-    private static double GetSimulationStepDistance(ST_PICO_MOTOR_STATUS status) =>
-        Math.Max(0.000001, status.CurrentVelocity * SimulationIntervalMs / 1000.0);
+    private static double GetSimulationStepDistance(ST_PICO_MOTOR_STATUS status)
+    {
+        return Math.Max(0.000001, status.CurrentVelocity * SimulationIntervalMs / 1000.0);
+    }
 
     public void DisconnectAll()
     {
@@ -404,7 +408,10 @@ public sealed class CPicoMotorService : IDisposable
         }
     }
 
-    public void Dispose() => DisconnectAll();
+    public void Dispose()
+    {
+        DisconnectAll();
+    }
 
     private void ExecuteLive(int number, EN_PICO_MOTOR_COMMAND command, int motorNo, double parameter)
     {
@@ -597,15 +604,25 @@ public sealed class CPicoMotorService : IDisposable
         lock (_syncRoot) _statuses[number] = status;
     }
 
-    private static double GetPosition(ST_PICO_MOTOR_STATUS status, int motorNo) => motorNo switch
+    private static double GetPosition(ST_PICO_MOTOR_STATUS status, int motorNo)
     {
-        1 => status.Motor1Position, 2 => status.Motor2Position,
-        3 => status.Motor3Position, _ => status.Motor4Position
-    };
+        return motorNo switch
+        {
+            1 => status.Motor1Position,
+            2 => status.Motor2Position,
+            3 => status.Motor3Position,
+            _ => status.Motor4Position
+        };
+    }
 
-    private static ST_PICO_MOTOR_STATUS SetPosition(ST_PICO_MOTOR_STATUS status, int motorNo, double value) => motorNo switch
+    private static ST_PICO_MOTOR_STATUS SetPosition(ST_PICO_MOTOR_STATUS status, int motorNo, double value)
     {
-        1 => status with { Motor1Position = value }, 2 => status with { Motor2Position = value },
-        3 => status with { Motor3Position = value }, _ => status with { Motor4Position = value }
-    };
+        return motorNo switch
+        {
+            1 => status with { Motor1Position = value },
+            2 => status with { Motor2Position = value },
+            3 => status with { Motor3Position = value },
+            _ => status with { Motor4Position = value }
+        };
+    }
 }

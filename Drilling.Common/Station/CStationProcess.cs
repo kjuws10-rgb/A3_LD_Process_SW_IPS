@@ -137,9 +137,21 @@ public sealed class CStationProcess
             DateTimeOffset.Now);
     }
 
-    public ST_STATION_PROCESS_STATUS Current => _snapshot;
+    public ST_STATION_PROCESS_STATUS Current
+    {
+        get
+        {
+            return _snapshot;
+        }
+    }
 
-    public ST_STATION_STATUS Status => _stationStatus;
+    public ST_STATION_STATUS Status
+    {
+        get
+        {
+            return _stationStatus;
+        }
+    }
 
     public static IReadOnlyList<ST_STATION_PROCESS_FLOW_ITEM> GetProcessFlow()
     {

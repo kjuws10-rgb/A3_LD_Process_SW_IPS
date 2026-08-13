@@ -153,7 +153,13 @@ public sealed class CProductManager(
 {
     private ST_PRODUCT_DATA? _current;
 
-    public ST_PRODUCT_DATA? Current => _current;
+    public ST_PRODUCT_DATA? Current
+    {
+        get
+        {
+            return _current;
+        }
+    }
 
     public async Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default)
     {

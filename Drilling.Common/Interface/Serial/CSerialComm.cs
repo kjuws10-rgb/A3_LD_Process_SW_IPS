@@ -134,7 +134,13 @@ internal class CSerialComm(
         }
     }
 
-    protected virtual string CommandNewLine => "\r\n";
+    protected virtual string CommandNewLine
+    {
+        get
+        {
+            return "\r\n";
+        }
+    }
 
     protected virtual string FormatCommand(string function)
     {

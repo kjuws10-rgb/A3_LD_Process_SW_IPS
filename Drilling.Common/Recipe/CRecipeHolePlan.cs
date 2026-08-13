@@ -29,9 +29,21 @@ public sealed record ST_RECIPE_HOLE_POINT(
     double ScannerOffsetY,
     double StageWaitPosition)
 {
-    public double OffsetX => RecipeOffsetX;
+    public double OffsetX
+    {
+        get
+        {
+            return RecipeOffsetX;
+        }
+    }
 
-    public double OffsetY => RecipeOffsetY;
+    public double OffsetY
+    {
+        get
+        {
+            return RecipeOffsetY;
+        }
+    }
 }
 
 public sealed record ST_RECIPE_HOLE_PLAN(

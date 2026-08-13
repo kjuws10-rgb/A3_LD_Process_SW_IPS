@@ -73,13 +73,37 @@ public sealed record ST_REVIEW_PLAN_POINT(
 
     public double ReviewOffsetY { get; init; }
 
-    public string HeadName => $"H{HeadNo:00}";
+    public string HeadName
+    {
+        get
+        {
+            return $"H{HeadNo:00}";
+        }
+    }
 
-    public string CellName => $"CELL{CellNo:00}";
+    public string CellName
+    {
+        get
+        {
+            return $"CELL{CellNo:00}";
+        }
+    }
 
-    public string HoleName => CReviewHoleNameFormatter.ToMatrixName(HoleNo, PixelCountX);
+    public string HoleName
+    {
+        get
+        {
+            return CReviewHoleNameFormatter.ToMatrixName(HoleNo, PixelCountX);
+        }
+    }
 
-    public string PointName => HoleName;
+    public string PointName
+    {
+        get
+        {
+            return HoleName;
+        }
+    }
 }
 
 public static class CReviewHoleNameFormatter
@@ -123,13 +147,31 @@ public sealed record ST_REVIEW_PLAN(
     DateTimeOffset CreatedAt,
     IReadOnlyList<ST_REVIEW_PLAN_POINT> Points)
 {
-    public IReadOnlyList<ST_REVIEW_PLAN_POINT> ReviewPoints => Points
+    public IReadOnlyList<ST_REVIEW_PLAN_POINT> ReviewPoints
+    {
+        get
+        {
+            return Points
         .Where(point => point.Use)
         .ToArray();
+        }
+    }
 
-    public int TotalPointCount => Points.Count;
+    public int TotalPointCount
+    {
+        get
+        {
+            return Points.Count;
+        }
+    }
 
-    public int ReviewPointCount => Points.Count(point => point.Use);
+    public int ReviewPointCount
+    {
+        get
+        {
+            return Points.Count(point => point.Use);
+        }
+    }
 }
 
 public sealed record ST_REVIEW_RESULT_DATA(

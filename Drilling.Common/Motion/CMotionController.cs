@@ -33,7 +33,13 @@ internal abstract class CMotionController(
 
     public int DeviceNo { get; } = deviceNo;
 
-    protected virtual EN_EQP_MODULE PrimaryModule => EN_EQP_MODULE.Motion;
+    protected virtual EN_EQP_MODULE PrimaryModule
+    {
+        get
+        {
+            return EN_EQP_MODULE.Motion;
+        }
+    }
 
     protected abstract string CommandPrefix { get; }
 

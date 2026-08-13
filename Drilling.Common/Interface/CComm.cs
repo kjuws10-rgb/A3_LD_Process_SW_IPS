@@ -123,7 +123,13 @@ internal abstract class CCommBase(
 
     public EN_COMM_STATE ConnectionState { get; protected set; } = EN_COMM_STATE.Offline;
 
-    public string Endpoint => Option.Endpoint;
+    public string Endpoint
+    {
+        get
+        {
+            return Option.Endpoint;
+        }
+    }
 
     public string LastSent { get; protected set; } = "";
 

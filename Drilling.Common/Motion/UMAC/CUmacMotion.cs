@@ -11,6 +11,12 @@ namespace Drilling.Common.Motion;
 internal sealed class CUmacMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("UMAC", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "UMAC";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "UMAC";
+        }
+    }
 }
 

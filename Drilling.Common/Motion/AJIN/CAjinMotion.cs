@@ -11,6 +11,12 @@ namespace Drilling.Common.Motion;
 internal sealed class CAjinMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("AJIN", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "AJIN";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "AJIN";
+        }
+    }
 }
 

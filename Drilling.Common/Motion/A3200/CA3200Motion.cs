@@ -11,6 +11,12 @@ namespace Drilling.Common.Motion;
 internal sealed class CA3200Motion(IInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("A3200", interfaceManager, deviceNo)
 {
-    protected override string CommandPrefix => "A3200";
+    protected override string CommandPrefix
+    {
+        get
+        {
+            return "A3200";
+        }
+    }
 }
 

@@ -79,7 +79,13 @@ public sealed record ST_POWER_METER_STATUS(
     string LastCommand = "",
     EN_POWER_METER_ERROR LastError = EN_POWER_METER_ERROR.Ok)
 {
-    public static ST_POWER_METER_STATUS Empty => new(0.0, "W", DateTimeOffset.Now);
+    public static ST_POWER_METER_STATUS Empty
+    {
+        get
+        {
+            return new(0.0, "W", DateTimeOffset.Now);
+        }
+    }
 }
 
 public sealed record ST_DEVICE_STATUS(
@@ -326,7 +332,13 @@ public sealed class CManager
             "Recipe/Setting managers created.");
     }
 
-    public string ConfigRoot => _configRoot;
+    public string ConfigRoot
+    {
+        get
+        {
+            return _configRoot;
+        }
+    }
 
     public IReadOnlyList<string> StartupMessages
     {
@@ -459,7 +471,13 @@ public sealed class CManager
         return _automationManager;
     }
 
-    public IAutomationManager automation => _automationManager;
+    public IAutomationManager automation
+    {
+        get
+        {
+            return _automationManager;
+        }
+    }
 
     public IMotionManager Motion()
     {

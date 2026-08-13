@@ -57,7 +57,13 @@ public sealed record ST_POWER_METER_TABLE_DATA(
     string SelectedFileName,
     IReadOnlyList<ST_POWER_METER_STEP_DATA> Steps)
 {
-    public static ST_POWER_METER_TABLE_DATA Empty => new([], "", []);
+    public static ST_POWER_METER_TABLE_DATA Empty
+    {
+        get
+        {
+            return new([], "", []);
+        }
+    }
 }
 
 public interface IPowerMeterFile
@@ -93,7 +99,13 @@ internal sealed class CPowerMeter(
     ST_INTERFACE_DATA data,
     ST_INTERFACE_CONNECT_OPTION option) : CSerialComm(data, option)
 {
-    protected override string CommandNewLine => "\r";
+    protected override string CommandNewLine
+    {
+        get
+        {
+            return "\r";
+        }
+    }
 
     protected override string FormatCommand(string function)
     {

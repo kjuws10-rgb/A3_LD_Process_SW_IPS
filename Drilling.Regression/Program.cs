@@ -8,6 +8,7 @@ using Drilling.Common.Managers;
 using Drilling.Common.Motion;
 using Drilling.Common.Recipe;
 using Drilling.Common.Station;
+using Drilling.Common.Threading;
 using Drilling.File.JHMI;
 using Drilling.File.Script;
 
@@ -37,6 +38,7 @@ internal static class Program
             RunProtocolFlow(testRoot, snapshot);
             RunAlarmFlow(snapshot);
             RunLogFlow(testRoot, snapshot);
+            RunCtrlThreadFlow();
 
             string? outputDirectory = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrWhiteSpace(outputDirectory))
@@ -53,6 +55,116 @@ internal static class Program
         {
             Console.Error.WriteLine($"REGRESSION_FAIL {exception.GetType().Name}: {exception.Message}");
             return 1;
+        }
+    }
+
+    private static void RunCtrlThreadFlow()
+    {
+        CTestCtrlThread thread = new CTestCtrlThread();
+        thread.Start(1, "RegressionCtrlThread");
+        WaitForRunCount(thread, 3, 1000);
+        int firstRunCount = thread.RunCount;
+
+        thread.Start(1, "RegressionCtrlThreadDuplicate");
+        Assert(thread.StartIdentity == 1, "CtrlThread created a duplicate worker.");
+
+        thread.Pause();
+        int pausedCount = thread.RunCount;
+        Thread.Sleep(30);
+        Assert(thread.RunCount <= pausedCount + 1, "CtrlThread continued while paused.");
+        Assert(thread.IsPaused, "CtrlThread did not report paused state.");
+
+        thread.Resume();
+        WaitForRunCount(thread, pausedCount + 3, 1000);
+        Assert(!thread.IsPaused, "CtrlThread remained paused after resume.");
+
+        thread.RequestOneError();
+        int beforeError = thread.RunCount;
+        WaitForRunCount(thread, beforeError + 3, 1000);
+        Assert(thread.LastThreadError is InvalidOperationException,
+            "CtrlThread did not retain the Run exception.");
+        Assert(thread.IsRunning, "CtrlThread stopped after a Run exception.");
+
+        thread.Stop();
+        Assert(!thread.IsRunning, "CtrlThread remained alive after Stop.");
+
+        int stoppedCount = thread.RunCount;
+        thread.Start(1, "RegressionCtrlThreadRestart");
+        WaitForRunCount(thread, stoppedCount + 3, 1000);
+        Assert(thread.IsRunning, "CtrlThread did not restart after Stop.");
+        thread.Stop();
+
+        Assert(firstRunCount >= 3, "CtrlThread initial Run count was not reached.");
+    }
+
+    private static void WaitForRunCount(CTestCtrlThread thread, int target, int timeoutMsec)
+    {
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMsec);
+        while (thread.RunCount < target && DateTime.UtcNow < deadline)
+        {
+            Thread.Sleep(2);
+        }
+
+        Assert(thread.RunCount >= target,
+            "CtrlThread did not reach the expected Run count.");
+    }
+
+    private sealed class CTestCtrlThread : CtrlThread
+    {
+        private readonly object mobjCountLock = new object();
+        private int mintRunCount;
+        private int mintStartIdentity;
+        private bool mblnThrowOneError;
+
+        public int RunCount
+        {
+            get
+            {
+                lock (mobjCountLock)
+                {
+                    return mintRunCount;
+                }
+            }
+        }
+
+        public int StartIdentity
+        {
+            get
+            {
+                lock (mobjCountLock)
+                {
+                    if (mintStartIdentity == 0 && IsRunning)
+                    {
+                        mintStartIdentity = 1;
+                    }
+
+                    return mintStartIdentity;
+                }
+            }
+        }
+
+        public void RequestOneError()
+        {
+            lock (mobjCountLock)
+            {
+                mblnThrowOneError = true;
+            }
+        }
+
+        public override void Run()
+        {
+            bool throwError;
+            lock (mobjCountLock)
+            {
+                mintRunCount++;
+                throwError = mblnThrowOneError;
+                mblnThrowOneError = false;
+            }
+
+            if (throwError)
+            {
+                throw new InvalidOperationException("Regression thread error.");
+            }
         }
     }
 

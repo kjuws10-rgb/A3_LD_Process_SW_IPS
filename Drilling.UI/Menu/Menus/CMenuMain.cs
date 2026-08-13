@@ -16,12 +16,12 @@ using Drilling.Common.Review;
 namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuMain(
-    IStationManager stationManager,
-    IInterfaceManager interfaceManager,
-    IAutomationManager automationManager,
-    IRecipeManager recipeManager,
-    ISettingManager settingManager,
-    IReviewManager reviewManager,
+    CStationManager stationManager,
+    CInterfaceManager interfaceManager,
+    CAutomationManager automationManager,
+    CRecipeManager recipeManager,
+    CSettingManager settingManager,
+    CReviewManager reviewManager,
     Func<string> selectedRecipeIdProvider,
     Func<IReadOnlySet<int>> selectedPreviewHeadNosProvider,
     CButtonCommand togglePreviewHeadCommand,

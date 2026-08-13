@@ -87,70 +87,9 @@ public interface IProductFile
         CancellationToken cancellationToken = default);
 }
 
-public interface IProductManager
-{
-    Task<ST_PRODUCT_DATA?> LoadActive(CancellationToken cancellationToken = default);
-
-    ST_PRODUCT_DATA? Current { get; }
-
-    Task<ST_PRODUCT_DATA> CreateProduct(
-        string processId,
-        string productId,
-        string panelId,
-        string lotId,
-        string recipeId,
-        IReadOnlyDictionary<string, string> parameters,
-        IReadOnlyDictionary<int, int> headPointCounts,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> StartProduct(
-        string productId,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> SetHeadRunning(
-        string productId,
-        int headNo,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> SetHeadResult(
-        string productId,
-        int headNo,
-        bool isOk,
-        string errorCode = "",
-        string message = "",
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> CompleteProduct(
-        string productId,
-        bool isOk,
-        string message,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> StopProduct(
-        string productId,
-        string message,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> SetError(
-        string productId,
-        string message,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_PRODUCT_DATA> ScrapProduct(
-        string productId,
-        string reason,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_PRODUCT_HISTORY>> LoadHistory(
-        int maxRows = 100,
-        int days = 14,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed class CProductManager(
     IProductFile productFile,
-    ILogManager? logManager = null) : IProductManager
-{
+    CLogManager? logManager = null) {
     private ST_PRODUCT_DATA? _current;
 
     public ST_PRODUCT_DATA? Current

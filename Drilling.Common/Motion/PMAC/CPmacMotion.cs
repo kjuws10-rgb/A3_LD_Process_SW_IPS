@@ -8,7 +8,7 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("PMAC")]
-internal sealed class CPmacMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CPmacMotion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("PMAC", interfaceManager, deviceNo)
 {
     protected override string CommandPrefix

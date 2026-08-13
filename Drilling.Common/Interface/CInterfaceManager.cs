@@ -131,27 +131,6 @@ public sealed record ST_DEVICE_COMMAND_RESULT(
     bool IsSuccess,
     string Message);
 
-public interface IInterfaceDevice
-{
-    ST_INTERFACE_DATA Data { get; }
-
-    ST_INTERFACE_CONNECT_OPTION ConnectOption { get; }
-
-    EN_COMM_STATE ConnectionState { get; }
-
-    bool IsSimulation { get; }
-
-    ST_INTERFACE_COMM_STATUS GetCommunicationStatus();
-
-    Task Connect(CancellationToken cancellationToken = default);
-
-    Task Disconnect(CancellationToken cancellationToken = default);
-
-    Task<string> ExecuteFunction(
-        string function,
-        CancellationToken cancellationToken = default);
-}
-
 public interface IBETFile
 {
     Task<IReadOnlyList<ST_BET_TABLE_DATA>> Load(CancellationToken cancellationToken = default);
@@ -161,268 +140,9 @@ public interface IBETFile
         CancellationToken cancellationToken = default);
 }
 
-public interface IInterfaceManager
-{
-    event Func<ST_INTERFACE_RECEIVED_MESSAGE, CancellationToken, Task<string>>? MessageReceived;
-
-    bool IsSimulation { get; }
-
-    IReadOnlyList<IInterfaceDevice> Devices { get; }
-
-    IMelsec Melsec { get; }
-
-    void SetSimulationMode(bool enabled);
-
-    void Register(ST_INTERFACE_DATA data);
-
-    Task Reload(
-        IReadOnlyList<ST_INTERFACE_DATA> interfaces,
-        bool reconnect = true,
-        CancellationToken cancellationToken = default);
-
-    Task Initialize(CancellationToken cancellationToken = default);
-
-    Task Destroy(CancellationToken cancellationToken = default);
-
-    Task<int> Connect(
-        bool init = false,
-        CancellationToken cancellationToken = default);
-
-    Task<int> Disconnect(CancellationToken cancellationToken = default);
-
-    Task Connect(
-        EN_EQP_MODULE module,
-        int number,
-        bool autoConnection = true,
-        CancellationToken cancellationToken = default);
-
-    Task Disconnect(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task Reconnect(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ExecuteFunction(
-        EN_EQP_MODULE module,
-        int number,
-        string function,
-        CancellationToken cancellationToken = default);
-
-    bool IsConnect(EN_EQP_MODULE module, int number);
-
-    bool IsSimul(EN_EQP_MODULE module, int number);
-
-    ST_INTERFACE_DATA? GetInterfaceData(EN_EQP_MODULE module, int number);
-
-    Task Connect(
-        string nickName,
-        bool autoConnection = true,
-        CancellationToken cancellationToken = default);
-
-    Task Disconnect(
-        string nickName,
-        CancellationToken cancellationToken = default);
-
-    Task Reconnect(
-        string nickName,
-        CancellationToken cancellationToken = default);
-
-    Task<string> ExecuteFunction(
-        string nickName,
-        string function,
-        CancellationToken cancellationToken = default);
-
-    bool IsConnect(string nickName);
-
-    bool IsSimul(string nickName);
-
-    ST_INTERFACE_DATA? GetInterfaceData(string nickName);
-
-    IReadOnlyList<ST_INTERFACE_DATA> GetInterfaceList(EN_EQP_MODULE? module = null);
-
-    IReadOnlyList<ST_INTERFACE_COMM_STATUS> GetInterfaceCommunicationList(EN_EQP_MODULE? module = null);
-
-    Task<IReadOnlyList<ST_INTERFACE_HISTORY>> ReadInterfaceHistory(
-        EN_EQP_MODULE? module = null,
-        string nickName = "",
-        int maxRows = 100,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_DEVICE_COMM_STATUS>> GetCommunicationStatus(
-        CancellationToken cancellationToken = default);
-
-    Task<ST_LASER_STATUS> GetLaserStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_LASER_STATUS> GetLaserStatus(int number, CancellationToken cancellationToken = default);
-
-    Task SetLaser(int headNo, bool enabled, CancellationToken cancellationToken = default);
-
-    Task SetLaser(int number, int headNo, bool enabled, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteTalonLaserCommand(
-        EN_TALON_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteTalonLaserCommand(
-        int number,
-        EN_TALON_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_TALON_STATUS> RefreshTalonLaserStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_TALON_STATUS> RefreshTalonLaserStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_CHILLER_STATUS> GetChillerStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_CHILLER_STATUS> GetChillerStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
-        EN_CHILLER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteChillerCommand(
-        int number,
-        EN_CHILLER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_ORION_CHILLER_STATUS> RefreshChillerStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_ORION_CHILLER_STATUS> RefreshChillerStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> GetAttenuatorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> GetAttenuatorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorCommand(
-        EN_ATTENUATOR_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteAttenuatorCommand(
-        int number,
-        EN_ATTENUATOR_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> RefreshAttenuatorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_ATTENUATOR_STATUS> RefreshAttenuatorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> GetBETStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> GetBETStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETCommand(
-        EN_BET_COMMAND command,
-        double parameter1 = 0.0,
-        double parameter2 = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteBETCommand(
-        int number,
-        EN_BET_COMMAND command,
-        double parameter1 = 0.0,
-        double parameter2 = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> RefreshBETStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_BET_STATUS> RefreshBETStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_BET_TABLE_DATA>> LoadBETData(CancellationToken cancellationToken = default);
-
-    Task SaveBETData(
-        IReadOnlyList<ST_BET_TABLE_DATA> table,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_TABLE_DATA> LoadPowerMeterData(
-        string processFile = "",
-        CancellationToken cancellationToken = default);
-
-    Task CreatePowerMeterData(
-        string processFile,
-        CancellationToken cancellationToken = default);
-
-    Task DeletePowerMeterData(
-        string processFile,
-        CancellationToken cancellationToken = default);
-
-    Task RenamePowerMeterData(
-        string oldProcessFile,
-        string newProcessFile,
-        CancellationToken cancellationToken = default);
-
-    Task SavePowerMeterData(
-        string processFile,
-        IReadOnlyList<ST_POWER_METER_STEP_DATA> steps,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> GetPowerMeterStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> GetPowerMeterStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterCommand(
-        EN_POWER_METER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePowerMeterCommand(
-        int number,
-        EN_POWER_METER_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> RefreshPowerMeterStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_POWER_METER_STATUS> RefreshPowerMeterStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> GetPicoMotorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_PICO_MOTOR_STATUS> RefreshPicoMotorStatus(int number, CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
-        EN_PICO_MOTOR_COMMAND command,
-        int motorNo = 1,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorCommand(
-        int number,
-        EN_PICO_MOTOR_COMMAND command,
-        int motorNo = 1,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorAllMove(
-        IReadOnlyCollection<int> motorNos,
-        double positionMm,
-        int count,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecutePicoMotorAllMove(
-        int number,
-        IReadOnlyCollection<int> motorNos,
-        double positionMm,
-        int count,
-        CancellationToken cancellationToken = default);
-}
-
-public sealed class CInterfaceManager : IInterfaceManager
-{
+public sealed class CInterfaceManager {
     private readonly Dictionary<string, CInterfaceDevice> _devices = new(StringComparer.OrdinalIgnoreCase);
-    private readonly ILogManager? _logManager;
+    private readonly CLogManager? _logManager;
     private readonly IBETFile? _betFile;
     private readonly IPowerMeterFile? _powerMeterFile;
     private readonly CMelsec _melsec;
@@ -433,7 +153,7 @@ public sealed class CInterfaceManager : IInterfaceManager
 
     public CInterfaceManager(
         bool? simulationMode = null,
-        ILogManager? logManager = null,
+        CLogManager? logManager = null,
         IBETFile? betFile = null,
         IPowerMeterFile? powerMeterFile = null,
         IReadOnlyList<ST_MELSEC_MAP_DATA>? melsecMap = null)
@@ -460,7 +180,7 @@ public sealed class CInterfaceManager : IInterfaceManager
         }
     }
 
-    public IReadOnlyList<IInterfaceDevice> Devices
+    public IReadOnlyList<CInterfaceDevice> Devices
     {
         get
         {
@@ -468,7 +188,7 @@ public sealed class CInterfaceManager : IInterfaceManager
         }
     }
 
-    public IMelsec Melsec
+    public CMelsec Melsec
     {
         get
         {
@@ -2610,10 +2330,9 @@ public sealed class CInterfaceManager : IInterfaceManager
     }
 }
 
-public sealed class CInterfaceDevice : IInterfaceDevice
-{
+public sealed class CInterfaceDevice {
     private bool _simulationMode;
-    private readonly IComm _comm;
+    private readonly CCommBase _comm;
     private string _simulationLastSent = "";
     private string _simulationLastReceived = "";
     private string _simulationLastError = "";

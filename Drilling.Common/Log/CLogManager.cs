@@ -9,50 +9,7 @@ using Drilling.Common.Station;
 
 namespace Drilling.Common.Log;
 
-public interface ILogManager
-{
-    void WriteStationState(
-        string stationName,
-        string stateName,
-        string action,
-        string detail);
-
-    void WriteInterfaceConnection(
-        EN_EQP_MODULE module,
-        string action,
-        string nickName,
-        string oldState,
-        string newState);
-
-    void WriteInterfaceCommand(
-        EN_EQP_MODULE module,
-        string nickName,
-        string command,
-        string response,
-        string detail = "");
-
-    void WriteInterfaceError(
-        EN_EQP_MODULE module,
-        string nickName,
-        string command,
-        string detail);
-
-    void WriteProductEvent(
-        string productId,
-        string action,
-        string state,
-        string result,
-        string detail);
-
-    IReadOnlyList<ST_INTERFACE_HISTORY> ReadInterfaceRecent(
-        EN_EQP_MODULE? module = null,
-        string nickName = "",
-        int maxRows = 100,
-        int days = 14);
-}
-
-public sealed class CLogManager : ILogManager
-{
+public sealed class CLogManager {
     private const int DefaultReadDays = 14;
     private const int DefaultRecipeReadRows = 10;
     private const int DefaultSettingReadRows = 20;

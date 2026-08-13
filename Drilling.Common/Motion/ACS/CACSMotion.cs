@@ -8,7 +8,7 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("ACS", "ACS.NET", "SPIIPLUS")]
-internal sealed class CACSMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CACSMotion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("ACS", interfaceManager, deviceNo)
 {
     protected override string CommandPrefix

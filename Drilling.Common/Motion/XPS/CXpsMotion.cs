@@ -8,7 +8,7 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("XPS", "XPS.NET", "XPS_NET", "NEWPORT_XPS")]
-internal sealed class CXpsMotion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CXpsMotion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("XPS", interfaceManager, deviceNo)
 {
     protected override string CommandPrefix

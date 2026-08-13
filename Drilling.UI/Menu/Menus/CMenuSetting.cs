@@ -13,7 +13,7 @@ namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuSetting : CBindingBase, IMenu
 {
-    private readonly ISettingManager _settingManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedTabProvider;
     private readonly Action<string> _selectedTabSetter;
     private readonly Func<string> _selectedGroupProvider;
@@ -35,7 +35,7 @@ public sealed class CMenuSetting : CBindingBase, IMenu
     ];
 
     public CMenuSetting(
-        ISettingManager settingManager,
+        CSettingManager settingManager,
         Func<string> selectedTabProvider,
         Action<string> selectedTabSetter,
         Func<string> selectedGroupProvider,

@@ -41,10 +41,10 @@ internal sealed class CMotionControllerTypeAttribute(params string[] controllerN
 
 internal abstract class CMotionController(
     string controller,
-    IInterfaceManager? interfaceManager,
+    CInterfaceManager? interfaceManager,
     int deviceNo = 0)
 {
-    private readonly IInterfaceManager? _interfaceManager = interfaceManager;
+    private readonly CInterfaceManager? _interfaceManager = interfaceManager;
 
     public string Controller { get; } = controller.Trim().ToUpperInvariant();
 

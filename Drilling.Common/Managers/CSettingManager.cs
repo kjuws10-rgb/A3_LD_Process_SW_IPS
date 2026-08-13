@@ -67,61 +67,11 @@ public interface IInterfaceFile
         IReadOnlyList<ST_INTERFACE_DATA> interfaces,
         CancellationToken cancellationToken = default);
 }
-public interface ISettingManager
-{
-    Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> LoadSection(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
-
-    Task<string> GetValue(
-        EN_SETTING_TAB section,
-        string name,
-        string defaultValue = "",
-        CancellationToken cancellationToken = default);
-
-    Task SetValue(
-        EN_SETTING_TAB section,
-        string name,
-        string value,
-        CancellationToken cancellationToken = default);
-
-    Task SaveSection(
-        EN_SETTING_TAB section,
-        IReadOnlyList<ST_SYSTEM_PARAMETER> parameters,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_SETTING_HISTORY>> LoadHistory(
-        EN_SETTING_TAB section,
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_INTERFACE_DATA>> LoadInterfaceList(
-        CancellationToken cancellationToken = default);
-
-    Task SaveInterfaceList(
-        IReadOnlyList<ST_INTERFACE_DATA> interfaces,
-        CancellationToken cancellationToken = default);
-
-    Task ConnectInterface(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task DisconnectInterface(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-
-    Task ReconnectInterface(
-        EN_EQP_MODULE module,
-        int number,
-        CancellationToken cancellationToken = default);
-}
 
 public sealed class CSettingManager(
     ISettingFile settingFile,
     IInterfaceFile interfaceFile,
-    IInterfaceManager interfaceManager) : ISettingManager
-{
+    CInterfaceManager interfaceManager) {
     public Task<IReadOnlyList<ST_SYSTEM_PARAMETER>> LoadSection(
         EN_SETTING_TAB section,
         CancellationToken cancellationToken = default)

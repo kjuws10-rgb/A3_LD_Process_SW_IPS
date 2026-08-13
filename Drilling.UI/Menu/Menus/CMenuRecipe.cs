@@ -52,8 +52,8 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
         "DISTORTION_KEY6_Y"
     ];
 
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _selectedRecipeIdSetter;
     private readonly Func<string> _selectedCategoryProvider;
@@ -73,8 +73,8 @@ public sealed class CMenuRecipe : CBindingBase, IMenu
     private readonly Func<Task> _refreshCurrentScreen;
 
     public CMenuRecipe(
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> selectedRecipeIdSetter,
         Func<string> selectedCategoryProvider,

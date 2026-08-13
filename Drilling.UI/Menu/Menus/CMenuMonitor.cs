@@ -19,12 +19,12 @@ namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuMonitor : CBindingBase, IMenu
 {
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly IMotionManager _motionManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CMotionManager _motionManager;
     private readonly CInterLockManager _interLockManager;
-    private readonly IProductManager _productManager;
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
+    private readonly CProductManager _productManager;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Func<string> _selectedTabAccessor;
     private readonly Action<string> _selectedTabSetter;
@@ -72,12 +72,12 @@ public sealed class CMenuMonitor : CBindingBase, IMenu
     ];
 
     public CMenuMonitor(
-        IInterfaceManager interfaceManager,
-        IMotionManager motionManager,
+        CInterfaceManager interfaceManager,
+        CMotionManager motionManager,
         CInterLockManager interLockManager,
-        IProductManager productManager,
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
+        CProductManager productManager,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,
         Func<string> selectedTabAccessor,
         Action<string> selectedTabSetter,

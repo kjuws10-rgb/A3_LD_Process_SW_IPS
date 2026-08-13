@@ -47,29 +47,6 @@ internal sealed class CCommTypeAttribute(string interfaceType, params string[] d
     }
 }
 
-internal interface IComm
-{
-    EN_COMM_STATE ConnectionState { get; }
-
-    string Endpoint { get; }
-
-    string LastSent { get; }
-
-    string LastReceived { get; }
-
-    string LastError { get; }
-
-    DateTimeOffset? LastChangedAt { get; }
-
-    Task Connect(CancellationToken cancellationToken = default);
-
-    Task Disconnect(CancellationToken cancellationToken = default);
-
-    Task<string> Execute(
-        string function,
-        CancellationToken cancellationToken = default);
-}
-
 internal sealed record ST_COMM_RECEIVED_MESSAGE(
     string RemoteEndPoint,
     string Message,
@@ -84,7 +61,7 @@ internal static class CComm
 {
     private static readonly IReadOnlyList<CCommRegistration> CommTypes = LoadCommTypes();
 
-    public static IComm Create(
+    public static CCommBase Create(
         ST_INTERFACE_DATA data,
         ST_INTERFACE_CONNECT_OPTION option)
     {
@@ -110,7 +87,7 @@ internal static class CComm
             return new CReadyOnlyComm(data, option);
         }
 
-        return Activator.CreateInstance(commType.CommType, data, option) as IComm
+        return Activator.CreateInstance(commType.CommType, data, option) as CCommBase
             ?? throw new InvalidOperationException($"Interface communication creation failed: {data.InterfaceType}/{data.Device}");
     }
 
@@ -158,8 +135,7 @@ internal static class CComm
 
 internal abstract class CCommBase(
     ST_INTERFACE_DATA data,
-    ST_INTERFACE_CONNECT_OPTION option) : IComm
-{
+    ST_INTERFACE_CONNECT_OPTION option) {
     protected readonly ST_INTERFACE_DATA Data = data;
     protected readonly ST_INTERFACE_CONNECT_OPTION Option = option;
 

@@ -16,9 +16,9 @@ public sealed class CMenuReview : IMenu
     private const int DefaultCellCount = 20;
     private const string DefaultRuleFileName = "ALL_POINT.csv";
 
-    private readonly IReviewManager _reviewManager;
+    private readonly CReviewManager _reviewManager;
     private readonly IReviewRuleFile _reviewRuleFile;
-    private readonly IRecipeManager _recipeManager;
+    private readonly CRecipeManager _recipeManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _statusReporter;
     private readonly Action _refreshScreen;
@@ -55,9 +55,9 @@ public sealed class CMenuReview : IMenu
     private ST_REVIEW_PLAN? _lastAllPlan;
 
     public CMenuReview(
-        IReviewManager reviewManager,
+        CReviewManager reviewManager,
         IReviewRuleFile reviewRuleFile,
-        IRecipeManager recipeManager,
+        CRecipeManager recipeManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> statusReporter,
         Action refreshScreen)

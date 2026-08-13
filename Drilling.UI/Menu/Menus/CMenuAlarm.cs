@@ -9,11 +9,11 @@ using System.Windows.Media;
 namespace Drilling.UI.Menu.Menus;
 
 public sealed class CMenuAlarm(
-    IInterfaceManager interfaceManager,
-    IMotionManager motionManager,
+    CInterfaceManager interfaceManager,
+    CMotionManager motionManager,
     CAlarmManager alarmManager,
     CInterLockManager interLockManager,
-    IStationManager stationManager,
+    CStationManager stationManager,
     Action<string> setStatusMessage,
     Action refreshShellStatus,
     Func<Task> refreshCurrentScreen) : IMenu

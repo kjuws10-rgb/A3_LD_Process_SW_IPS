@@ -8,7 +8,7 @@ using Drilling.Common.Station;
 namespace Drilling.Common.Motion;
 
 [CMotionControllerType("A3200")]
-internal sealed class CA3200Motion(IInterfaceManager? interfaceManager, int deviceNo = 0)
+internal sealed class CA3200Motion(CInterfaceManager? interfaceManager, int deviceNo = 0)
     : CMotionController("A3200", interfaceManager, deviceNo)
 {
     protected override string CommandPrefix

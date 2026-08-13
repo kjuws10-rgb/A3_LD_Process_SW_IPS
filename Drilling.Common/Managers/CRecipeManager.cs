@@ -91,22 +91,8 @@ public interface IRecipeFile
 
     Task Delete(string recipeId, CancellationToken cancellationToken = default);
 }
-public interface IRecipeManager
-{
-    Task<IReadOnlyList<ST_RECIPE_DATA>> LoadRecipes(CancellationToken cancellationToken = default);
 
-    Task SaveRecipe(ST_RECIPE_DATA recipe, CancellationToken cancellationToken = default);
-
-    Task RenameRecipe(
-        string oldRecipeId,
-        string newRecipeId,
-        CancellationToken cancellationToken = default);
-
-    Task DeleteRecipe(string recipeId, CancellationToken cancellationToken = default);
-}
-
-public sealed class CRecipeManager(IRecipeFile recipeFile) : IRecipeManager
-{
+public sealed class CRecipeManager(IRecipeFile recipeFile) {
     public Task<IReadOnlyList<ST_RECIPE_DATA>> LoadRecipes(CancellationToken cancellationToken = default)
     {
         return recipeFile.LoadAll(cancellationToken);

@@ -6,8 +6,8 @@ using Drilling.Common.Motion;
 namespace Drilling.UI.Menu.Menus;
 
 internal sealed class CMonitorStatusPollingService(
-    IInterfaceManager interfaceManager,
-    IMotionManager motionManager)
+    CInterfaceManager interfaceManager,
+    CMotionManager motionManager)
 {
     private const int HeadCount = 8;
     private static readonly TimeSpan LoopInterval = TimeSpan.FromMilliseconds(250);

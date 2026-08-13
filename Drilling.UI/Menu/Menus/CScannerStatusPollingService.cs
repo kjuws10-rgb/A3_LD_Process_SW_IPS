@@ -5,8 +5,8 @@ using Drilling.Common.Managers;
 namespace Drilling.UI.Menu.Menus;
 
 internal sealed class CScannerStatusPollingService(
-    IAutomationManager automationManager,
-    ISettingManager settingManager)
+    CAutomationManager automationManager,
+    CSettingManager settingManager)
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
 

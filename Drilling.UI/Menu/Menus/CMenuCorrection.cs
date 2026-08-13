@@ -21,8 +21,8 @@ public sealed class CMenuCorrection : IMenu
     ];
 
     private readonly IReviewResultFile _reviewResultFile;
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
     private readonly Func<string> _selectedRecipeIdProvider;
     private readonly Action<string> _statusReporter;
     private readonly Func<Task> _refreshCurrentScreen;
@@ -39,8 +39,8 @@ public sealed class CMenuCorrection : IMenu
 
     public CMenuCorrection(
         IReviewResultFile reviewResultFile,
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
         Func<string> selectedRecipeIdProvider,
         Action<string> statusReporter,
         Func<Task> refreshCurrentScreen)

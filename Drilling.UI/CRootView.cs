@@ -52,13 +52,13 @@ public sealed class CRootView : CBindingBase
         EN_EQP_MODULE.Bet
     ];
 
-    private readonly IStationManager _stationManager;
+    private readonly CStationManager _stationManager;
     private readonly CManager _manager;
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly IMotionManager _motionManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CMotionManager _motionManager;
     private readonly CAlarmManager _alarmManager;
     private readonly CInterLockManager _interLockManager;
-    private readonly IRecipeManager _recipeManager;
+    private readonly CRecipeManager _recipeManager;
     private readonly IReadOnlyDictionary<EN_MENU, IMenu> _menus;
     private readonly Dictionary<EN_EQP_MODULE, int> _selectedHeaderModuleIndexes = new();
 
@@ -94,16 +94,16 @@ public sealed class CRootView : CBindingBase
 
     public CRootView(
         CManager manager,
-        IStationManager stationManager,
-        IInterfaceManager interfaceManager,
-        IMotionManager motionManager,
+        CStationManager stationManager,
+        CInterfaceManager interfaceManager,
+        CMotionManager motionManager,
         CAlarmManager alarmManager,
         CInterLockManager interLockManager,
         IManualScanFile manualScanFile,
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
-        IProductManager productManager,
-        IReviewManager reviewManager,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
+        CProductManager productManager,
+        CReviewManager reviewManager,
         IReviewRuleFile reviewRuleFile,
         IAutomationScriptFile automationScriptFile)
     {
@@ -1126,16 +1126,16 @@ HandleParameters20,
     }
 
     private IReadOnlyDictionary<EN_MENU, IMenu> CreateMenus(
-        IStationManager stationManager,
-        IInterfaceManager interfaceManager,
-        IMotionManager motionManager,
+        CStationManager stationManager,
+        CInterfaceManager interfaceManager,
+        CMotionManager motionManager,
         CAlarmManager alarmManager,
         CInterLockManager interLockManager,
         IManualScanFile manualScanFile,
-        IRecipeManager recipeManager,
-        ISettingManager settingManager,
-        IProductManager productManager,
-        IReviewManager reviewManager,
+        CRecipeManager recipeManager,
+        CSettingManager settingManager,
+        CProductManager productManager,
+        CReviewManager reviewManager,
         IReviewRuleFile reviewRuleFile,
         IAutomationScriptFile automationScriptFile)
     {

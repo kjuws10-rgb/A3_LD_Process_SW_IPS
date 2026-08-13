@@ -79,14 +79,14 @@ public sealed class CStationProcess
             EN_EQP_MODULE.Bet
         };
 
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly IMotionManager _motionManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CMotionManager _motionManager;
     private readonly CInterLockManager _interLockManager;
-    private readonly ISettingManager _settingManager;
-    private readonly IProductManager? _productManager;
+    private readonly CSettingManager _settingManager;
+    private readonly CProductManager? _productManager;
     private readonly IAutomationScriptFile _automationScriptFile;
-    private readonly IAutomationManager _automationManager;
-    private readonly ILogManager? _logManager;
+    private readonly CAutomationManager _automationManager;
+    private readonly CLogManager? _logManager;
     private readonly SemaphoreSlim _runLock = new(1, 1);
     private readonly List<ST_PROCESS_LOG_ITEM> _processLogs = [];
     private readonly Dictionary<string, string> _autoStepStates = CreateAutoStepStateMap();
@@ -102,14 +102,14 @@ public sealed class CStationProcess
     private ST_STATION_STATUS _stationStatus;
 
     public CStationProcess(
-        IInterfaceManager interfaceManager,
-        IMotionManager motionManager,
+        CInterfaceManager interfaceManager,
+        CMotionManager motionManager,
         CInterLockManager interLockManager,
-        ISettingManager settingManager,
+        CSettingManager settingManager,
         IAutomationScriptFile automationScriptFile,
-        IAutomationManager automationManager,
-        IProductManager? productManager = null,
-        ILogManager? logManager = null,
+        CAutomationManager automationManager,
+        CProductManager? productManager = null,
+        CLogManager? logManager = null,
         string stationName = "PROCESS",
         string? scriptDirectory = null)
     {

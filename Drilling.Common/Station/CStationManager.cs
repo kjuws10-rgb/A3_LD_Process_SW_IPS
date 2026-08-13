@@ -555,39 +555,18 @@ public sealed record ST_STATION_PROCESS_FLOW_ITEM(
     string OnSuccess,
     string OnFail);
 
-public interface IStationManager
-{
-    Task<ST_STATION_PROCESS_STATUS> GetStatus(CancellationToken cancellationToken = default);
-
-    Task<ST_STATION_PROCESS_STATUS> PrepareProcessPlan(
-        ST_PROCESS_PLAN processPlan,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_STATION_PROCESS_STATUS> Start(CancellationToken cancellationToken = default);
-
-    Task<ST_STATION_PROCESS_STATUS> Stop(CancellationToken cancellationToken = default);
-
-    Task<ST_STATION_PROCESS_STATUS> Reset(CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_STATION_STATUS>> GetStationStatus(
-        CancellationToken cancellationToken = default);
-
-    IReadOnlyList<ST_STATION_PROCESS_FLOW_ITEM> GetProcessFlow();
-}
-
-public sealed class CStationManager : IStationManager
-{
+public sealed class CStationManager {
     private readonly CStationProcess _processStation;
 
     public CStationManager(
-        IInterfaceManager interfaceManager,
-        IMotionManager motionManager,
+        CInterfaceManager interfaceManager,
+        CMotionManager motionManager,
         CInterLockManager interLockManager,
-        ISettingManager settingManager,
+        CSettingManager settingManager,
         IAutomationScriptFile automationScriptFile,
-        IAutomationManager automationManager,
-        IProductManager? productManager = null,
-        ILogManager? logManager = null,
+        CAutomationManager automationManager,
+        CProductManager? productManager = null,
+        CLogManager? logManager = null,
         string? scriptDirectory = null)
     {
         _processStation = new CStationProcess(

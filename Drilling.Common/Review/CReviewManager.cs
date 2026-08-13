@@ -232,44 +232,10 @@ public interface IReviewRuleFile
         CancellationToken cancellationToken = default);
 }
 
-public interface IReviewManager
-{
-    ST_REVIEW_PLAN? CurrentPlan { get; }
-
-    EN_REVIEW_SEQUENCE_STATE SequenceState { get; }
-
-    ST_REVIEW_PLAN CreatePlan(
-        ST_RECIPE_DATA recipe,
-        IReadOnlyCollection<string> selectedHoleKeys);
-
-    ST_REVIEW_PLAN CreatePlan(
-        ST_RECIPE_DATA recipe,
-        ST_REVIEW_RULE_DATA rule);
-
-    Task<ST_REVIEW_SEQUENCE_STATUS> Start(
-        ST_REVIEW_PLAN plan,
-        Action<ST_REVIEW_PLAN>? progress = null,
-        CancellationToken cancellationToken = default);
-
-    void Stop();
-
-    Task<ST_REVIEW_SEQUENCE_STATUS> RetryRemaining(
-        Action<ST_REVIEW_PLAN>? progress = null,
-        CancellationToken cancellationToken = default);
-
-    ST_REVIEW_PLAN_POINT? ApplyReviewOffset(string holeKey);
-
-    Task SaveResult(
-        ST_REVIEW_PLAN plan,
-        IReadOnlyList<ST_REVIEW_PLAN_POINT> results,
-        CancellationToken cancellationToken = default);
-}
-
 public sealed class CReviewManager(
     IReviewResultFile reviewResultFile,
-    IInterfaceManager interfaceManager,
-    ISettingManager settingManager) : IReviewManager
-{
+    CInterfaceManager interfaceManager,
+    CSettingManager settingManager) {
     private const int MaxHeadCount = 8;
     private const int DefaultHeadCount = 8;
     private const int DefaultCellCount = 20;

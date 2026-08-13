@@ -106,92 +106,6 @@ public sealed record ST_MOTION_CONTROLLER_STATUS(
     int AxisCount,
     IReadOnlyList<string> AxisIds);
 
-public interface IMotionManager
-{
-    bool IsSimulation { get; }
-
-    void SetSimulationMode(bool enabled);
-
-    Task Initialize(CancellationToken cancellationToken = default);
-
-    Task Destroy(CancellationToken cancellationToken = default);
-
-    Task RefreshStatus(CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_MOTOR_AXIS_STATUS>> GetAxisStatus(
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_IO_STATUS>> GetIoStatus(
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_MOTION_STATION_STATUS>> GetStationStatus(
-        CancellationToken cancellationToken = default);
-
-    Task<IReadOnlyList<ST_MOTION_CONTROLLER_STATUS>> GetControllerStatus(
-        CancellationToken cancellationToken = default);
-
-    Task ServoOn(
-        string axisId,
-        CancellationToken cancellationToken = default);
-
-    Task ServoOff(
-        string axisId,
-        CancellationToken cancellationToken = default);
-
-    Task Home(
-        string axisId,
-        CancellationToken cancellationToken = default);
-
-    Task Move(
-        string axisId,
-        double targetPosition,
-        CancellationToken cancellationToken = default);
-
-    Task MoveRel(
-        string axisId,
-        double distance,
-        CancellationToken cancellationToken = default);
-
-    Task Stop(
-        string axisId,
-        CancellationToken cancellationToken = default);
-
-    Task ResetAlarm(
-        string axisId,
-        CancellationToken cancellationToken = default);
-
-    Task MoveAxis(
-        string axisId,
-        double targetPosition,
-        CancellationToken cancellationToken = default);
-
-    Task ExecuteAxisCommand(
-        string axisId,
-        EN_MOTION_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task StopMotion(
-        string axisId,
-        CancellationToken cancellationToken = default);
-
-    Task SetOutput(
-        string ioName,
-        bool isOn,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> ExecuteMotionCommand(
-        string axisId,
-        EN_MOTION_COMMAND command,
-        double parameter = 0.0,
-        CancellationToken cancellationToken = default);
-
-    Task<ST_DEVICE_COMMAND_RESULT> SetOutputCommand(
-        string ioName,
-        bool isOn,
-        CancellationToken cancellationToken = default);
-}
-
 public interface IMotorFile
 {
     Task<IReadOnlyList<ST_MOTOR_DATA>> LoadAll(CancellationToken cancellationToken = default);
@@ -201,14 +115,13 @@ public interface IIoFile
 {
     Task<IReadOnlyList<ST_IO_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
-public sealed class CMotionManager : IMotionManager
-{
+public sealed class CMotionManager {
     private const string DefaultControllerName = "XPS";
 
     private static readonly IReadOnlyDictionary<string, Type> MotionControllerTypes =
         LoadMotionControllerTypes();
 
-    private readonly IInterfaceManager? _interfaceManager;
+    private readonly CInterfaceManager? _interfaceManager;
     private readonly IReadOnlyList<ST_MOTOR_DATA> _motors;
     private readonly Dictionary<string, ST_MOTOR_DATA> _axisData;
     private readonly Dictionary<string, ST_AXIS_STATE> _axes;
@@ -222,7 +135,7 @@ public sealed class CMotionManager : IMotionManager
     }
 
     public CMotionManager(
-        IInterfaceManager? interfaceManager,
+        CInterfaceManager? interfaceManager,
         IReadOnlyList<ST_MOTOR_DATA>? motors = null,
         IReadOnlyList<ST_IO_DATA>? ioData = null,
         bool isSimulation = true)

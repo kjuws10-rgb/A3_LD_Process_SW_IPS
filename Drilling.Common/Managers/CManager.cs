@@ -192,7 +192,7 @@ public sealed class CManager
     private readonly IProductFile _productFile;
     private readonly IReviewResultFile _reviewResultFile;
     private readonly IReviewRuleFile _reviewRuleFile;
-    private readonly ILogManager _logManager;
+    private readonly CLogManager _logManager;
     private readonly IAutomationScriptFile _automationScriptFile;
     private readonly IConfigStructureFile? _configStructureFile;
 
@@ -203,10 +203,10 @@ public sealed class CManager
     private readonly CInterLockManager _interLockManager = new();
 
     private readonly CStationManager _stationManager;
-    private readonly IRecipeManager _recipeManager;
-    private readonly ISettingManager _settingManager;
-    private readonly IProductManager _productManager;
-    private readonly IReviewManager _reviewManager;
+    private readonly CRecipeManager _recipeManager;
+    private readonly CSettingManager _settingManager;
+    private readonly CProductManager _productManager;
+    private readonly CReviewManager _reviewManager;
     private readonly object _startupLock = new();
     private readonly List<string> _startupMessages = [];
     private readonly List<ST_MANAGER_STARTUP_STEP> _startupSteps = [];
@@ -231,7 +231,7 @@ public sealed class CManager
         IProductFile productFile,
         IReviewResultFile reviewResultFile,
         IReviewRuleFile reviewRuleFile,
-        ILogManager logManager,
+        CLogManager logManager,
         IAutomationScriptFile automationScriptFile,
         bool? simulationMode = null,
         IConfigStructureFile? configStructureFile = null)
@@ -445,42 +445,42 @@ RunInitializeStepCallbackCallback2,
         return _interfaceManager.Reconnect(module, number, cancellationToken);
     }
 
-    public IStationManager Station()
+    public CStationManager Station()
     {
         return _stationManager;
     }
 
-    public IRecipeManager Recipe()
+    public CRecipeManager Recipe()
     {
         return _recipeManager;
     }
 
-    public ISettingManager Setting()
+    public CSettingManager Setting()
     {
         return _settingManager;
     }
 
-    public IProductManager Product()
+    public CProductManager Product()
     {
         return _productManager;
     }
 
-    public IReviewManager Review()
+    public CReviewManager Review()
     {
         return _reviewManager;
     }
 
-    public IInterfaceManager Interface()
+    public CInterfaceManager Interface()
     {
         return _interfaceManager;
     }
 
-    public IAutomationManager Automation()
+    public CAutomationManager Automation()
     {
         return _automationManager;
     }
 
-    public IAutomationManager automation
+    public CAutomationManager automation
     {
         get
         {
@@ -488,7 +488,7 @@ RunInitializeStepCallbackCallback2,
         }
     }
 
-    public IMotionManager Motion()
+    public CMotionManager Motion()
     {
         return _motionManager;
     }
@@ -503,7 +503,7 @@ RunInitializeStepCallbackCallback2,
         return _interLockManager;
     }
 
-    public ILogManager Log()
+    public CLogManager Log()
     {
         return _logManager;
     }

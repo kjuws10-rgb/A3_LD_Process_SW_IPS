@@ -50,34 +50,7 @@ public interface IMelsecMapFile
     Task<IReadOnlyList<ST_MELSEC_MAP_DATA>> LoadAll(CancellationToken cancellationToken = default);
 }
 
-public interface IMelsec
-{
-    IReadOnlyList<ST_MELSEC_MAP_DATA> Map { get; }
-
-    void ReloadMap(IReadOnlyList<ST_MELSEC_MAP_DATA> map);
-
-    IReadOnlyList<ST_MELSEC_MAP_DATA> GetMapList(string group = "");
-
-    ST_MELSEC_MAP_DATA GetMapData(string id);
-
-    Task<bool> ReadBit(string id, CancellationToken cancellationToken = default);
-
-    Task WriteBit(string id, bool value, CancellationToken cancellationToken = default);
-
-    Task<int> ReadWord(string id, CancellationToken cancellationToken = default);
-
-    Task WriteWord(string id, int value, CancellationToken cancellationToken = default);
-
-    Task<double> ReadDouble(string id, CancellationToken cancellationToken = default);
-
-    Task WriteDouble(string id, double value, CancellationToken cancellationToken = default);
-
-    Task<string> ReadString(string id, CancellationToken cancellationToken = default);
-
-    Task WriteString(string id, string value, CancellationToken cancellationToken = default);
-}
-
-public sealed class CMelsec : IMelsec, IDisposable
+public sealed class CMelsec : IDisposable
 {
     private const ushort McCommandBatchRead = 0x0401;
     private const ushort McCommandBatchWrite = 0x1401;
@@ -85,8 +58,8 @@ public sealed class CMelsec : IMelsec, IDisposable
     private const ushort DefaultMonitoringTimer = 0x0010;
     private const int DefaultConnectTimeoutMs = 700;
 
-    private readonly IInterfaceManager _interfaceManager;
-    private readonly ILogManager? _logManager;
+    private readonly CInterfaceManager _interfaceManager;
+    private readonly CLogManager? _logManager;
     private readonly SemaphoreSlim _ioLock = new(1, 1);
     private readonly Dictionary<string, ushort> _simulationWords = new(StringComparer.OrdinalIgnoreCase);
 
@@ -96,8 +69,8 @@ public sealed class CMelsec : IMelsec, IDisposable
     private string _connectedEndpoint = "";
 
     public CMelsec(
-        IInterfaceManager interfaceManager,
-        ILogManager? logManager = null,
+        CInterfaceManager interfaceManager,
+        CLogManager? logManager = null,
         IReadOnlyList<ST_MELSEC_MAP_DATA>? map = null)
     {
         _interfaceManager = interfaceManager;

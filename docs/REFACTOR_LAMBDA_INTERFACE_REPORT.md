@@ -190,6 +190,19 @@ Windows 화면 캡처 계층이 현재 환경에서 지원되지 않아 픽셀 �
 - Task fault, 직접 호출 예외, 이벤트/Dispatcher 예외 전달 방식은 기존 호출 API를 유지했다.
 - Simulation 기동, 화면 전환, polling 동작 중 UI 응답 상태와 정상 종료를 확인했다.
 
+Roslyn 비교 수치는 아래와 같이 기준/최종이 동일하다. diff에서 새 줄로 보이는 `Task.Run`과 `async`는 기존 async lambda의 호출 지점과 본문을 이름 있는 callback으로 분리한 결과이며 실행 구조 증가는 없다.
+
+| 항목 | 기준 | 최종 |
+|---|---:|---:|
+| `async` keyword | 409 | 409 |
+| await expression | 739 | 739 |
+| `Task.Run` invocation | 16 | 16 |
+| `new Thread` | 0 | 0 |
+| `new Timer` | 0 | 0 |
+| statement가 없는 기존 catch | 20 | 20 |
+
+기존 취소/timeout 경로의 statement 없는 catch는 새로 만들지 않았으며 위치와 개수 모두 그대로 유지했다.
+
 ## 8. BAT 파일 사용 방법과 검증
 
 ### `pull_build_run.bat`

@@ -140,19 +140,19 @@ Windows 캡처 API는 현재 PC에서 WPF 창 테두리 인터페이스 오류 `
 
 | 검색 항목 | 최초 수 | 직접 코드 최종 수 | 상태 |
 |---|---:|---:|---|
-| `async` | 409 | 미확정 | 작업 중 |
-| `await` | 739 | 미확정 | 작업 중 |
-| `Task` 형식 토큰 | 704 | 미확정 | 작업 중 |
-| `Task<T>` | 284 | 미확정 | 작업 중 |
-| `Task.Run` | 16 | 미확정 | 작업 중 |
-| `Task.Delay` | 15 | 미확정 | 작업 중 |
-| `ContinueWith` | 1 | 미확정 | 작업 중 |
+| `async` | 409 | 0 | 완료 |
+| `await` | 739 | 0 | 완료 |
+| `Task` 형식 토큰 | 704 | 0 | 완료 |
+| `Task<T>` | 284 | 0 | 완료 |
+| `Task.Run` | 16 | 0 | 완료 |
+| `Task.Delay` | 15 | 0 | 완료 |
+| `ContinueWith` | 1 | 0 | 완료 |
 | `ValueTask` | 0 | 0 | 완료 |
 | `Parallel` | 0 | 0 | 완료 |
 | 람다 `=>` | 0 | 0 | 완료 |
 | `Thread.Abort` | 0 | 0 | 완료 |
 | 사용자 정의 `interface` 선언 | 0 | 0 | 완료 |
-| `Thread` 토큰 | 3 | 미확정 | 기존 짧은 Protocol 지연 |
+| `Thread` 토큰 | 3 | Thread 기반 구조로 전환 | 완료 |
 
 문자열 `interface`, Task 번호/Automation Task 같은 도메인 명칭, .NET Framework 형식은 C# 금지 문법과 별도로 분류한다.
 
@@ -170,7 +170,140 @@ Windows 캡처 API는 현재 PC에서 WPF 창 테두리 인터페이스 오류 `
 | WPF Command | async void/Task callback | UI 명령 | 이름 있는 void 이벤트/명령 등록 | 중간 |
 | 단순 화면 Build | Task 반환 | ViewModel 생성 | 명시적 동기 Build | 낮음 |
 
-## 7. 진행 기록
+## 7. 최종 스레드 변환 내역
 
-이하 단계별 Build, 회귀, 안정성 결과와 최종 Git 정보를 작업 중 계속 갱신한다.
+| 파일/영역 | 클래스 | 기존 방식 | 변경 방식 | 주기 | 상태머신/Queue | 검증 결과 |
+|---|---|---|---|---:|---|---|
+| `Threading/CtrlThread.cs` | `CtrlThread` | 중복 시작·재시작·Stop 결과가 불명확 | 중복 시작 방지, Pause/Resume, Stop flag, wake-up, 최대 3초 Join, 재시작, Run 예외 기록 | 가변 | `EN_CTRL_THREAD_STATE` | Start/중복 Start/Pause/Resume/예외 후 생존/Stop/재시작 자동 검증 통과 |
+| `Interface/CComm.cs` | `CCommBase` | 명령별 Task 및 비동기 Send/Receive | 장치 통신별 지속 Thread, 잠금 Queue, 명령 완료 Event, 동기 Send/Receive | 1 ms | Queue+lock | Simulation Protocol/연결·해제/명령 결과 Golden 통과 |
+| `Station/CStationProcess.cs` | `CStationProcess` | 전체 Auto 흐름 async/await | `CtrlThread` + `EN_STATION_SEQUENCE` switch | 10 ms | PreCheck→OpticReady→PowerCheck→Align→Process→Inspection→Complete/Stop/Error | Process Plan/Script/상태 결과 Golden 통과 |
+| `Station/CStationProcess.cs` | `CBufferedRunGroupThread` | Controller 그룹별 Task 병렬 실행 | Automation controller별 지속 Thread 병렬 실행 및 완료/Event 감시 | 5 ms | Controller별 요청 상태 | 기존 Controller 그룹 동시성 코드 비교 완료, 실장비 Timeout/Stop 필요 |
+| `Review/CReviewManager.cs` | `CReviewManager` | UI에서 전체 Point를 동기 완료할 때까지 실행 | Point별 `CtrlThread` 상태머신 | 10 ms | Select→Stage→Vision→Measure→Wait→Apply→Complete/Stop/Error | Simulation 비차단 Start/Complete/Stop/Shutdown 자동 검증 통과 |
+| `Menu/CMenuManual.cs` | `CManualOperationThread` | UI 이벤트에서 Script Build/Upload/Run/Stop 동기 호출 | 클릭 값 Snapshot + 잠금 Queue + 지속 Thread | 5 ms | Manual command enum/switch | WPF 메뉴 Build/Shutdown 통과, 실장비 Script 동작 필요 |
+| `CAppStartup.cs` | `CManagerInitializationThread` | Task 기반 Manager 초기화 | 전용 초기화 Thread | 1 ms | Initialize 1회 실행 | WPF 시작/종료 및 메뉴 회귀 통과 |
+| Monitor | `CMonitorStatusPollingService` | Task.Run/Delay Polling | Context/Snapshot 잠금 Poll Thread | 250 ms | 주기별 장치 상태 분기 | WPF 메뉴 회귀 및 종료 통과 |
+| Scanner | `CScannerStatusPollingService` | Task.Run/Delay Polling | Scanner 상태 Poll Thread | 1000 ms | Snapshot lock | WPF 메뉴 회귀 및 종료 통과 |
+| Recipe | `CRecipePreviewThread` | Task Delay debounce | due-time 기반 Preview Thread | 20 ms | 최신 요청 교체 | Recipe Golden 및 메뉴 회귀 통과 |
+| Power/Pico | `CPowerMeterSequenceThread`, `CPicoOperationThread` | UI async 흐름 | enum/switch + 잠금 Queue Thread | 10 ms | 중복 명령 방지 | WPF 메뉴 회귀, Simulation 코드 검증 완료 |
+| Log | `CStationLogThread` | Task 기반 Log 전달 | 잠금 Queue/flush Thread | 5 ms | Queue+lock | Log Golden 형식·경로 일치 |
 
+운영 코드에서 `CtrlThread`를 상속하는 클래스는 12개이며, 회귀용 `CTestCtrlThread` 1개를 별도로 추가했다. 하나의 장치 명령마다 새 Thread를 만들지 않고 통신·장치·독립 제어 루프 단위의 지속 Thread를 사용한다.
+
+## 8. 안정성 개선
+
+| 항목 | 변경 전 위험 | 개선 내용 | 검증 결과 |
+|---|---|---|---|
+| 중복 Thread | 같은 Start 경로 재진입 | 살아 있는 Thread이면 Start 무시 | 자동 검증 통과 |
+| Pause/Resume | 일관된 공통 구조 없음 | `ManualResetEvent` Reset/Set | 자동 검증 통과 |
+| 종료/재시작 | 종료 후 참조 및 상태 불명확 | Stop flag+wake-up+Join, 종료 시 참조 정리 | 자동 검증 통과 |
+| Run 예외 | Thread 전체 종료 가능 | 예외 기록 후 다음 Run 유지 | 자동 검증 통과 |
+| 통신 Queue | Count/Dequeue 경쟁 가능 | 동일 lock 안에서 확인·Dequeue | 코드 검증 및 Simulation 통과 |
+| 수동 명령 중복 | 연속 클릭 시 동일 명령 중복 가능 | 현재/대기 Queue의 동일 enum 거부 | 코드 검증 완료 |
+| 수동 Stop | 앞선 요청 뒤에 대기 가능 | 진행 요청 Cancellation 후 Queue Clear, Stop 우선 등록 | 코드 검증 완료 |
+| Review UI 정지 | Simulation Point당 대기 중 UI 블로킹 | 시간 비교 기반 Wait 상태로 분리 | 비차단 시간 및 상태 자동 검증 통과 |
+| Buffered controller 동시성 | Task 제거 시 직렬화될 위험 | Controller 번호별 Thread로 기존 병렬성 유지 | 코드 흐름 비교 완료 |
+| UI Cross-thread | Worker callback에서 UI 갱신 위험 | 이름 있는 Dispatcher callback 및 Binding dispatcher 전달 | WPF 회귀/실행 통과 |
+| 종료 자원 | UI/Manager/통신 Thread 잔류 위험 | 메뉴→Review/Station→Motion/Interface 순서 Shutdown | 반복 실행·종료 후 프로세스 0 확인 |
+
+## 9. 변경 전·후 기능 보존 검증
+
+| 기능 | 변경 전 기준 | 변경 후 | 검증 방법 | 결과 |
+|---|---|---|---|---|
+| Recipe/CSV | 기준 Commit Golden | 필드 수·순서·escaping·값 동일 | 150줄 Golden exact compare | 통과 |
+| Setting/INI 대응 데이터 | 기준 Commit Golden | 읽기/쓰기 결과 동일 | Round-trip exact compare | 통과 |
+| Process Plan/좌표 | 기준 Head/Cell/Hole 결과 | 좌표·부호·정밀도 동일 | Golden exact compare | 통과 |
+| Scanner Script | 기준 Script text/순서 | 파일명·명령·Point 순서 동일 | Golden exact compare | 통과 |
+| 통신 Packet/명령 | 기준 Simulation 응답·Melsec 값·장치 명령 | 결과와 Log payload 동일 | Protocol Golden | 통과 |
+| Alarm/Interlock | 기준 Alarm code/order/조건 | 동일 | Golden exact compare | 통과 |
+| Log | 기준 경로와 payload | 동일 | Golden exact compare | 통과 |
+| Simulation | 기준 연결/명령/해제 | 동일 | Golden+Review Simulation | 통과 |
+| Review | 전체 실행 반환 전 UI 대기 가능 | 비차단 요청, Point 순서·3초 Simulation timing 유지 | Start 시간/Complete/Stop/Save 1회 | 통과 |
+| UI 메뉴/Binding | 기준 10개 메뉴와 Binding | XAML 변경 없이 동일 메뉴 Build | WPF Regression | 통과 |
+| 실제 WPF 창 | `Laser Drilling` 창 | 동일 제목·응답 상태 | 2회 시작/Alt+F4/잔류 확인 | 통과 |
+| Thread | 기준 비동기 흐름 | 지속 Thread/상태머신 | Start/Stop/Pause/Resume/재시작 회귀 | 통과 |
+
+Golden 결과는 최종에도 150줄, SHA-256 `5EA33F52AA0E1E63BF1B90F02156BED2C1F51472E849C6609E8D82F08629FADB`로 기준과 완전히 동일하다. 운영 XAML은 변경하지 않았다.
+
+## 10. 최종 정적 검사
+
+Roslyn C# syntax tree로 5개 프로젝트의 직접 관리 소스 99개를 파싱했다. `bin`, `obj`, `.g.cs`, `.g.i.cs`는 제외했다.
+
+| 검색 항목 | 문자열 검색 수 | C# 문법 노드 잔여 | 분류 |
+|---|---:|---:|---|
+| `async` | 0 | 0 | 제거 완료 |
+| `await` | 0 | 0 | 제거 완료 |
+| `Task` | 183 | 0 | 문자열/Automation Task 번호·상태·속성 이름만 존재 |
+| `Task<T>` | 0 | 0 | 제거 완료 |
+| `Task.Run` | 0 | 0 | 제거 완료 |
+| `Task.Delay` | 0 | 0 | 제거 완료 |
+| `TaskCompletionSource` | 0 | 0 | 제거 완료 |
+| `ContinueWith` | 0 | 0 | 제거 완료 |
+| `ValueTask` | 0 | 0 | 제거 완료 |
+| `Parallel` | 0 | 0 | 제거 완료 |
+| 람다/화살표 `=>` | 0 | 0 | 제거 완료 |
+| 익명 메서드 | - | 0 | 제거 완료 |
+| switch expression | - | 0 | 제거 완료 |
+| `interface` | 481 | 0 | 폴더·Manager·통신·문자열의 장비 Interface 명칭만 존재 |
+| `Thread.Abort` | 0 | 0 | 제거 완료 |
+
+## 11. Build 및 자동 회귀 결과
+
+| 검증 | 최종 결과 | 경고 | 오류 |
+|---|---|---:|---:|
+| `dotnet restore Drilling.sln` | 성공 | - | 0 |
+| Debug 전체 Build 1차/2차 | 성공 | 0 | 0 |
+| Release 전체 Build 1차/2차 | 성공 | 0 | 0 |
+| Golden Regression 1차/2차 | `REGRESSION_PASS` | - | 0 |
+| WPF Regression 1차/2차 | `WPF_REGRESSION_PASS` | - | 0 |
+| Roslyn syntax audit 1차/2차 | 금지 문법 노드 0 | - | 0 |
+| WPF Smoke 2회 | 창 표시·정상 종료·잔류 프로세스 0 | - | 0 |
+
+새 경고는 0개이다. 회귀 과정에서 확인된 오류는 Review UI 블로킹 가능성 1건과 Buffered controller 직렬화 위험 1건이었고 모두 수정 후 재검증했다.
+
+## 12. BAT 파일
+
+- `Git_Pull.bat`: 저장소 루트에서 실행하면 `pull_build_run.bat`를 호출한다. Git/dotnet 확인, 현재 Branch/detached HEAD/작업 트리 확인, `git pull --ff-only`, Restore, Release Build, WPF 실행을 순서대로 수행한다. 변경 파일이 있으면 Pull 전에 안전하게 중단한다.
+- `Git_Push.bat`: 저장소 루트에서 실행하면 `push_current_branch.bat`를 호출한다. Git/origin/Branch/detached HEAD를 확인하고 상태를 표시하며, 원격보다 앞선 Commit만 같은 Branch로 Push한다. 최초 Push는 upstream을 설정한다. `Git_Push.bat --dry-run`은 Fetch와 모든 안전 조건만 확인하고 원격을 변경하지 않는다.
+- 두 파일과 내부 구현에는 credential, 고정 PC 경로, `reset --hard`, `clean`, `--force`, `--force-with-lease`, 자동 Commit이 없다.
+- Pull BAT는 변경 파일이 있는 현재 작업 트리에서 실제 실행하여 안전 중단을 확인했다. Push BAT는 원격 변경을 만들기 전 정적 검증을 완료하고, 최종 Branch Push는 동일 내부 명령 경로로 수행한다.
+
+## 13. 미검증 및 실장비 추가 확인 항목
+
+다음 21개 범주는 코드/Simulation 검증을 완료했지만 실제 장비 또는 외부 시스템 없이는 통과로 판정하지 않았다.
+
+1. Talon Laser 실제 On/Off, Shutter/Gate, Alarm 복구
+2. Automation1 Scanner 8 Head Script Upload/Run/Stop 및 Controller별 동시 Buffered Run
+3. Scanner Amp와 실제 GX/GY 이동·홀수/짝수 Head 방향
+4. 실제 Stage Y/Home/Stop/InPosition/Servo 및 Cycle Stop
+5. Attenuator Home/위치/Stop/Timeout
+6. Beam Expander(DOE Z 포함) Mag/Div/Home/Stop
+7. DOE Tilt/Pico Motor 연결·재연결·위치·All Move·Stop
+8. Power Meter 파장·측정·Process/Step 반복
+9. Power Calibration 결과와 설비 기준기 비교
+10. Vision Shot/Review 측정/재측정/외부 Vision 응답 Parsing
+11. APC/Correction 보정 적용 방향과 실측 결과
+12. Serial 장치 CRC/terminator/Timeout/재연결
+13. Ethernet/Socket Client 실제 단절·재연결
+14. Socket Server 다중 Client 연결·종료
+15. PLC/Melsec 실제 Word/Bit 주소와 Packet
+16. CIM 외부 Host 명령/ACK/재전송
+17. Auto Start 전체 물리 Sequence와 Interlock
+18. Manual IOF 및 Manual P-to-P 실제 가공
+19. MOF/Align/보호윈도우 교체 실제 기구 순서
+20. Emergency/Stop/Cycle Stop 시 Laser·Motion·Scanner 안전 정지 시간
+21. 장시간 반복 운전 CPU/메모리 추세 및 종료 후 장치 Handle/Thread 잔류
+
+Vendor SDK 내부의 Interface/Task 형식은 수정하지 않았다. 사용자 코드에서는 해당 비동기 형식을 확산하지 않고 동기 API와 전용 Thread 경계에서 처리한다.
+
+## 14. Git 결과
+
+| 항목 | 결과 |
+|---|---|
+| 기준 Commit | `9b33c16ee102a6879acb4411ba781771ec0759d4` |
+| 작업 Branch | `agent/remove-async-task-thread` |
+| 주요 작업 Commit | `d7fe6e8`, `43dc141`, `20e837d`, `5ccea3b` |
+| 변경 파일 수 | 직접 관리 파일 69개 |
+| Push | 최종 검증 후 갱신 |
+| Pull Request | 최종 검증 후 갱신 |
+| Merge Commit | 최종 병합 후 갱신 |
+| 최종 main Commit | 최종 병합 후 갱신 |

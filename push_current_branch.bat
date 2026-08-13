@@ -72,6 +72,12 @@ if "%AHEAD_COUNT%"=="0" (
 echo Commits to push: %AHEAD_COUNT%
 
 :push
+if /I "%~1"=="--dry-run" (
+    echo [DRY RUN] Push target: origin/%CURRENT_BRANCH%
+    echo [PASS] All push safety checks completed. No remote data was changed.
+    exit /b 0
+)
+
 git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" >nul 2>nul
 if errorlevel 1 (
     echo [2/2] Push and set upstream origin/%CURRENT_BRANCH%

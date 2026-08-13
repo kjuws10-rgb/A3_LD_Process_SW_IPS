@@ -588,7 +588,3 @@ internal static class CMenuIcon
         return geometry;
     }
 }
-
-
-
-

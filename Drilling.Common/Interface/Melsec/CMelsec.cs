@@ -1,7 +1,5 @@
 using System.Buffers.Binary;
 using System.Globalization;
-using System.Net;
-using System.Net.Sockets;
 using System.Runtime.ExceptionServices;
 using System.Text;
 using Drilling.Common.Log;
@@ -103,18 +101,15 @@ public abstract class CMelsecMapFileBase
 
 public sealed class CMelsec : CtrlThread
 {
-    private const ushort McCommandBatchRead = 0x0401;
-    private const ushort McCommandBatchWrite = 0x1401;
-    private const ushort McSubCommandWord = 0x0000;
-    private const ushort DefaultMonitoringTimer = 0x0010;
-    private const int DefaultConnectTimeoutMs = 700;
     private const int DefaultWriteTimeoutMs = 3000;
     private const int MelsecThreadDelayMs = 2;
+    private const int MelsecNetMaximumTransferBytes = 1920;
     private const int MaximumStoredWriteStatusCount = 256;
     private const int MaximumWriteQueueCount = 128;
 
     private readonly CInterfaceManager _interfaceManager;
     private readonly CLogManager? _logManager;
+    private readonly CMelsecNetApi _melsecNetApi;
     private readonly object _ioLock = new object();
     private readonly object _mapLock = new object();
     private readonly object _requestLock = new object();
@@ -126,11 +121,9 @@ public sealed class CMelsec : CtrlThread
     private readonly Queue<CMelsecWriteCommand> _writeQueue = new Queue<CMelsecWriteCommand>();
     private readonly Dictionary<int, CMelsecWriteCommand> _writeStatus = new Dictionary<int, CMelsecWriteCommand>();
     private readonly Dictionary<string, CMelsecReadSnapshot> _readSnapshots = new Dictionary<string, CMelsecReadSnapshot>(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<int, int> _melsecNetPaths = new Dictionary<int, int>();
 
     private Dictionary<string, ST_MELSEC_MAP_DATA> _map = new(StringComparer.OrdinalIgnoreCase);
-    private TcpClient? _client;
-    private int? _connectedDeviceNo;
-    private string _connectedEndpoint = "";
     private bool _acceptRequests = true;
     private int _nextRequestNo;
     private CMelsecWriteCommand? _activeWriteCommand;
@@ -145,10 +138,12 @@ public sealed class CMelsec : CtrlThread
     public CMelsec(
         CInterfaceManager interfaceManager,
         CLogManager? logManager = null,
-        IReadOnlyList<ST_MELSEC_MAP_DATA>? map = null)
+        IReadOnlyList<ST_MELSEC_MAP_DATA>? map = null,
+        CMelsecNetApi? melsecNetApi = null)
     {
         _interfaceManager = interfaceManager;
         _logManager = logManager;
+        _melsecNetApi = melsecNetApi ?? new CMelsecNetApi();
         ReloadMap(map ?? []);
     }
 
@@ -237,12 +232,8 @@ public sealed class CMelsec : CtrlThread
 
         CancelQueuedRequests("MELSEC control is stopping.");
         CancelQueuedWrites("MELSEC control is stopping.");
+        CloseMelsecNetChannels();
         Stop();
-
-        lock (_ioLock)
-        {
-            DisconnectSocket();
-        }
 
         if (IsRunning)
         {
@@ -341,10 +332,10 @@ public sealed class CMelsec : CtrlThread
     public static void ValidateMapData(ST_MELSEC_MAP_DATA data)
     {
         ST_MELSEC_ADDRESS address = ParseAddress(data.Address);
-        if (address.Number < 0 || address.Number > 0xFFFFFF)
+        if (address.Number < 0)
         {
             throw new InvalidDataException(
-                "MELSEC address exceeds the MC 3E device range: " + FormatMap(data));
+                "MELSECNET device number cannot be negative: " + FormatMap(data));
         }
 
         if (data.DataType == EN_MELSEC_DATA_TYPE.Bit)
@@ -817,6 +808,9 @@ public sealed class CMelsec : CtrlThread
                 case EN_MELSEC_THREAD_COMMAND.Open:
                     OpenCore((int)request.Value!, request.CancellationToken);
                     break;
+                case EN_MELSEC_THREAD_COMMAND.Close:
+                    CloseMelsecNetChannelsCore();
+                    break;
                 case EN_MELSEC_THREAD_COMMAND.ReadBit:
                     request.Result = ReadBitCore(request.Id, request.CancellationToken);
                     break;
@@ -867,13 +861,154 @@ public sealed class CMelsec : CtrlThread
             return;
         }
 
-        ST_INTERFACE_CONNECT_OPTION option = CInterfaceConnectOption.Parse(interfaceData);
+        ST_MELSEC_NET_OPTION option = ReadMelsecNetOption(interfaceData);
         lock (_ioLock)
         {
-            EnsureConnected(interfaceData, option, cancellationToken);
+            if (!_melsecNetPaths.ContainsKey(deviceNo))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                int path;
+                int returnCode;
+                try
+                {
+                    returnCode = _melsecNetApi.Open(option.ChannelNo, out path);
+                }
+                catch (Exception exception) when (IsMelsecNetRuntimeException(exception))
+                {
+                    throw CreateMelsecNetRuntimeException("mdOpen", exception);
+                }
+
+                if (returnCode != 0)
+                {
+                    throw CreateMelsecNetReturnCodeException(
+                        "mdOpen",
+                        returnCode,
+                        interfaceData,
+                        option,
+                        0,
+                        0);
+                }
+
+                _melsecNetPaths[deviceNo] = path;
+                WriteMelsecNetOpenLog(interfaceData, option, path);
+            }
         }
-        ProbeDeviceRead(deviceNo, cancellationToken);
-        RegisterCommunicationSuccess();
+
+        try
+        {
+            ProbeDeviceRead(deviceNo, cancellationToken);
+            RegisterCommunicationSuccess();
+        }
+        catch
+        {
+            CloseMelsecNetChannelCore(deviceNo, interfaceData, option);
+            throw;
+        }
+    }
+
+    private void CloseMelsecNetChannels()
+    {
+        if (!IsRunning)
+        {
+            return;
+        }
+
+        CMelsecThreadRequest request = new CMelsecThreadRequest(
+            EN_MELSEC_THREAD_COMMAND.Close,
+            "",
+            null,
+            CancellationToken.None);
+        lock (_requestLock)
+        {
+            _requestQueue.Enqueue(request);
+        }
+
+        if (!request.Completed.WaitOne(3000))
+        {
+            _logManager?.WriteInterfaceError(
+                EN_EQP_MODULE.Melsec,
+                "MELSEC_CONTROL",
+                "[I/F][COMM_ERROR] mdClose",
+                "MELSECNET close request did not complete within 3000 ms.");
+            return;
+        }
+
+        if (request.Error != null)
+        {
+            _logManager?.WriteInterfaceError(
+                EN_EQP_MODULE.Melsec,
+                "MELSEC_CONTROL",
+                "[I/F][COMM_ERROR] mdClose",
+                request.Error.Message);
+        }
+    }
+
+    private void CloseMelsecNetChannelsCore()
+    {
+        KeyValuePair<int, int>[] paths;
+        lock (_ioLock)
+        {
+            paths = _melsecNetPaths.ToArray();
+        }
+
+        for (int index = 0; index < paths.Length; index++)
+        {
+            int deviceNo = paths[index].Key;
+            ST_INTERFACE_DATA? interfaceData = _interfaceManager.GetInterfaceData(
+                EN_EQP_MODULE.Melsec,
+                deviceNo);
+            if (interfaceData == null)
+            {
+                continue;
+            }
+
+            ST_MELSEC_NET_OPTION option = ReadMelsecNetOption(interfaceData);
+            CloseMelsecNetChannelCore(deviceNo, interfaceData, option);
+        }
+    }
+
+    private void CloseMelsecNetChannelCore(
+        int deviceNo,
+        ST_INTERFACE_DATA interfaceData,
+        ST_MELSEC_NET_OPTION option)
+    {
+        int path;
+        lock (_ioLock)
+        {
+            if (!_melsecNetPaths.TryGetValue(deviceNo, out path))
+            {
+                return;
+            }
+            _melsecNetPaths.Remove(deviceNo);
+        }
+
+        int returnCode;
+        try
+        {
+            returnCode = _melsecNetApi.Close(path);
+        }
+        catch (Exception exception) when (IsMelsecNetRuntimeException(exception))
+        {
+            throw CreateMelsecNetRuntimeException("mdClose", exception);
+        }
+
+        if (returnCode != 0)
+        {
+            throw CreateMelsecNetReturnCodeException(
+                "mdClose",
+                returnCode,
+                interfaceData,
+                option,
+                path,
+                0);
+        }
+
+        _logManager?.WriteInterfaceCommand(
+            EN_EQP_MODULE.Melsec,
+            interfaceData.NickName,
+            "MELSECNET:mdClose",
+            "OK",
+            FormatMelsecNetContext(option, path, 0, 0));
     }
 
     private void ProbeDeviceRead(int deviceNo, CancellationToken cancellationToken)
@@ -1765,32 +1900,100 @@ public sealed class CMelsec : CtrlThread
             return simulationWords;
         }
 
-        var option = CInterfaceConnectOption.Parse(interfaceData);
-        var mcOption = ReadMcProtocolOption(interfaceData);
-        var request = BuildMcRequest(mcOption, McCommandBatchRead, McSubCommandWord, address, (ushort)wordCount, []);
-        byte[] responseData;
+        ST_MELSEC_NET_OPTION option = ReadMelsecNetOption(interfaceData);
+        int path = GetMelsecNetPath(data.DeviceNo);
+        int requestedSize = checked(wordCount * sizeof(short));
+        if (requestedSize > MelsecNetMaximumTransferBytes)
+        {
+            throw new InvalidOperationException(
+                "MELSECNET read size exceeds 1920 bytes: " + FormatMap(data) +
+                ", Size=" + requestedSize.ToString(CultureInfo.InvariantCulture));
+        }
+
+        int actualSize = requestedSize;
+        short[] receiveData = new short[wordCount];
+        int returnCode;
         try
         {
-            responseData = SendMcRequest(data, interfaceData, option, request, command, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            returnCode = _melsecNetApi.ReceiveEx(
+                path,
+                option.NetworkNo,
+                option.StationNo,
+                address.DeviceType,
+                address.Number,
+                ref actualSize,
+                receiveData);
         }
-        catch
+        catch (Exception exception) when (IsMelsecNetRuntimeException(exception))
         {
             RegisterReadFailure(-1);
-            throw;
+            RegisterMelsecNetCommunicationError(
+                data,
+                interfaceData,
+                option,
+                path,
+                requestedSize,
+                "mdReceiveEx",
+                exception.Message);
+            throw CreateMelsecNetRuntimeException("mdReceiveEx", exception);
         }
 
-        if (responseData.Length < wordCount * 2)
+        if (returnCode != 0)
         {
-            throw new IOException(
-                $"MELSEC response is shorter than requested. {FormatMap(data)}, ExpectedBytes={wordCount * 2}, ActualBytes={responseData.Length}");
+            RegisterReadFailure(returnCode);
+            IOException exception = CreateMelsecNetReturnCodeException(
+                "mdReceiveEx",
+                returnCode,
+                interfaceData,
+                option,
+                path,
+                requestedSize);
+            RegisterMelsecNetCommunicationError(
+                data,
+                interfaceData,
+                option,
+                path,
+                requestedSize,
+                "mdReceiveEx",
+                exception.Message);
+            throw exception;
         }
 
-        var words = new ushort[wordCount];
-        for (var i = 0; i < words.Length; i++)
+        if (actualSize != requestedSize)
         {
-            words[i] = BinaryPrimitives.ReadUInt16LittleEndian(responseData.AsSpan(i * 2, 2));
+            RegisterReadFailure(-5);
+            string message = "mdReceiveEx size mismatch. RequestedSize=" +
+                requestedSize.ToString(CultureInfo.InvariantCulture) +
+                ", ActualSize=" + actualSize.ToString(CultureInfo.InvariantCulture);
+            RegisterMelsecNetCommunicationError(
+                data,
+                interfaceData,
+                option,
+                path,
+                requestedSize,
+                "mdReceiveEx",
+                message);
+            throw new IOException(message + " / " + FormatMap(data));
         }
 
+        ushort[] words = new ushort[wordCount];
+        for (int index = 0; index < words.Length; index++)
+        {
+            words[index] = unchecked((ushort)receiveData[index]);
+        }
+
+        WriteCommandLog(
+            data,
+            interfaceData,
+            command,
+            "mdReceiveEx OK / " + actualSize.ToString(CultureInfo.InvariantCulture) + " bytes");
+        _interfaceManager.UpdateMelsecCommunicationState(
+            interfaceData.Number,
+            true,
+            command,
+            "mdReceiveEx OK",
+            "");
         RegisterReadSuccess();
         return words;
     }
@@ -1817,130 +2020,97 @@ public sealed class CMelsec : CtrlThread
             return;
         }
 
-        var option = CInterfaceConnectOption.Parse(interfaceData);
-        var mcOption = ReadMcProtocolOption(interfaceData);
-        var request = BuildMcRequest(mcOption, McCommandBatchWrite, McSubCommandWord, address, (ushort)words.Count, words);
-        SendMcRequest(data, interfaceData, option, request, command, cancellationToken);
-        RegisterCommunicationSuccess();
-    }
-
-    private byte[] SendMcRequest(
-        ST_MELSEC_MAP_DATA data,
-        ST_INTERFACE_DATA interfaceData,
-        ST_INTERFACE_CONNECT_OPTION option,
-        byte[] request,
-        string command,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        lock (_ioLock)
+        ST_MELSEC_NET_OPTION option = ReadMelsecNetOption(interfaceData);
+        int path = GetMelsecNetPath(data.DeviceNo);
+        int requestedSize = checked(words.Count * sizeof(short));
+        if (requestedSize > MelsecNetMaximumTransferBytes)
         {
-            try
-            {
-                NetworkStream stream = EnsureConnected(interfaceData, option, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
-                stream.Write(request, 0, request.Length);
-                stream.Flush();
-
-                byte[] header = ReadExact(stream, 9, cancellationToken);
-                int bodyLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(7, 2));
-                byte[] body = ReadExact(stream, bodyLength, cancellationToken);
-
-                ValidateMcResponse(data, header, body);
-                byte[] responseData = body.Skip(2).ToArray();
-                WriteCommandLog(data, interfaceData, command, $"OK / {responseData.Length} bytes");
-                _interfaceManager.UpdateMelsecCommunicationState(
-                    interfaceData.Number,
-                    true,
-                    command,
-                    "OK / " + responseData.Length.ToString(CultureInfo.InvariantCulture) + " bytes",
-                    "");
-                return responseData;
-            }
-            catch (IOException exception) when (IsSocketTimeout(exception))
-            {
-                DisconnectSocket();
-                string message = "[I/F][TIMEOUT] MELSEC command timed out after " +
-                    option.TimeoutMs.ToString(CultureInfo.InvariantCulture) + " ms. / " +
-                    FormatCommunicationContext(interfaceData, request.Length);
-                WriteErrorLog(data, interfaceData, command, message);
-                _interfaceManager.UpdateMelsecCommunicationState(
-                    interfaceData.Number,
-                    false,
-                    command,
-                    "",
-                    message);
-                throw new TimeoutException(message, exception);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                DisconnectSocket();
-                string message = "[I/F][COMM_ERROR] " + exception.Message + " / " +
-                    FormatCommunicationContext(interfaceData, request.Length);
-                WriteErrorLog(data, interfaceData, command, message);
-                _interfaceManager.UpdateMelsecCommunicationState(
-                    interfaceData.Number,
-                    false,
-                    command,
-                    "",
-                    message);
-                throw;
-            }
-        }
-    }
-
-    private NetworkStream EnsureConnected(
-        ST_INTERFACE_DATA interfaceData,
-        ST_INTERFACE_CONNECT_OPTION option,
-        CancellationToken cancellationToken)
-    {
-        if (option.Port <= 0)
-        {
-            throw new InvalidOperationException($"MELSEC port is not configured: {interfaceData.NickName}");
+            throw new InvalidOperationException(
+                "MELSECNET write size exceeds 1920 bytes: " + FormatMap(data) +
+                ", Size=" + requestedSize.ToString(CultureInfo.InvariantCulture));
         }
 
-        var endpoint = $"{option.RemoteAddress}:{option.Port}";
-        if (_client?.Connected == true &&
-            _connectedDeviceNo == interfaceData.Number &&
-            _connectedEndpoint.Equals(endpoint, StringComparison.OrdinalIgnoreCase))
+        short[] sendData = new short[words.Count];
+        for (int index = 0; index < words.Count; index++)
         {
-            return _client.GetStream();
+            sendData[index] = unchecked((short)words[index]);
         }
 
-        DisconnectSocket();
-
-        var connectTimeoutMs = option.TimeoutMs > 0
-            ? Math.Min(option.TimeoutMs, DefaultConnectTimeoutMs)
-            : DefaultConnectTimeoutMs;
-        TcpClient client = ConnectSocket(
-            option.RemoteAddress,
-            option.Port,
-            connectTimeoutMs,
-            cancellationToken);
-        client.NoDelay = true;
-        client.ReceiveTimeout = Math.Max(1, option.TimeoutMs);
-        client.SendTimeout = Math.Max(1, option.TimeoutMs);
-
-        _client = client;
-        _connectedDeviceNo = interfaceData.Number;
-        _connectedEndpoint = endpoint;
-
-        return client.GetStream();
-    }
-
-    private void DisconnectSocket()
-    {
+        int actualSize = requestedSize;
+        int returnCode;
         try
         {
-            _client?.Close();
-            _client?.Dispose();
+            cancellationToken.ThrowIfCancellationRequested();
+            returnCode = _melsecNetApi.SendEx(
+                path,
+                option.NetworkNo,
+                option.StationNo,
+                address.DeviceType,
+                address.Number,
+                ref actualSize,
+                sendData);
         }
-        finally
+        catch (Exception exception) when (IsMelsecNetRuntimeException(exception))
         {
-            _client = null;
-            _connectedDeviceNo = null;
-            _connectedEndpoint = "";
+            RegisterMelsecNetCommunicationError(
+                data,
+                interfaceData,
+                option,
+                path,
+                requestedSize,
+                "mdSendEx",
+                exception.Message);
+            throw CreateMelsecNetRuntimeException("mdSendEx", exception);
         }
+
+        if (returnCode != 0)
+        {
+            IOException exception = CreateMelsecNetReturnCodeException(
+                "mdSendEx",
+                returnCode,
+                interfaceData,
+                option,
+                path,
+                requestedSize);
+            RegisterMelsecNetCommunicationError(
+                data,
+                interfaceData,
+                option,
+                path,
+                requestedSize,
+                "mdSendEx",
+                exception.Message);
+            throw exception;
+        }
+
+        if (actualSize != requestedSize)
+        {
+            string message = "mdSendEx size mismatch. RequestedSize=" +
+                requestedSize.ToString(CultureInfo.InvariantCulture) +
+                ", ActualSize=" + actualSize.ToString(CultureInfo.InvariantCulture);
+            RegisterMelsecNetCommunicationError(
+                data,
+                interfaceData,
+                option,
+                path,
+                requestedSize,
+                "mdSendEx",
+                message);
+            throw new IOException(message + " / " + FormatMap(data));
+        }
+
+        WriteCommandLog(
+            data,
+            interfaceData,
+            command,
+            "mdSendEx OK / " + actualSize.ToString(CultureInfo.InvariantCulture) + " bytes");
+        _interfaceManager.UpdateMelsecCommunicationState(
+            interfaceData.Number,
+            true,
+            command,
+            "mdSendEx OK",
+            "");
+        RegisterCommunicationSuccess();
     }
 
     private ST_INTERFACE_DATA GetInterfaceData(ST_MELSEC_MAP_DATA data)
@@ -1981,144 +2151,61 @@ public sealed class CMelsec : CtrlThread
         return $"{address.Device}:{address.Number + wordOffset:X}";
     }
 
-    private static byte[] BuildMcRequest(
-        ST_MC_PROTOCOL_OPTION option,
-        ushort command,
-        ushort subCommand,
-        ST_MELSEC_ADDRESS address,
-        ushort points,
-        IReadOnlyList<ushort> writeWords)
+    private int GetMelsecNetPath(int deviceNo)
     {
-        var bodyLength = 12 + writeWords.Count * 2;
-        var request = new byte[9 + bodyLength];
-
-        request[0] = 0x50;
-        request[1] = 0x00;
-        request[2] = option.NetworkNo;
-        request[3] = option.PcNo;
-        BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(4, 2), option.IoNo);
-        request[6] = option.StationNo;
-        BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(7, 2), (ushort)bodyLength);
-        BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(9, 2), option.MonitoringTimer);
-        BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(11, 2), command);
-        BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(13, 2), subCommand);
-
-        request[15] = (byte)(address.Number & 0xFF);
-        request[16] = (byte)((address.Number >> 8) & 0xFF);
-        request[17] = (byte)((address.Number >> 16) & 0xFF);
-        request[18] = address.DeviceCode;
-        BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(19, 2), points);
-
-        for (var i = 0; i < writeWords.Count; i++)
+        lock (_ioLock)
         {
-            BinaryPrimitives.WriteUInt16LittleEndian(request.AsSpan(21 + i * 2, 2), writeWords[i]);
+            if (_melsecNetPaths.TryGetValue(deviceNo, out int path))
+            {
+                return path;
+            }
         }
 
-        return request;
+        throw new InvalidOperationException(
+            "MELSECNET communication line is not open: MELSEC_" +
+            deviceNo.ToString(CultureInfo.InvariantCulture));
     }
 
-    private static byte[] ReadExact(
-        NetworkStream stream,
-        int length,
-        CancellationToken cancellationToken)
-    {
-        var buffer = new byte[length];
-        var offset = 0;
-
-        while (offset < length)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            int readCount = stream.Read(buffer, offset, length - offset);
-            if (readCount <= 0)
-            {
-                throw new IOException("MELSEC connection was closed by remote host.");
-            }
-
-            offset += readCount;
-        }
-
-        return buffer;
-    }
-
-    private static TcpClient ConnectSocket(
-        string remoteAddress,
-        int port,
-        int timeoutMsec,
-        CancellationToken cancellationToken)
-    {
-        IPAddress address;
-        if (!IPAddress.TryParse(remoteAddress, out address!))
-        {
-            IPAddress[] addresses = Dns.GetHostAddresses(remoteAddress);
-            if (addresses.Length == 0)
-            {
-                throw new SocketException((int)SocketError.HostNotFound);
-            }
-
-            address = addresses[0];
-        }
-
-        TcpClient client = new TcpClient(address.AddressFamily);
-        Socket socket = client.Client;
-        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMsec);
-        socket.Blocking = false;
-
-        try
-        {
-            try
-            {
-                socket.Connect(new IPEndPoint(address, port));
-            }
-            catch (SocketException exception) when (
-                exception.SocketErrorCode == SocketError.WouldBlock ||
-                exception.SocketErrorCode == SocketError.InProgress ||
-                exception.SocketErrorCode == SocketError.AlreadyInProgress)
-            {
-                System.Diagnostics.Debug.WriteLine(
-                    "MELSEC connection is pending: " + exception.SocketErrorCode);
-            }
-
-            while (!socket.Connected)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                if (DateTime.UtcNow >= deadline)
-                {
-                    throw new TimeoutException(
-                        $"MELSEC connection timed out after {timeoutMsec} ms: {remoteAddress}:{port}");
-                }
-
-                if (socket.Poll(10_000, SelectMode.SelectError))
-                {
-                    int errorCode = (int)(socket.GetSocketOption(
-                        SocketOptionLevel.Socket,
-                        SocketOptionName.Error) ?? 0);
-                    throw new SocketException(errorCode);
-                }
-
-                socket.Poll(10_000, SelectMode.SelectWrite);
-            }
-
-            socket.Blocking = true;
-            return client;
-        }
-        catch
-        {
-            client.Dispose();
-            throw;
-        }
-    }
-
-    private static bool IsSocketTimeout(IOException exception)
-    {
-        return exception.InnerException is SocketException socketException &&
-            socketException.SocketErrorCode == SocketError.TimedOut;
-    }
-
-    private string FormatCommunicationContext(
+    private void RegisterMelsecNetCommunicationError(
+        ST_MELSEC_MAP_DATA data,
         ST_INTERFACE_DATA interfaceData,
-        int dataSize)
+        ST_MELSEC_NET_OPTION option,
+        int path,
+        int dataSize,
+        string functionName,
+        string detail)
     {
-        ST_MC_PROTOCOL_OPTION option = ReadMcProtocolOption(interfaceData);
+        RegisterCommunicationFailure();
+        string message = "[I/F][COMM_ERROR] " + functionName + " / " + detail + " / " +
+            FormatMelsecNetContext(option, path, dataSize, 0);
+        WriteErrorLog(data, interfaceData, functionName, message);
+        _interfaceManager.UpdateMelsecCommunicationState(
+            interfaceData.Number,
+            false,
+            functionName,
+            "",
+            message);
+    }
+
+    private void WriteMelsecNetOpenLog(
+        ST_INTERFACE_DATA interfaceData,
+        ST_MELSEC_NET_OPTION option,
+        int path)
+    {
+        _logManager?.WriteInterfaceCommand(
+            EN_EQP_MODULE.Melsec,
+            interfaceData.NickName,
+            "MELSECNET:mdOpen",
+            "OK",
+            FormatMelsecNetContext(option, path, 0, 0));
+    }
+
+    private string FormatMelsecNetContext(
+        ST_MELSEC_NET_OPTION option,
+        int path,
+        int dataSize,
+        int returnCode)
+    {
         int requestNo = 0;
         EN_MELSEC_PROCESS process;
         lock (_writeLock)
@@ -2127,40 +2214,49 @@ public sealed class CMelsec : CtrlThread
             {
                 requestNo = _activeWriteCommand.RequestNo;
             }
-
             process = _process;
         }
 
-        return "NetworkNo=" + option.NetworkNo.ToString(CultureInfo.InvariantCulture) +
-            ", PcNo=" + option.PcNo.ToString(CultureInfo.InvariantCulture) +
-            ", IoNo=0x" + option.IoNo.ToString("X4", CultureInfo.InvariantCulture) +
+        return "ChannelNo=" + option.ChannelNo.ToString(CultureInfo.InvariantCulture) +
+            ", NetworkNo=" + option.NetworkNo.ToString(CultureInfo.InvariantCulture) +
             ", StationNo=" + option.StationNo.ToString(CultureInfo.InvariantCulture) +
-            ", Endpoint=" + _connectedEndpoint +
+            ", Path=" + path.ToString(CultureInfo.InvariantCulture) +
             ", DataSize=" + dataSize.ToString(CultureInfo.InvariantCulture) +
+            ", ReturnCode=" + returnCode.ToString(CultureInfo.InvariantCulture) +
             ", Process=" + process +
             ", RequestNo=" + requestNo.ToString(CultureInfo.InvariantCulture);
     }
 
-    private static void ValidateMcResponse(
-        ST_MELSEC_MAP_DATA data,
-        byte[] header,
-        byte[] body)
+    private IOException CreateMelsecNetReturnCodeException(
+        string functionName,
+        int returnCode,
+        ST_INTERFACE_DATA interfaceData,
+        ST_MELSEC_NET_OPTION option,
+        int path,
+        int dataSize)
     {
-        if (header.Length < 9 || header[0] != 0xD0 || header[1] != 0x00)
-        {
-            throw new IOException($"MELSEC response header is invalid: {FormatMap(data)}");
-        }
+        string message = functionName + " failed. " +
+            FormatMelsecNetContext(option, path, dataSize, returnCode) +
+            ", NickName=" + interfaceData.NickName;
+        return new IOException(message);
+    }
 
-        if (body.Length < 2)
-        {
-            throw new IOException($"MELSEC response body is invalid: {FormatMap(data)}");
-        }
+    private static bool IsMelsecNetRuntimeException(Exception exception)
+    {
+        return exception is DllNotFoundException or
+            EntryPointNotFoundException or
+            BadImageFormatException;
+    }
 
-        var endCode = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(0, 2));
-        if (endCode != 0)
-        {
-            throw new IOException($"MELSEC returned error end code 0x{endCode:X4}: {FormatMap(data)}");
-        }
+    private static InvalidOperationException CreateMelsecNetRuntimeException(
+        string functionName,
+        Exception exception)
+    {
+        return new InvalidOperationException(
+            functionName + " cannot use the MELSEC Data Link Library. " +
+            "Install the MELSECNET/H board software with the matching application architecture and " +
+            CMelsecNetApi.NativeLibraryName + ". " + exception.Message,
+            exception);
     }
 
     private ST_MELSEC_MAP_DATA PrepareRead(
@@ -2257,7 +2353,7 @@ public sealed class CMelsec : CtrlThread
         var numberText = text[digitIndex..];
         var number = ParseDeviceNumber(device, numberText);
 
-        return new ST_MELSEC_ADDRESS(device, number, bitIndex, GetDeviceCode(device));
+        return new ST_MELSEC_ADDRESS(device, number, bitIndex, GetMelsecNetDeviceType(device));
     }
 
     private static int ParseDeviceNumber(string device, string value)
@@ -2281,43 +2377,43 @@ public sealed class CMelsec : CtrlThread
         return device is "X" or "Y" or "B" or "W" or "SB" or "SW";
     }
 
-    private static byte GetDeviceCode(string device)
+    private static int GetMelsecNetDeviceType(string device)
     {
-        byte EvaluateDeviceSwitch1()
+        int EvaluateDeviceSwitch1()
         {
             var switchValue = device;
             switch (switchValue)
             {
-                case "M":
-                    return 0x90;
-                case "SM":
-                    return 0x91;
-                case "L":
-                    return 0x92;
-                case "F":
-                    return 0x93;
-                case "V":
-                    return 0x94;
                 case "X":
-                    return 0x9C;
+                    return 1;
                 case "Y":
-                    return 0x9D;
-                case "B":
-                    return 0xA0;
-                case "SB":
-                    return 0xA1;
+                    return 2;
+                case "L":
+                    return 3;
+                case "M":
+                    return 4;
+                case "SM":
+                    return 5;
+                case "F":
+                    return 6;
                 case "D":
-                    return 0xA8;
+                    return 13;
                 case "SD":
-                    return 0xA9;
+                    return 14;
+                case "V":
+                    return 30;
                 case "R":
-                    return 0xAF;
-                case "ZR":
-                    return 0xB0;
+                    return 22;
+                case "B":
+                    return 23;
                 case "W":
-                    return 0xB4;
+                    return 24;
+                case "SB":
+                    return 25;
                 case "SW":
-                    return 0xB5;
+                    return 28;
+                case "ZR":
+                    return 220;
                 default:
                     throw new NotSupportedException($"MELSEC device is not supported: {device}");
             }
@@ -2389,98 +2485,74 @@ public sealed class CMelsec : CtrlThread
         return Math.Abs(data.Scale) < double.Epsilon ? 1.0 : data.Scale;
     }
 
-    private static ST_MC_PROTOCOL_OPTION ReadMcProtocolOption(ST_INTERFACE_DATA data)
+    private static ST_MELSEC_NET_OPTION ReadMelsecNetOption(ST_INTERFACE_DATA data)
     {
-        var options = ReadExtraOptions(data);
-
-        return new ST_MC_PROTOCOL_OPTION(
-            ReadByteOption(options, 0x00, "MC_NETWORK_NO", "NETWORK_NO", "NETWORK"),
-            ReadByteOption(options, 0xFF, "MC_PC_NO", "PC_NO", "PC"),
-            ReadUShortOption(options, 0x03FF, "MC_IO_NO", "IO_NO", "MODULE_IO_NO", "DEST_IO_NO"),
-            ReadByteOption(options, 0x00, "MC_STATION_NO", "STATION_NO", "STATION"),
-            ReadUShortOption(options, DefaultMonitoringTimer, "MC_TIMER", "MONITORING_TIMER", "TIMER"));
-    }
-
-    private static IReadOnlyDictionary<string, string> ReadExtraOptions(ST_INTERFACE_DATA data)
-    {
-        var options = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-        if (data.Extra is not null)
+        if (data.InterfaceType != EN_INTERFACE_TYPE.MelsecNet)
         {
-            foreach (var pair in data.Extra)
-            {
-                options[pair.Key] = pair.Value;
-                ParseKeyValueOptions(options, pair.Value);
-            }
+            throw new InvalidOperationException(
+                "MELSEC requires the MELSEC_NET interface type.");
         }
 
-        return options;
-    }
-
-    private static void ParseKeyValueOptions(
-        IDictionary<string, string> options,
-        string value)
-    {
-        foreach (var token in value.Split([';', '|', ','], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        if (data.Arguments.Count < 3)
         {
-            var index = token.IndexOf('=', StringComparison.Ordinal);
-            if (index <= 0)
-            {
-                continue;
-            }
-
-            options[token[..index].Trim()] = token[(index + 1)..].Trim();
-        }
-    }
-
-    private static byte ReadByteOption(
-        IReadOnlyDictionary<string, string> options,
-        byte defaultValue,
-        params string[] names)
-    {
-        var value = ReadUShortOption(options, defaultValue, names);
-        return value > byte.MaxValue ? defaultValue : (byte)value;
-    }
-
-    private static ushort ReadUShortOption(
-        IReadOnlyDictionary<string, string> options,
-        ushort defaultValue,
-        params string[] names)
-    {
-        foreach (var name in names)
-        {
-            if (!options.TryGetValue(name, out var text) || string.IsNullOrWhiteSpace(text))
-            {
-                continue;
-            }
-
-            return ParseUShortOption(text, defaultValue);
+            throw new InvalidOperationException(
+                "MELSEC_NET requires ARG1 channel, ARG2 network number, and ARG3 station number: " +
+                data.NickName);
         }
 
-        return defaultValue;
+        short channelNo = ReadMelsecNetShortArgument(data, 0, "ARG1/CHANNEL_NO");
+        int networkNo = ReadMelsecNetIntArgument(data, 1, "ARG2/NETWORK_NO");
+        int stationNo = ReadMelsecNetIntArgument(data, 2, "ARG3/STATION_NO");
+        if (channelNo < 51 || channelNo > 54)
+        {
+            throw new InvalidOperationException(
+                "MELSECNET/H channel must be between 51 and 54: " + channelNo.ToString(CultureInfo.InvariantCulture));
+        }
+        if (networkNo < 0 || networkNo > 239)
+        {
+            throw new InvalidOperationException(
+                "MELSECNET network number must be between 0 and 239: " + networkNo.ToString(CultureInfo.InvariantCulture));
+        }
+        if (stationNo < 0 || stationNo > 255)
+        {
+            throw new InvalidOperationException(
+                "MELSECNET station number must be between 0 and 255: " + stationNo.ToString(CultureInfo.InvariantCulture));
+        }
+
+        return new ST_MELSEC_NET_OPTION(channelNo, networkNo, stationNo);
     }
 
-    private static ushort ParseUShortOption(string value, ushort defaultValue)
+    private static short ReadMelsecNetShortArgument(
+        ST_INTERFACE_DATA data,
+        int argumentIndex,
+        string argumentName)
     {
-        var text = value.Trim();
-
-        if (text.StartsWith("0X", StringComparison.OrdinalIgnoreCase))
+        int value = ReadMelsecNetIntArgument(data, argumentIndex, argumentName);
+        if (value < short.MinValue || value > short.MaxValue)
         {
-            return ushort.TryParse(text[2..], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hexValue)
-                ? hexValue
-                : defaultValue;
+            throw new InvalidOperationException(
+                "MELSEC_NET " + argumentName + " is outside the Int16 range: " +
+                value.ToString(CultureInfo.InvariantCulture));
         }
+        return (short)value;
+    }
 
-        if (text.EndsWith("H", StringComparison.OrdinalIgnoreCase))
+    private static int ReadMelsecNetIntArgument(
+        ST_INTERFACE_DATA data,
+        int argumentIndex,
+        string argumentName)
+    {
+        if (argumentIndex >= data.Arguments.Count ||
+            !int.TryParse(
+                data.Arguments[argumentIndex],
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out int value))
         {
-            return ushort.TryParse(text[..^1], NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var hexValue)
-                ? hexValue
-                : defaultValue;
+            throw new InvalidOperationException(
+                "MELSEC_NET " + argumentName + " is invalid: " + data.NickName);
         }
-
-        return ushort.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var decimalValue)
-            ? decimalValue
-            : defaultValue;
+        return value;
     }
 
     private void WriteHandshakeLog(
@@ -2647,6 +2719,7 @@ public sealed class CMelsec : CtrlThread
     private enum EN_MELSEC_THREAD_COMMAND
     {
         Open,
+        Close,
         ReadBit,
         WriteBit,
         ReadWord,
@@ -2768,12 +2841,10 @@ public sealed class CMelsec : CtrlThread
         string Device,
         int Number,
         int? BitIndex,
-        byte DeviceCode);
+        int DeviceType);
 
-    private sealed record ST_MC_PROTOCOL_OPTION(
-        byte NetworkNo,
-        byte PcNo,
-        ushort IoNo,
-        byte StationNo,
-        ushort MonitoringTimer);
+    private sealed record ST_MELSEC_NET_OPTION(
+        short ChannelNo,
+        int NetworkNo,
+        int StationNo);
 }

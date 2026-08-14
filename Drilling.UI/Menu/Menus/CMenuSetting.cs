@@ -877,6 +877,8 @@ public sealed class CMenuSetting : CMenuBase
                     return EN_INTERFACE_TYPE.Automation1Net;
                 case "PICOMOTOR" or "PICO_MOTOR" or "PICO":
                     return EN_INTERFACE_TYPE.PicoMotor;
+                case "MELSEC_NET" or "MELSECNET" or "MNET":
+                    return EN_INTERFACE_TYPE.MelsecNet;
                 default:
                     throw new InvalidDataException($"JHMI_INTERFACE save blocked. Unknown TYPE: {value}");
             }
@@ -953,6 +955,8 @@ public sealed class CMenuSetting : CMenuBase
                     return "AUTOMATION1_NET";
                 case EN_INTERFACE_TYPE.PicoMotor:
                     return "PICOMOTOR";
+                case EN_INTERFACE_TYPE.MelsecNet:
+                    return "MELSEC_NET";
                 default:
                     return type.ToString().ToUpperInvariant();
             }
@@ -1417,7 +1421,7 @@ public sealed class ST_SETTING_INTERFACE_ROW : CBindingBase
     public IReadOnlyList<string> TypeOptions { get; } =
     [
         "OPCUA", "MODBUS_SERIAL", "MODBUS_TCP", "SERIAL", "SOCKET_C", "SOCKET_S",
-        "SOCKET_C_UDP", "SOCKET_S_UDP", "ACS_NET", "XPS_NET", "AUTOMATION1_NET", "PICOMOTOR"
+        "SOCKET_C_UDP", "SOCKET_S_UDP", "ACS_NET", "XPS_NET", "AUTOMATION1_NET", "PICOMOTOR", "MELSEC_NET"
     ];
 
     public IReadOnlyList<string> AutoConnectionOptions { get; } = ["OFF", "ON"];

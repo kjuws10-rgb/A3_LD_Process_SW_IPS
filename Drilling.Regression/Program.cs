@@ -1,7 +1,4 @@
-using System.Buffers.Binary;
 using System.Globalization;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using Drilling.Common.Alarm;
 using Drilling.Common.Interface;
@@ -676,7 +673,7 @@ internal static class Program
         manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.Bet, 4, "BET_TEST"));
         manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.Serial, EN_EQP_MODULE.PowerMeter, 5, "POWER_TEST"));
         manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.PicoMotor, EN_EQP_MODULE.PicoMotor, 6, "PICO_TEST"));
-        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.SocketClient, EN_EQP_MODULE.Melsec, 0, "MELSEC_TEST"));
+        manager.Register(CreateSimulatedInterface(EN_INTERFACE_TYPE.MelsecNet, EN_EQP_MODULE.Melsec, 0, "MELSEC_TEST"));
 
         manager.Initialize();
         int connectedCount = 0;
@@ -769,6 +766,7 @@ internal static class Program
     private static void RunMelsecWriteConfirmFlow(string testRoot)
     {
         RunMelsecMapValidationFlow(testRoot);
+        RunMelsecNetInterfaceConfigFlow(testRoot);
         RunConfiguredMelsecMapWriteConfirmFlow();
         List<ST_MELSEC_MAP_DATA> map = new List<ST_MELSEC_MAP_DATA>();
         map.Add(MelsecMap("BIT_WRITE", "W100.0", EN_MELSEC_DATA_TYPE.Bit, EN_MELSEC_DIRECTION.Out, EN_MELSEC_ACCESS.Write, 1.0, 1));
@@ -782,11 +780,11 @@ internal static class Program
         map.Add(MelsecMap("DOUBLE_RW", "D304", EN_MELSEC_DATA_TYPE.Double, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 0.001, 2));
         map.Add(MelsecMap("STRING_RW", "D306", EN_MELSEC_DATA_TYPE.String, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 1.0, 3));
 
-        RunMelsecLiveProtocolFlow(map);
+        RunMelsecNetApiFlow(map);
 
         CInterfaceManager manager = new CInterfaceManager(true, null, null, null, map);
         manager.Register(CreateSimulatedInterface(
-            EN_INTERFACE_TYPE.SocketClient,
+            EN_INTERFACE_TYPE.MelsecNet,
             EN_EQP_MODULE.Melsec,
             0,
             "MELSEC_HANDSHAKE_TEST"));
@@ -894,7 +892,7 @@ internal static class Program
 
         CInterfaceManager offlineManager = new CInterfaceManager(false, null, null, null, map);
         offlineManager.Register(CreateSimulatedInterface(
-            EN_INTERFACE_TYPE.SocketClient,
+            EN_INTERFACE_TYPE.MelsecNet,
             EN_EQP_MODULE.Melsec,
             0,
             "MELSEC_OFFLINE_TEST"));
@@ -927,7 +925,7 @@ internal static class Program
         IReadOnlyList<ST_MELSEC_MAP_DATA> map = mapFile.LoadAll();
         CInterfaceManager manager = new CInterfaceManager(true, null, null, null, map);
         manager.Register(CreateSimulatedInterface(
-            EN_INTERFACE_TYPE.SocketClient,
+            EN_INTERFACE_TYPE.MelsecNet,
             EN_EQP_MODULE.Melsec,
             0,
             "MELSEC_CONFIGURED_MAP_TEST"));
@@ -977,6 +975,53 @@ internal static class Program
             "Configured MELSEC write/readback pair count changed: " + confirmedCount);
         Assert(!manager.Melsec.IsRunning,
             "Configured MELSEC map test left its control thread running.");
+    }
+
+    private static void RunMelsecNetInterfaceConfigFlow(string testRoot)
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        string configRoot = Path.Combine(testRoot, "MelsecNetInterfaceConfig");
+        Directory.CreateDirectory(configRoot);
+        System.IO.File.Copy(
+            Path.Combine(repositoryRoot, "Config", "JHMI_INTERFACE.csv"),
+            Path.Combine(configRoot, "JHMI_INTERFACE.csv"),
+            true);
+
+        CInterfaceFile interfaceFile = new CInterfaceFile(configRoot);
+        IReadOnlyList<ST_INTERFACE_DATA> rows = interfaceFile.LoadAll();
+        ST_INTERFACE_DATA? melsecRow = null;
+        for (int index = 0; index < rows.Count; index++)
+        {
+            if (rows[index].Device == EN_EQP_MODULE.Melsec)
+            {
+                melsecRow = rows[index];
+                break;
+            }
+        }
+
+        if (melsecRow == null)
+        {
+            throw new InvalidOperationException("JHMI_INTERFACE does not contain a MELSEC row.");
+        }
+        Assert(melsecRow.InterfaceType == EN_INTERFACE_TYPE.MelsecNet,
+            "JHMI_INTERFACE MELSEC row is not configured for MELSEC_NET.");
+        Assert(melsecRow.IsSimulation,
+            "Repository MELSEC_NET configuration unexpectedly enables live hardware.");
+
+        interfaceFile.SaveAll(rows);
+        IReadOnlyList<ST_INTERFACE_DATA> savedRows = interfaceFile.LoadAll();
+        ST_INTERFACE_DATA? savedMelsecRow = null;
+        for (int index = 0; index < savedRows.Count; index++)
+        {
+            if (savedRows[index].Device == EN_EQP_MODULE.Melsec)
+            {
+                savedMelsecRow = savedRows[index];
+                break;
+            }
+        }
+        Assert(savedMelsecRow != null &&
+            savedMelsecRow.InterfaceType == EN_INTERFACE_TYPE.MelsecNet,
+            "MELSEC_NET interface type did not survive save and reload.");
     }
 
     private static string FindRepositoryRoot()
@@ -1074,20 +1119,21 @@ internal static class Program
         Assert(missingColumnRejected, "MELSEC map accepted missing required columns.");
     }
 
-    private static void RunMelsecLiveProtocolFlow(IReadOnlyList<ST_MELSEC_MAP_DATA> map)
+    private static void RunMelsecNetApiFlow(IReadOnlyList<ST_MELSEC_MAP_DATA> map)
     {
-        CTestMelsecServer server = new CTestMelsecServer();
-        server.StartServer();
-        CInterfaceManager manager = new CInterfaceManager(false, null, null, null, map);
-        manager.Register(CreateLiveMelsecInterface(server.Port));
+        CTestMelsecNetApi api = new CTestMelsecNetApi();
+        CInterfaceManager manager = new CInterfaceManager(false, null, null, null, map, api);
+        manager.Register(CreateLiveMelsecNetInterface());
 
         try
         {
             manager.Initialize();
             Assert(manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
-                "MELSEC live MC connection did not become online.");
+                "MELSECNET mdOpen connection did not become online.");
             Assert(manager.Melsec.ReadCycleNo > 0,
-                "MELSEC live connection became online before the initial read.");
+                "MELSECNET connection became online before the initial mdReceiveEx read.");
+            Assert(api.OpenCount == 1 && api.ReceiveCount > 0,
+                "MELSECNET mdOpen/mdReceiveEx call path was not used.");
 
             int confirmedRequest = manager.Melsec.QueueWriteWord(
                 "WORD_WRITE",
@@ -1100,9 +1146,9 @@ internal static class Program
                 confirmedRequest,
                 3000);
             Assert(confirmedStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed,
-                "MELSEC live MC write-confirm failed.");
-            Assert(server.ReadCommandCount >= 2 && server.WriteCommandCount >= 1,
-                "MELSEC live MC server did not receive the expected read/write sequence.");
+                "MELSECNET mdSendEx write-confirm failed.");
+            Assert(api.ReceiveCount >= 2 && api.SendCount >= 1,
+                "MELSECNET API did not receive the expected read/write sequence.");
 
             int bitOnRequest = manager.Melsec.QueueWriteBit(
                 "BIT_WRITE",
@@ -1116,7 +1162,7 @@ internal static class Program
                 3000);
             Assert(bitOnStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed &&
                 bitOnStatus.ActualValue == "1",
-                "MELSEC live MC Bit ON write-confirm failed.");
+                "MELSECNET Bit ON write-confirm failed.");
             int bitOffRequest = manager.Melsec.QueueWriteBit(
                 "BIT_WRITE",
                 false,
@@ -1129,9 +1175,9 @@ internal static class Program
                 3000);
             Assert(bitOffStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed &&
                 bitOffStatus.ActualValue == "0",
-                "MELSEC live MC Bit OFF write-confirm failed.");
+                "MELSECNET Bit OFF write-confirm failed.");
 
-            server.SetEchoReadback(false);
+            api.SetEchoReadback(false);
             int mismatchRequest = manager.Melsec.QueueWriteWord(
                 "WORD_WRITE",
                 5432,
@@ -1143,49 +1189,64 @@ internal static class Program
                 mismatchRequest,
                 3000);
             Assert(mismatchStatus.Result == EN_MELSEC_WRITE_RESULT.Timeout,
-                "MELSEC live mismatched readback did not time out.");
+                "MELSECNET mismatched readback did not time out.");
             Assert(manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
-                "MELSEC live readback mismatch incorrectly dropped the connection.");
+                "MELSECNET readback mismatch incorrectly dropped the connection.");
 
-            server.SetEchoReadback(true);
-            server.SetNextEndCode(0xC051);
-            int protocolErrorRequest = manager.Melsec.QueueWriteWord(
+            api.SetEchoReadback(true);
+            api.SetNextReturnCode(0xC051);
+            int apiErrorRequest = manager.Melsec.QueueWriteWord(
                 "WORD_WRITE",
                 6543,
                 "WORD_READ",
                 100,
                 0);
-            ST_MELSEC_WRITE_STATUS protocolErrorStatus = WaitForMelsecWrite(
+            ST_MELSEC_WRITE_STATUS apiErrorStatus = WaitForMelsecWrite(
                 manager.Melsec,
-                protocolErrorRequest,
+                apiErrorRequest,
                 3000);
-            Assert(protocolErrorStatus.Result == EN_MELSEC_WRITE_RESULT.CommunicationError,
-                "MELSEC MC error end code did not stop the write.");
+            Assert(apiErrorStatus.Result == EN_MELSEC_WRITE_RESULT.CommunicationError,
+                "MELSECNET SDK return code did not stop the write.");
             Assert(!manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
-                "MELSEC MC error end code did not mark communication offline.");
+                "MELSECNET SDK return code did not mark communication offline.");
 
             manager.Reconnect(EN_EQP_MODULE.Melsec, 0);
             Assert(manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
-                "MELSEC live reconnection did not restore communication.");
+                "MELSECNET reconnection did not restore communication.");
         }
         finally
         {
             manager.Destroy();
-            server.StopServer();
         }
 
         Assert(!manager.Melsec.IsRunning,
-            "MELSEC live control thread remained after Destroy.");
-        Assert(!server.IsRunning,
-            "MELSEC regression server thread remained after Stop.");
-        Assert(server.LastError == null,
-            "MELSEC regression server failed: " + server.LastError?.Message);
+            "MELSECNET control thread remained after Destroy.");
+        Assert(api.CloseCount >= 1,
+            "MELSECNET mdClose was not called during disconnect or shutdown.");
+        Assert(!api.ThreadViolation,
+            "MELSECNET SDK functions were called from more than one thread.");
+
+        CTestMelsecNetApi openFailureApi = new CTestMelsecNetApi();
+        openFailureApi.SetOpenReturnCode(-20);
+        CInterfaceManager openFailureManager =
+            new CInterfaceManager(false, null, null, null, map, openFailureApi);
+        openFailureManager.Register(CreateLiveMelsecNetInterface());
+        openFailureManager.Initialize();
+        Assert(!openFailureManager.IsConnect(EN_EQP_MODULE.Melsec, 0),
+            "MELSECNET mdOpen failure was reported online.");
+        Assert(openFailureApi.OpenCount == 1 &&
+            openFailureApi.SendCount == 0 &&
+            openFailureApi.ReceiveCount == 0,
+            "MELSECNET performed I/O after mdOpen failure.");
+        openFailureManager.Destroy();
+        Assert(!openFailureManager.Melsec.IsRunning,
+            "MELSECNET mdOpen failure left the control thread running.");
     }
 
-    private static ST_INTERFACE_DATA CreateLiveMelsecInterface(int port)
+    private static ST_INTERFACE_DATA CreateLiveMelsecNetInterface()
     {
         return new ST_INTERFACE_DATA(
-            EN_INTERFACE_TYPE.SocketClient,
+            EN_INTERFACE_TYPE.MelsecNet,
             EN_EQP_MODULE.Melsec,
             0,
             "MELSEC_LIVE_TEST",
@@ -1194,9 +1255,9 @@ internal static class Program
             false,
             new[]
             {
-                "0.0.0.0",
-                "127.0.0.1",
-                port.ToString(CultureInfo.InvariantCulture),
+                "51",
+                "1",
+                "1",
                 "500",
                 "1"
             });
@@ -1303,68 +1364,75 @@ internal static class Program
         snapshot.Add($"Payload={Escape(line.Substring(payloadStart))}");
     }
 
-    private sealed class CTestMelsecServer : CtrlThread
+    private sealed class CTestMelsecNetApi : CMelsecNetApi
     {
+        private const int TestPath = 7001;
         private readonly object mobjLock = new object();
-        private readonly Dictionary<string, ushort> mobjWords = new Dictionary<string, ushort>(StringComparer.Ordinal);
-        private TcpListener? mobjListener;
-        private TcpClient? mobjClient;
+        private readonly Dictionary<string, short> mobjWords =
+            new Dictionary<string, short>(StringComparer.Ordinal);
         private bool mblnEchoReadback = true;
-        private ushort mushNextEndCode;
-        private int mintReadCommandCount;
-        private int mintWriteCommandCount;
-        private Exception? mobjLastError;
+        private int mintNextReturnCode;
+        private int mintOpenReturnCode;
+        private int mintOwnerThreadId;
+        private int mintOpenCount;
+        private int mintCloseCount;
+        private int mintSendCount;
+        private int mintReceiveCount;
+        private bool mblnThreadViolation;
 
-        public int Port { get; private set; }
-
-        public int ReadCommandCount
+        public int OpenCount
         {
             get
             {
                 lock (mobjLock)
                 {
-                    return mintReadCommandCount;
+                    return mintOpenCount;
                 }
             }
         }
 
-        public int WriteCommandCount
+        public int CloseCount
         {
             get
             {
                 lock (mobjLock)
                 {
-                    return mintWriteCommandCount;
+                    return mintCloseCount;
                 }
             }
         }
 
-        public Exception? LastError
+        public int SendCount
         {
             get
             {
                 lock (mobjLock)
                 {
-                    return mobjLastError;
+                    return mintSendCount;
                 }
             }
         }
 
-        public void StartServer()
+        public int ReceiveCount
         {
-            TcpListener listener = new TcpListener(IPAddress.Loopback, 0);
-            listener.Start();
-            mobjListener = listener;
-            Port = ((IPEndPoint)listener.LocalEndpoint).Port;
-            Start(1, "MELSEC_REGRESSION_SERVER");
+            get
+            {
+                lock (mobjLock)
+                {
+                    return mintReceiveCount;
+                }
+            }
         }
 
-        public void StopServer()
+        public bool ThreadViolation
         {
-            Stop();
-            CloseClient();
-            mobjListener?.Stop();
-            mobjListener = null;
+            get
+            {
+                lock (mobjLock)
+                {
+                    return mblnThreadViolation;
+                }
+            }
         }
 
         public void SetEchoReadback(bool enabled)
@@ -1375,181 +1443,177 @@ internal static class Program
             }
         }
 
-        public void SetNextEndCode(ushort endCode)
+        public void SetNextReturnCode(int returnCode)
         {
             lock (mobjLock)
             {
-                mushNextEndCode = endCode;
+                mintNextReturnCode = returnCode;
             }
         }
 
-        public override void Run()
+        public void SetOpenReturnCode(int returnCode)
         {
-            try
+            lock (mobjLock)
             {
-                if (mobjClient == null)
-                {
-                    AcceptClient();
-                    return;
-                }
-
-                Socket socket = mobjClient.Client;
-                if (socket.Poll(0, SelectMode.SelectRead) && socket.Available == 0)
-                {
-                    CloseClient();
-                    return;
-                }
-
-                NetworkStream stream = mobjClient.GetStream();
-                if (!stream.DataAvailable)
-                {
-                    return;
-                }
-
-                byte[] header = new byte[9];
-                if (!TryReadExact(stream, header, header.Length))
-                {
-                    CloseClient();
-                    return;
-                }
-
-                int bodyLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(7, 2));
-                if (bodyLength < 12 || bodyLength > 4096)
-                {
-                    throw new InvalidDataException(
-                        "MELSEC regression request body length is invalid: " + bodyLength);
-                }
-
-                byte[] body = new byte[bodyLength];
-                if (!TryReadExact(stream, body, body.Length))
-                {
-                    CloseClient();
-                    return;
-                }
-
-                ProcessRequest(stream, header, body);
+                mintOpenReturnCode = returnCode;
             }
-            catch (Exception exception) when (
-                exception is IOException or SocketException or InvalidDataException or ObjectDisposedException)
+        }
+
+        public override int Open(short channelNo, out int path)
+        {
+            lock (mobjLock)
             {
-                if (!IsStopRequested())
+                RegisterThreadAccess();
+                mintOpenCount++;
+                path = TestPath;
+                if (channelNo != 51)
                 {
-                    lock (mobjLock)
+                    return -10;
+                }
+                int returnCode = mintOpenReturnCode;
+                mintOpenReturnCode = 0;
+                return returnCode;
+            }
+        }
+
+        public override int Close(int path)
+        {
+            lock (mobjLock)
+            {
+                RegisterThreadAccess();
+                mintCloseCount++;
+                int returnCode = path == TestPath ? TakeNextReturnCode() : -11;
+                mintOwnerThreadId = 0;
+                return returnCode;
+            }
+        }
+
+        public override int SendEx(
+            int path,
+            int networkNo,
+            int stationNo,
+            int deviceType,
+            int deviceNo,
+            ref int size,
+            short[] data)
+        {
+            lock (mobjLock)
+            {
+                RegisterThreadAccess();
+                mintSendCount++;
+                int returnCode = ValidateCall(path, networkNo, stationNo, size, data.Length);
+                if (returnCode != 0)
+                {
+                    return returnCode;
+                }
+
+                returnCode = TakeNextReturnCode();
+                if (returnCode != 0)
+                {
+                    return returnCode;
+                }
+
+                int wordCount = size / sizeof(short);
+                for (int index = 0; index < wordCount; index++)
+                {
+                    short value = data[index];
+                    mobjWords[CreateWordKey(deviceType, deviceNo + index)] = value;
+                    if (mblnEchoReadback)
                     {
-                        mobjLastError = exception;
+                        int readbackNumber = ResolveReadbackNumber(deviceType, deviceNo + index);
+                        mobjWords[CreateWordKey(deviceType, readbackNumber)] = value;
                     }
                 }
-                CloseClient();
+                return 0;
             }
         }
 
-        private void AcceptClient()
+        public override int ReceiveEx(
+            int path,
+            int networkNo,
+            int stationNo,
+            int deviceType,
+            int deviceNo,
+            ref int size,
+            short[] data)
         {
-            TcpListener? listener = mobjListener;
-            if (listener == null || !listener.Pending())
+            lock (mobjLock)
             {
+                RegisterThreadAccess();
+                mintReceiveCount++;
+                int returnCode = ValidateCall(path, networkNo, stationNo, size, data.Length);
+                if (returnCode != 0)
+                {
+                    return returnCode;
+                }
+
+                returnCode = TakeNextReturnCode();
+                if (returnCode != 0)
+                {
+                    return returnCode;
+                }
+
+                int wordCount = size / sizeof(short);
+                for (int index = 0; index < wordCount; index++)
+                {
+                    mobjWords.TryGetValue(
+                        CreateWordKey(deviceType, deviceNo + index),
+                        out short value);
+                    data[index] = value;
+                }
+                return 0;
+            }
+        }
+
+        private void RegisterThreadAccess()
+        {
+            int currentThreadId = Environment.CurrentManagedThreadId;
+            if (mintOwnerThreadId == 0)
+            {
+                mintOwnerThreadId = currentThreadId;
                 return;
             }
 
-            TcpClient client = listener.AcceptTcpClient();
-            client.NoDelay = true;
-            client.ReceiveTimeout = 500;
-            client.SendTimeout = 500;
-            mobjClient = client;
-        }
-
-        private void ProcessRequest(
-            NetworkStream stream,
-            byte[] header,
-            byte[] body)
-        {
-            ushort command = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
-            int deviceNumber = body[6] | (body[7] << 8) | (body[8] << 16);
-            byte deviceCode = body[9];
-            ushort pointCount = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(10, 2));
-            ushort endCode = TakeNextEndCode();
-            byte[] responseData = Array.Empty<byte>();
-
-            if (command == 0x0401)
+            if (mintOwnerThreadId != currentThreadId)
             {
-                lock (mobjLock)
-                {
-                    mintReadCommandCount++;
-                }
-                if (endCode == 0)
-                {
-                    responseData = ReadWords(deviceCode, deviceNumber, pointCount);
-                }
-            }
-            else if (command == 0x1401)
-            {
-                lock (mobjLock)
-                {
-                    mintWriteCommandCount++;
-                }
-                if (endCode == 0)
-                {
-                    WriteWords(deviceCode, deviceNumber, pointCount, body);
-                }
-            }
-            else
-            {
-                endCode = 0xC059;
-            }
-
-            byte[] response = BuildResponse(header, endCode, responseData);
-            stream.Write(response, 0, response.Length);
-            stream.Flush();
-        }
-
-        private byte[] ReadWords(byte deviceCode, int deviceNumber, int pointCount)
-        {
-            byte[] data = new byte[pointCount * 2];
-            lock (mobjLock)
-            {
-                for (int index = 0; index < pointCount; index++)
-                {
-                    mobjWords.TryGetValue(CreateWordKey(deviceCode, deviceNumber + index), out ushort value);
-                    BinaryPrimitives.WriteUInt16LittleEndian(data.AsSpan(index * 2, 2), value);
-                }
-            }
-            return data;
-        }
-
-        private void WriteWords(
-            byte deviceCode,
-            int deviceNumber,
-            int pointCount,
-            byte[] body)
-        {
-            if (body.Length < 12 + pointCount * 2)
-            {
-                throw new InvalidDataException("MELSEC regression write payload is too short.");
-            }
-
-            lock (mobjLock)
-            {
-                for (int index = 0; index < pointCount; index++)
-                {
-                    ushort value = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(12 + index * 2, 2));
-                    mobjWords[CreateWordKey(deviceCode, deviceNumber + index)] = value;
-                    if (mblnEchoReadback)
-                    {
-                        int readbackNumber = ResolveReadbackNumber(deviceCode, deviceNumber + index);
-                        mobjWords[CreateWordKey(deviceCode, readbackNumber)] = value;
-                    }
-                }
+                mblnThreadViolation = true;
             }
         }
 
-        private static int ResolveReadbackNumber(byte deviceCode, int writeNumber)
+        private static int ValidateCall(
+            int path,
+            int networkNo,
+            int stationNo,
+            int size,
+            int dataLength)
         {
-            if (deviceCode == 0xA8 && writeNumber >= 100 && writeNumber < 200)
+            if (path != TestPath ||
+                networkNo != 1 ||
+                stationNo != 1 ||
+                size <= 0 ||
+                size % sizeof(short) != 0 ||
+                dataLength < size / sizeof(short))
+            {
+                return -12;
+            }
+            return 0;
+        }
+
+        private int TakeNextReturnCode()
+        {
+            int returnCode = mintNextReturnCode;
+            mintNextReturnCode = 0;
+            return returnCode;
+        }
+
+        private static int ResolveReadbackNumber(int deviceType, int writeNumber)
+        {
+            if (deviceType == 13 && writeNumber >= 100 && writeNumber < 200)
             {
                 return writeNumber + 100;
             }
 
-            if (deviceCode == 0xB4 && writeNumber >= 0x100 && writeNumber < 0x200)
+            if (deviceType == 24 && writeNumber >= 0x100 && writeNumber < 0x200)
             {
                 return writeNumber + 0x100;
             }
@@ -1557,67 +1621,10 @@ internal static class Program
             return writeNumber;
         }
 
-        private ushort TakeNextEndCode()
+        private static string CreateWordKey(int deviceType, int deviceNumber)
         {
-            lock (mobjLock)
-            {
-                ushort endCode = mushNextEndCode;
-                mushNextEndCode = 0;
-                return endCode;
-            }
-        }
-
-        private static byte[] BuildResponse(
-            byte[] requestHeader,
-            ushort endCode,
-            byte[] responseData)
-        {
-            int bodyLength = 2 + responseData.Length;
-            byte[] response = new byte[9 + bodyLength];
-            response[0] = 0xD0;
-            response[1] = 0x00;
-            Array.Copy(requestHeader, 2, response, 2, 5);
-            BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(7, 2), (ushort)bodyLength);
-            BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(9, 2), endCode);
-            Array.Copy(responseData, 0, response, 11, responseData.Length);
-            return response;
-        }
-
-        private static bool TryReadExact(
-            NetworkStream stream,
-            byte[] buffer,
-            int length)
-        {
-            int offset = 0;
-            while (offset < length)
-            {
-                int readCount = stream.Read(buffer, offset, length - offset);
-                if (readCount <= 0)
-                {
-                    return false;
-                }
-                offset += readCount;
-            }
-            return true;
-        }
-
-        private static string CreateWordKey(byte deviceCode, int deviceNumber)
-        {
-            return deviceCode.ToString("X2", CultureInfo.InvariantCulture) + ":" +
-                deviceNumber.ToString("X6", CultureInfo.InvariantCulture);
-        }
-
-        private void CloseClient()
-        {
-            try
-            {
-                mobjClient?.Close();
-                mobjClient?.Dispose();
-            }
-            finally
-            {
-                mobjClient = null;
-            }
+            return deviceType.ToString(CultureInfo.InvariantCulture) + ":" +
+                deviceNumber.ToString(CultureInfo.InvariantCulture);
         }
     }
 

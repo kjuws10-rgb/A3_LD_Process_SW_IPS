@@ -8,7 +8,7 @@
 | 작업 시작 브랜치 | `main` |
 | 작업 시작 Commit | `9e92b80e4d1df3a5d5cbe2938eb56773179665a5` |
 | 작업 브랜치 | `agent/use-melsecnet-driver` |
-| 구현 Commit | `8f25e4f6699ee0d2bde041c56813e9b3324ff309` |
+| 구현 Commit | `8f25e4fe8bc2ab1aae6b0befdeea532807757aea` |
 | 작업 시작 일시 | 2026-08-14 KST |
 | Solution | `Drilling.sln` |
 | Target Framework | Common/File/Regression `net8.0`, UI/UI Regression `net8.0-windows` |
@@ -153,4 +153,4 @@ Golden Snapshot SHA-512는 변경 전과 변경 후가 동일하다.
 - Mitsubishi Electric, MELSEC Data Link Library Reference Manual: `mdOpen`, `mdClose`, `mdSendEx`, `mdReceiveEx`, Device Type, Size 및 Channel 정의
 - MELSECNET/H는 동일 Path를 한 제어 Thread에서 Open/Read/Write/Close하도록 구성했다.
 
-구현 Commit은 `8f25e4f6699ee0d2bde041c56813e9b3324ff309`이다. PR 및 Merge 결과는 GitHub 작업 완료 후 최종 작업 보고에 기록한다.
+구현 Commit은 `8f25e4fe8bc2ab1aae6b0befdeea532807757aea`이다. PR 및 Merge 결과는 GitHub 작업 완료 후 최종 작업 보고에 기록한다.

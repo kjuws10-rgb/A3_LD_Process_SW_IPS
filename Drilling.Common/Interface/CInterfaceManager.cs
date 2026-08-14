@@ -197,11 +197,31 @@ public sealed class CInterfaceManager {
 
     public void SetSimulationMode(bool enabled)
     {
+        bool restartMelsec = false;
+        foreach (CInterfaceDevice device in _devices.Values)
+        {
+            if (device.Data.Device == EN_EQP_MODULE.Melsec)
+            {
+                restartMelsec = true;
+                break;
+            }
+        }
+
+        if (restartMelsec)
+        {
+            _melsec.DeInitialize();
+        }
+
         _simulationMode = enabled;
 
         foreach (var device in _devices.Values)
         {
             device.SetSimulationMode(enabled);
+        }
+
+        if (restartMelsec)
+        {
+            _melsec.Initialize();
         }
     }
 
@@ -217,6 +237,10 @@ public sealed class CInterfaceManager {
         var device = new CInterfaceDevice(
             data,
             _simulationMode ?? data.IsSimulation);
+        if (data.Device == EN_EQP_MODULE.Melsec)
+        {
+            device.EnableExternalCommunication();
+        }
         device.MessageReceived += OnDeviceMessageReceived;
         _devices[key] = device;
     }
@@ -270,7 +294,14 @@ public sealed class CInterfaceManager {
             }
 
             var beforeState = device.ConnectionState;
-            device.Connect(cancellationToken);
+            if (device.Data.Device == EN_EQP_MODULE.Melsec)
+            {
+                ConnectMelsecDevice(device, cancellationToken);
+            }
+            else
+            {
+                device.Connect(cancellationToken);
+            }
             WriteConnectionLog(init ? "INIT_CONNECT" : "CONNECT", device, beforeState);
 
             if (device.ConnectionState is EN_COMM_STATE.Online or EN_COMM_STATE.Simulation)
@@ -287,9 +318,18 @@ public sealed class CInterfaceManager {
         foreach (var device in _devices.Values)
         {
             var beforeState = device.ConnectionState;
-            device.Disconnect(cancellationToken);
+            if (device.Data.Device == EN_EQP_MODULE.Melsec)
+            {
+                DisconnectMelsecDevice(device, cancellationToken);
+            }
+            else
+            {
+                device.Disconnect(cancellationToken);
+            }
             WriteConnectionLog("DISCONNECT", device, beforeState);
         }
+
+        _melsec.DeInitialize();
 
         _picoMotorService.DisconnectAll();
 
@@ -326,8 +366,16 @@ public sealed class CInterfaceManager {
     {
         var device = GetDeviceOrThrow(module, number);
         var beforeState = device.ConnectionState;
-        device.Disconnect(cancellationToken);
-        device.Connect(cancellationToken);
+        if (device.Data.Device == EN_EQP_MODULE.Melsec)
+        {
+            DisconnectMelsecDevice(device, cancellationToken);
+            ConnectMelsecDevice(device, cancellationToken);
+        }
+        else
+        {
+            device.Disconnect(cancellationToken);
+            device.Connect(cancellationToken);
+        }
         WriteConnectionLog("RECONNECT", device, beforeState);
     }
 
@@ -360,6 +408,26 @@ public sealed class CInterfaceManager {
             : null;
     }
 
+    internal void UpdateMelsecCommunicationState(
+        int number,
+        bool online,
+        string lastSent,
+        string lastReceived,
+        string lastError)
+    {
+        if (!_devices.TryGetValue(CreateDeviceKey(EN_EQP_MODULE.Melsec, number), out CInterfaceDevice? device) ||
+            device.IsSimulation)
+        {
+            return;
+        }
+
+        device.SetExternalCommunicationState(
+            online ? EN_COMM_STATE.Online : EN_COMM_STATE.Offline,
+            lastSent,
+            lastReceived,
+            lastError);
+    }
+
     public void Connect(
         string nickName,
         bool autoConnection = true,
@@ -388,8 +456,16 @@ public sealed class CInterfaceManager {
         var device = GetDeviceByNickNameOrThrow(nickName);
 
         var beforeState = device.ConnectionState;
-        device.Disconnect(cancellationToken);
-        device.Connect(cancellationToken);
+        if (device.Data.Device == EN_EQP_MODULE.Melsec)
+        {
+            DisconnectMelsecDevice(device, cancellationToken);
+            ConnectMelsecDevice(device, cancellationToken);
+        }
+        else
+        {
+            device.Disconnect(cancellationToken);
+            device.Connect(cancellationToken);
+        }
         WriteConnectionLog("RECONNECT", device, beforeState);
     }
 
@@ -581,7 +657,14 @@ public sealed class CInterfaceManager {
         }
 
         var beforeState = device.ConnectionState;
-        device.Connect(cancellationToken);
+        if (device.Data.Device == EN_EQP_MODULE.Melsec)
+        {
+            ConnectMelsecDevice(device, cancellationToken);
+        }
+        else
+        {
+            device.Connect(cancellationToken);
+        }
         WriteConnectionLog("CONNECT", device, beforeState);
     }
 
@@ -590,8 +673,66 @@ public sealed class CInterfaceManager {
         CancellationToken cancellationToken)
     {
         var beforeState = device.ConnectionState;
-        device.Disconnect(cancellationToken);
+        if (device.Data.Device == EN_EQP_MODULE.Melsec)
+        {
+            DisconnectMelsecDevice(device, cancellationToken);
+        }
+        else
+        {
+            device.Disconnect(cancellationToken);
+        }
         WriteConnectionLog("DISCONNECT", device, beforeState);
+    }
+
+    private void ConnectMelsecDevice(
+        CInterfaceDevice device,
+        CancellationToken cancellationToken)
+    {
+        _melsec.Initialize();
+        if (device.IsSimulation)
+        {
+            _melsec.Open(device.Data.Number, cancellationToken);
+            device.SetExternalCommunicationState(
+                EN_COMM_STATE.Simulation,
+                "[SIMULATION] OPEN",
+                "[SIMULATION] READY",
+                "");
+            return;
+        }
+
+        try
+        {
+            _melsec.Open(device.Data.Number, cancellationToken);
+            device.SetExternalCommunicationState(
+                EN_COMM_STATE.Online,
+                "OPEN",
+                "CONNECTED",
+                "");
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            device.SetExternalCommunicationState(
+                EN_COMM_STATE.Offline,
+                "OPEN",
+                "",
+                exception.Message);
+        }
+    }
+
+    private void DisconnectMelsecDevice(
+        CInterfaceDevice device,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _melsec.DeInitialize();
+        EN_COMM_STATE closedState = device.IsSimulation
+            ? EN_COMM_STATE.Simulation
+            : EN_COMM_STATE.Offline;
+        device.SetExternalCommunicationState(
+            closedState,
+            device.IsSimulation ? "[SIMULATION] CLOSE" : "CLOSE",
+            device.IsSimulation ? "[SIMULATION] CLOSED" : "CLOSED",
+            "");
     }
 
     private string ExecuteDeviceFunction(
@@ -2343,6 +2484,12 @@ public sealed class CInterfaceDevice
 {
     private bool _simulationMode;
     private readonly CCommBase _comm;
+    private bool _externalCommunication;
+    private EN_COMM_STATE _externalConnectionState = EN_COMM_STATE.Offline;
+    private string _externalLastSent = "";
+    private string _externalLastReceived = "";
+    private string _externalLastError = "";
+    private DateTimeOffset? _externalLastChangedAt;
     private string _simulationLastSent = "";
     private string _simulationLastReceived = "";
     private string _simulationLastError = "";
@@ -2378,6 +2525,11 @@ public sealed class CInterfaceDevice
     {
         get
         {
+            if (_externalCommunication)
+            {
+                return _externalConnectionState;
+            }
+
             return _simulationMode
         ? EN_COMM_STATE.Simulation
         : _comm.ConnectionState;
@@ -2394,6 +2546,23 @@ public sealed class CInterfaceDevice
 
     public ST_INTERFACE_COMM_STATUS GetCommunicationStatus()
     {
+        if (_externalCommunication)
+        {
+            return new ST_INTERFACE_COMM_STATUS(
+                Data.Device,
+                Data.NickName,
+                Data.InterfaceType,
+                Data.Number,
+                Data.AutoConnection,
+                _externalConnectionState,
+                _simulationMode,
+                ConnectOption.Endpoint,
+                _externalLastSent,
+                _externalLastReceived,
+                _externalLastError,
+                _externalLastChangedAt);
+        }
+
         return new ST_INTERFACE_COMM_STATUS(
             Data.Device,
             Data.NickName,
@@ -2418,6 +2587,16 @@ public sealed class CInterfaceDevice
 
         _simulationMode = enabled;
 
+        if (_externalCommunication)
+        {
+            _externalConnectionState = enabled
+                ? EN_COMM_STATE.Simulation
+                : EN_COMM_STATE.Offline;
+            _externalLastError = "";
+            _externalLastChangedAt = DateTimeOffset.Now;
+            return;
+        }
+
         if (_simulationMode)
         {
             _comm.Disconnect();
@@ -2427,6 +2606,16 @@ public sealed class CInterfaceDevice
 
     public void Connect(CancellationToken cancellationToken = default)
     {
+        if (_externalCommunication)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _externalConnectionState = _simulationMode
+                ? EN_COMM_STATE.Simulation
+                : EN_COMM_STATE.Offline;
+            _externalLastChangedAt = DateTimeOffset.Now;
+            return;
+        }
+
         if (_simulationMode)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -2440,6 +2629,14 @@ public sealed class CInterfaceDevice
 
     public void Disconnect(CancellationToken cancellationToken = default)
     {
+        if (_externalCommunication)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _externalConnectionState = EN_COMM_STATE.Offline;
+            _externalLastChangedAt = DateTimeOffset.Now;
+            return;
+        }
+
         if (_simulationMode)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -2454,6 +2651,12 @@ public sealed class CInterfaceDevice
         string function,
         CancellationToken cancellationToken = default)
     {
+        if (_externalCommunication)
+        {
+            throw new InvalidOperationException(
+                "MELSEC commands must use CMelsec typed read/write functions.");
+        }
+
         if (_simulationMode)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -2465,6 +2668,28 @@ public sealed class CInterfaceDevice
         }
 
         return _comm.Execute(function, cancellationToken);
+    }
+
+    internal void EnableExternalCommunication()
+    {
+        _externalCommunication = true;
+        _externalConnectionState = _simulationMode
+            ? EN_COMM_STATE.Simulation
+            : EN_COMM_STATE.Offline;
+        _externalLastChangedAt = DateTimeOffset.Now;
+    }
+
+    internal void SetExternalCommunicationState(
+        EN_COMM_STATE state,
+        string lastSent,
+        string lastReceived,
+        string lastError)
+    {
+        _externalConnectionState = state;
+        _externalLastSent = lastSent;
+        _externalLastReceived = lastReceived;
+        _externalLastError = lastError;
+        _externalLastChangedAt = DateTimeOffset.Now;
     }
 
     private void TouchSimulationState()

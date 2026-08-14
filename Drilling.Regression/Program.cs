@@ -1,4 +1,7 @@
+using System.Buffers.Binary;
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using Drilling.Common.Alarm;
 using Drilling.Common.Interface;
@@ -37,6 +40,7 @@ internal static class Program
             RunProcessPlanAndScript(testRoot, snapshot);
             RunSimulationFlow(snapshot);
             RunProtocolFlow(testRoot, snapshot);
+            RunMelsecWriteConfirmFlow(testRoot);
             RunAlarmFlow(snapshot);
             RunLogFlow(testRoot, snapshot);
             RunCtrlThreadFlow();
@@ -762,6 +766,499 @@ internal static class Program
         snapshot.Add($"ProtocolLogCount={logIndex}");
     }
 
+    private static void RunMelsecWriteConfirmFlow(string testRoot)
+    {
+        RunMelsecMapValidationFlow(testRoot);
+        RunConfiguredMelsecMapWriteConfirmFlow();
+        List<ST_MELSEC_MAP_DATA> map = new List<ST_MELSEC_MAP_DATA>();
+        map.Add(MelsecMap("BIT_WRITE", "W100.0", EN_MELSEC_DATA_TYPE.Bit, EN_MELSEC_DIRECTION.Out, EN_MELSEC_ACCESS.Write, 1.0, 1));
+        map.Add(MelsecMap("BIT_READ", "W200.0", EN_MELSEC_DATA_TYPE.Bit, EN_MELSEC_DIRECTION.In, EN_MELSEC_ACCESS.Read, 1.0, 1));
+        map.Add(MelsecMap("WORD_WRITE", "D100", EN_MELSEC_DATA_TYPE.Word, EN_MELSEC_DIRECTION.Out, EN_MELSEC_ACCESS.Write, 1.0, 1));
+        map.Add(MelsecMap("WORD_READ", "D200", EN_MELSEC_DATA_TYPE.Word, EN_MELSEC_DIRECTION.In, EN_MELSEC_ACCESS.Read, 1.0, 1));
+        map.Add(MelsecMap("BIT_RW_0", "W300.0", EN_MELSEC_DATA_TYPE.Bit, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 1.0, 1));
+        map.Add(MelsecMap("BIT_RW_15", "W300.F", EN_MELSEC_DATA_TYPE.Bit, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 1.0, 1));
+        map.Add(MelsecMap("WORD_RW", "D301", EN_MELSEC_DATA_TYPE.Word, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 1.0, 1));
+        map.Add(MelsecMap("DWORD_RW", "D302", EN_MELSEC_DATA_TYPE.DWord, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 1.0, 2));
+        map.Add(MelsecMap("DOUBLE_RW", "D304", EN_MELSEC_DATA_TYPE.Double, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 0.001, 2));
+        map.Add(MelsecMap("STRING_RW", "D306", EN_MELSEC_DATA_TYPE.String, EN_MELSEC_DIRECTION.InOut, EN_MELSEC_ACCESS.ReadWrite, 1.0, 3));
+
+        RunMelsecLiveProtocolFlow(map);
+
+        CInterfaceManager manager = new CInterfaceManager(true, null, null, null, map);
+        manager.Register(CreateSimulatedInterface(
+            EN_INTERFACE_TYPE.SocketClient,
+            EN_EQP_MODULE.Melsec,
+            0,
+            "MELSEC_HANDSHAKE_TEST"));
+        manager.Initialize();
+        CMelsec melsec = manager.Melsec;
+        Assert(melsec.IsCommunicationAvailable,
+            "MELSEC Simulation open did not become available.");
+
+        melsec.WriteBit("BIT_RW_0", true);
+        melsec.WriteBit("BIT_RW_15", true);
+        Assert(melsec.ReadBit("BIT_RW_0"), "MELSEC Bit 0 conversion failed.");
+        Assert(melsec.ReadBit("BIT_RW_15"), "MELSEC Bit 15 conversion failed.");
+        melsec.WriteBit("BIT_RW_0", false);
+        Assert(!melsec.ReadBit("BIT_RW_0"), "MELSEC Bit 0 reset failed.");
+        Assert(melsec.ReadBit("BIT_RW_15"), "MELSEC Bit merge damaged Bit 15.");
+
+        melsec.WriteWord("WORD_RW", 0);
+        Assert(melsec.ReadWord("WORD_RW") == 0, "MELSEC Word zero conversion failed.");
+        melsec.WriteWord("WORD_RW", 1);
+        Assert(melsec.ReadWord("WORD_RW") == 1, "MELSEC Word one conversion failed.");
+        melsec.WriteWord("WORD_RW", -1);
+        Assert(melsec.ReadWord("WORD_RW") == ushort.MaxValue, "MELSEC Word -1 conversion changed.");
+        melsec.WriteWord("DWORD_RW", int.MinValue);
+        Assert(melsec.ReadWord("DWORD_RW") == int.MinValue, "MELSEC DWord minimum conversion failed.");
+        melsec.WriteWord("DWORD_RW", int.MaxValue);
+        Assert(melsec.ReadWord("DWORD_RW") == int.MaxValue, "MELSEC DWord maximum conversion failed.");
+
+        melsec.WriteDouble("DOUBLE_RW", 12.345);
+        Assert(Math.Abs(melsec.ReadDouble("DOUBLE_RW") - 12.345) < 0.0005,
+            "MELSEC scaled Double conversion failed.");
+        melsec.WriteString("STRING_RW", "ABCDE");
+        Assert(melsec.ReadString("STRING_RW") == "ABCDE", "MELSEC odd ASCII conversion failed.");
+        melsec.WriteString("STRING_RW", "ABCDEF");
+        Assert(melsec.ReadString("STRING_RW") == "ABCDEF", "MELSEC even ASCII conversion failed.");
+        melsec.WriteString("STRING_RW", "");
+        Assert(melsec.ReadString("STRING_RW") == "", "MELSEC empty ASCII conversion failed.");
+        melsec.WriteString("STRING_RW", "A\0B");
+        Assert(melsec.ReadString("STRING_RW") == "A\0B", "MELSEC null character conversion failed.");
+
+        melsec.SetSimulationReadbackMode(EN_MELSEC_SIMULATION_READBACK.AutoEcho);
+        long beforeReadCycle = melsec.ReadCycleNo;
+        int wordRequest = melsec.QueueWriteWord("WORD_WRITE", 4660, "WORD_READ", 100, 1);
+        ST_MELSEC_WRITE_STATUS wordStatus = WaitForMelsecWrite(melsec, wordRequest, 2000);
+        Assert(wordStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed,
+            "MELSEC Word write-confirm did not complete.");
+        Assert(wordStatus.ConfirmReadCycle >= wordStatus.MinimumReadCycle,
+            "MELSEC Word confirmed without the required new read cycle.");
+        Assert(wordStatus.ConfirmReadCycle > beforeReadCycle,
+            "MELSEC Word used an old read cycle for confirmation.");
+
+        int bitOnRequest = melsec.QueueWriteBit("BIT_WRITE", true, "BIT_READ", 100, 0);
+        ST_MELSEC_WRITE_STATUS bitOnStatus = WaitForMelsecWrite(melsec, bitOnRequest, 2000);
+        Assert(bitOnStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed && bitOnStatus.ActualValue == "1",
+            "MELSEC Busy ON style write-confirm failed.");
+        int bitOffRequest = melsec.QueueWriteBit("BIT_WRITE", false, "BIT_READ", 100, 0);
+        ST_MELSEC_WRITE_STATUS bitOffStatus = WaitForMelsecWrite(melsec, bitOffRequest, 2000);
+        Assert(bitOffStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed && bitOffStatus.ActualValue == "0",
+            "MELSEC Busy OFF style write-confirm failed.");
+
+        melsec.SetSimulationReadbackMode(EN_MELSEC_SIMULATION_READBACK.HoldValue);
+        int timeoutRequest = melsec.QueueWriteWord("WORD_WRITE", 77, "WORD_READ", 30, 0);
+        int duplicateRequest = melsec.QueueWriteWord("WORD_WRITE", 77, "WORD_READ", 30, 0);
+        Assert(duplicateRequest == timeoutRequest,
+            "MELSEC accepted an unintended duplicate write request.");
+        ST_MELSEC_WRITE_STATUS timeoutStatus = WaitForMelsecWrite(melsec, timeoutRequest, 2000);
+        Assert(timeoutStatus.Result == EN_MELSEC_WRITE_RESULT.Timeout,
+            "MELSEC mismatched readback advanced instead of timing out.");
+
+        melsec.SetSimulationReadbackMode(EN_MELSEC_SIMULATION_READBACK.FailFirstAttempt);
+        int retryRequest = melsec.QueueWriteWord("WORD_WRITE", 88, "WORD_READ", 30, 1);
+        ST_MELSEC_WRITE_STATUS retryStatus = WaitForMelsecWrite(melsec, retryRequest, 2000);
+        Assert(retryStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed && retryStatus.CurrentRetryCount == 1,
+            "MELSEC retry did not confirm after one failed attempt.");
+
+        melsec.SetSimulationReadbackMode(EN_MELSEC_SIMULATION_READBACK.CommunicationError);
+        int errorRequest = melsec.QueueWriteWord("WORD_WRITE", 99, "WORD_READ", 30, 1);
+        ST_MELSEC_WRITE_STATUS errorStatus = WaitForMelsecWrite(melsec, errorRequest, 2000);
+        Assert(errorStatus.Result == EN_MELSEC_WRITE_RESULT.CommunicationError &&
+            errorStatus.CurrentRetryCount == 1,
+            "MELSEC communication error retry policy failed.");
+
+        int invalidRequest = melsec.QueueWriteWord("WORD_WRITE", 100, "UNKNOWN_READBACK", 30, 0);
+        ST_MELSEC_WRITE_STATUS? invalidStatus = melsec.GetWriteStatus(invalidRequest);
+        Assert(invalidStatus != null && invalidStatus.Result == EN_MELSEC_WRITE_RESULT.InvalidParameter,
+            "MELSEC invalid readback ID was accepted.");
+
+        melsec.SetSimulationReadbackMode(EN_MELSEC_SIMULATION_READBACK.HoldValue);
+        int cancelledRequest = melsec.QueueWriteWord("WORD_WRITE", 111, "WORD_READ", 5000, 0);
+        Thread.Sleep(20);
+        melsec.DeInitialize();
+        ST_MELSEC_WRITE_STATUS? cancelledStatus = melsec.GetWriteStatus(cancelledRequest);
+        Assert(cancelledStatus != null && cancelledStatus.Result == EN_MELSEC_WRITE_RESULT.Cancelled,
+            "MELSEC active request was not cancelled during Stop.");
+        Assert(!melsec.IsRunning, "MELSEC control thread remained alive after Stop.");
+
+        melsec.Initialize();
+        melsec.Initialize();
+        melsec.SetSimulationReadbackMode(EN_MELSEC_SIMULATION_READBACK.AutoEcho);
+        int restartRequest = melsec.QueueWriteWord("WORD_WRITE", 222, "WORD_READ", 100, 0);
+        ST_MELSEC_WRITE_STATUS restartStatus = WaitForMelsecWrite(melsec, restartRequest, 2000);
+        Assert(restartStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed,
+            "MELSEC control did not restart after Stop.");
+        manager.Destroy();
+        Assert(!melsec.IsRunning, "MELSEC control thread remained alive after manager Destroy.");
+
+        CInterfaceManager offlineManager = new CInterfaceManager(false, null, null, null, map);
+        offlineManager.Register(CreateSimulatedInterface(
+            EN_INTERFACE_TYPE.SocketClient,
+            EN_EQP_MODULE.Melsec,
+            0,
+            "MELSEC_OFFLINE_TEST"));
+        int offlineRequest = offlineManager.Melsec.QueueWriteWord(
+            "WORD_WRITE",
+            333,
+            "WORD_READ",
+            30,
+            0);
+        ST_MELSEC_WRITE_STATUS? offlineStatus = offlineManager.Melsec.GetWriteStatus(offlineRequest);
+        Assert(offlineStatus != null &&
+            offlineStatus.Result == EN_MELSEC_WRITE_RESULT.CommunicationError,
+            "MELSEC accepted a live write while communication was offline.");
+        Assert(!offlineManager.Melsec.IsRunning,
+            "MELSEC started its control thread for an offline rejected write.");
+        offlineManager.Initialize();
+        Assert(!offlineManager.IsConnect(EN_EQP_MODULE.Melsec, 0),
+            "MELSEC invalid live endpoint was reported online.");
+        Assert(!offlineManager.Melsec.IsCommunicationAvailable,
+            "MELSEC invalid live endpoint was reported communication available.");
+        offlineManager.Destroy();
+        Assert(!offlineManager.Melsec.IsRunning,
+            "MELSEC failed-open control thread remained after Destroy.");
+    }
+
+    private static void RunConfiguredMelsecMapWriteConfirmFlow()
+    {
+        string repositoryRoot = FindRepositoryRoot();
+        CMelsecMapFile mapFile = new CMelsecMapFile(Path.Combine(repositoryRoot, "Config"));
+        IReadOnlyList<ST_MELSEC_MAP_DATA> map = mapFile.LoadAll();
+        CInterfaceManager manager = new CInterfaceManager(true, null, null, null, map);
+        manager.Register(CreateSimulatedInterface(
+            EN_INTERFACE_TYPE.SocketClient,
+            EN_EQP_MODULE.Melsec,
+            0,
+            "MELSEC_CONFIGURED_MAP_TEST"));
+        manager.Initialize();
+
+        int confirmedCount = 0;
+        foreach (ST_MELSEC_MAP_DATA data in map)
+        {
+            if (data.Access == EN_MELSEC_ACCESS.Read ||
+                data.Direction == EN_MELSEC_DIRECTION.In ||
+                !data.Id.EndsWith("_WRITE", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            int requestNo;
+            switch (data.DataType)
+            {
+                case EN_MELSEC_DATA_TYPE.Bit:
+                    requestNo = manager.Melsec.QueueWriteBit(data.Id, true, "", 100, 0);
+                    break;
+                case EN_MELSEC_DATA_TYPE.Word:
+                case EN_MELSEC_DATA_TYPE.DWord:
+                    requestNo = manager.Melsec.QueueWriteWord(data.Id, 123, "", 100, 0);
+                    break;
+                case EN_MELSEC_DATA_TYPE.Double:
+                case EN_MELSEC_DATA_TYPE.Float:
+                    requestNo = manager.Melsec.QueueWriteDouble(data.Id, 1.234, "", 100, 0);
+                    break;
+                case EN_MELSEC_DATA_TYPE.String:
+                    requestNo = manager.Melsec.QueueWriteString(data.Id, "TEST", "", 100, 0);
+                    break;
+                default:
+                    throw new InvalidOperationException(
+                        "Configured MELSEC write type is not supported: " + data.Id);
+            }
+
+            ST_MELSEC_WRITE_STATUS status = WaitForMelsecWrite(manager.Melsec, requestNo, 3000);
+            Assert(status.Result == EN_MELSEC_WRITE_RESULT.Confirmed,
+                "Configured MELSEC write/readback pair failed: " + data.Id +
+                " / " + status.ReadbackId + " / " + status.ErrorMessage);
+            confirmedCount++;
+        }
+
+        manager.Destroy();
+        Assert(confirmedCount == 8,
+            "Configured MELSEC write/readback pair count changed: " + confirmedCount);
+        Assert(!manager.Melsec.IsRunning,
+            "Configured MELSEC map test left its control thread running.");
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        DirectoryInfo? directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (directory != null)
+        {
+            if (System.IO.File.Exists(Path.Combine(directory.FullName, "Drilling.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Drilling.sln repository root was not found.");
+    }
+
+    private static void RunMelsecMapValidationFlow(string testRoot)
+    {
+        string configRoot = Path.Combine(testRoot, "MelsecMapValidation");
+        Directory.CreateDirectory(configRoot);
+        string mapPath = Path.Combine(configRoot, "JHMI_MELSEC_MAP.csv");
+        string header = "ID,USE,GROUP,NAME,DEVICE NO,ADDRESS,DATA TYPE,DIRECTION,ACCESS,SCALE,LENGTH,POLL_MS,DESCRIPTION";
+        CMelsecMapFile mapFile = new CMelsecMapFile(configRoot);
+
+        System.IO.File.WriteAllText(
+            mapPath,
+            header + Environment.NewLine +
+            "# COMMENT,,,,,,,,,,,," + Environment.NewLine +
+            "VALID_BIT,1,TEST,Valid Bit,0,W100.F,BIT,IN,R,1,1,10,valid",
+            new UTF8Encoding(false));
+        IReadOnlyList<ST_MELSEC_MAP_DATA> validRows = mapFile.LoadAll();
+        Assert(validRows.Count == 1 && validRows[0].Id == "VALID_BIT",
+            "MELSEC map comment or Bit 15 validation failed.");
+
+        System.IO.File.WriteAllText(
+            mapPath,
+            header + Environment.NewLine +
+            "INVALID_BIT,1,TEST,Invalid Bit,0,W100.10,BIT,IN,R,1,1,10,invalid",
+            new UTF8Encoding(false));
+        bool invalidBitRejected = false;
+        try
+        {
+            mapFile.LoadAll();
+        }
+        catch (InvalidDataException)
+        {
+            invalidBitRejected = true;
+        }
+        Assert(invalidBitRejected, "MELSEC map accepted Bit 16.");
+
+        System.IO.File.WriteAllText(
+            mapPath,
+            header + Environment.NewLine +
+            "DUPLICATE,1,TEST,First,0,D100,WORD,IN,R,1,1,10,first" + Environment.NewLine +
+            "DUPLICATE,1,TEST,Second,0,D101,WORD,IN,R,1,1,10,second",
+            new UTF8Encoding(false));
+        bool duplicateRejected = false;
+        try
+        {
+            mapFile.LoadAll();
+        }
+        catch (InvalidDataException)
+        {
+            duplicateRejected = true;
+        }
+        Assert(duplicateRejected, "MELSEC map accepted a duplicate ID.");
+
+        System.IO.File.WriteAllText(mapPath, "", new UTF8Encoding(false));
+        bool emptyFileRejected = false;
+        try
+        {
+            mapFile.LoadAll();
+        }
+        catch (InvalidDataException)
+        {
+            emptyFileRejected = true;
+        }
+        Assert(emptyFileRejected, "MELSEC map accepted an empty file.");
+
+        System.IO.File.WriteAllText(
+            mapPath,
+            "ID,USE,GROUP" + Environment.NewLine + "SHORT,1,TEST",
+            new UTF8Encoding(false));
+        bool missingColumnRejected = false;
+        try
+        {
+            mapFile.LoadAll();
+        }
+        catch (InvalidDataException)
+        {
+            missingColumnRejected = true;
+        }
+        Assert(missingColumnRejected, "MELSEC map accepted missing required columns.");
+    }
+
+    private static void RunMelsecLiveProtocolFlow(IReadOnlyList<ST_MELSEC_MAP_DATA> map)
+    {
+        CTestMelsecServer server = new CTestMelsecServer();
+        server.StartServer();
+        CInterfaceManager manager = new CInterfaceManager(false, null, null, null, map);
+        manager.Register(CreateLiveMelsecInterface(server.Port));
+
+        try
+        {
+            manager.Initialize();
+            Assert(manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
+                "MELSEC live MC connection did not become online.");
+            Assert(manager.Melsec.ReadCycleNo > 0,
+                "MELSEC live connection became online before the initial read.");
+
+            int confirmedRequest = manager.Melsec.QueueWriteWord(
+                "WORD_WRITE",
+                4321,
+                "WORD_READ",
+                200,
+                0);
+            ST_MELSEC_WRITE_STATUS confirmedStatus = WaitForMelsecWrite(
+                manager.Melsec,
+                confirmedRequest,
+                3000);
+            Assert(confirmedStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed,
+                "MELSEC live MC write-confirm failed.");
+            Assert(server.ReadCommandCount >= 2 && server.WriteCommandCount >= 1,
+                "MELSEC live MC server did not receive the expected read/write sequence.");
+
+            int bitOnRequest = manager.Melsec.QueueWriteBit(
+                "BIT_WRITE",
+                true,
+                "BIT_READ",
+                200,
+                0);
+            ST_MELSEC_WRITE_STATUS bitOnStatus = WaitForMelsecWrite(
+                manager.Melsec,
+                bitOnRequest,
+                3000);
+            Assert(bitOnStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed &&
+                bitOnStatus.ActualValue == "1",
+                "MELSEC live MC Bit ON write-confirm failed.");
+            int bitOffRequest = manager.Melsec.QueueWriteBit(
+                "BIT_WRITE",
+                false,
+                "BIT_READ",
+                200,
+                0);
+            ST_MELSEC_WRITE_STATUS bitOffStatus = WaitForMelsecWrite(
+                manager.Melsec,
+                bitOffRequest,
+                3000);
+            Assert(bitOffStatus.Result == EN_MELSEC_WRITE_RESULT.Confirmed &&
+                bitOffStatus.ActualValue == "0",
+                "MELSEC live MC Bit OFF write-confirm failed.");
+
+            server.SetEchoReadback(false);
+            int mismatchRequest = manager.Melsec.QueueWriteWord(
+                "WORD_WRITE",
+                5432,
+                "WORD_READ",
+                40,
+                0);
+            ST_MELSEC_WRITE_STATUS mismatchStatus = WaitForMelsecWrite(
+                manager.Melsec,
+                mismatchRequest,
+                3000);
+            Assert(mismatchStatus.Result == EN_MELSEC_WRITE_RESULT.Timeout,
+                "MELSEC live mismatched readback did not time out.");
+            Assert(manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
+                "MELSEC live readback mismatch incorrectly dropped the connection.");
+
+            server.SetEchoReadback(true);
+            server.SetNextEndCode(0xC051);
+            int protocolErrorRequest = manager.Melsec.QueueWriteWord(
+                "WORD_WRITE",
+                6543,
+                "WORD_READ",
+                100,
+                0);
+            ST_MELSEC_WRITE_STATUS protocolErrorStatus = WaitForMelsecWrite(
+                manager.Melsec,
+                protocolErrorRequest,
+                3000);
+            Assert(protocolErrorStatus.Result == EN_MELSEC_WRITE_RESULT.CommunicationError,
+                "MELSEC MC error end code did not stop the write.");
+            Assert(!manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
+                "MELSEC MC error end code did not mark communication offline.");
+
+            manager.Reconnect(EN_EQP_MODULE.Melsec, 0);
+            Assert(manager.IsConnect(EN_EQP_MODULE.Melsec, 0),
+                "MELSEC live reconnection did not restore communication.");
+        }
+        finally
+        {
+            manager.Destroy();
+            server.StopServer();
+        }
+
+        Assert(!manager.Melsec.IsRunning,
+            "MELSEC live control thread remained after Destroy.");
+        Assert(!server.IsRunning,
+            "MELSEC regression server thread remained after Stop.");
+        Assert(server.LastError == null,
+            "MELSEC regression server failed: " + server.LastError?.Message);
+    }
+
+    private static ST_INTERFACE_DATA CreateLiveMelsecInterface(int port)
+    {
+        return new ST_INTERFACE_DATA(
+            EN_INTERFACE_TYPE.SocketClient,
+            EN_EQP_MODULE.Melsec,
+            0,
+            "MELSEC_LIVE_TEST",
+            "PLC",
+            true,
+            false,
+            new[]
+            {
+                "0.0.0.0",
+                "127.0.0.1",
+                port.ToString(CultureInfo.InvariantCulture),
+                "500",
+                "1"
+            });
+    }
+
+    private static ST_MELSEC_MAP_DATA MelsecMap(
+        string id,
+        string address,
+        EN_MELSEC_DATA_TYPE dataType,
+        EN_MELSEC_DIRECTION direction,
+        EN_MELSEC_ACCESS access,
+        double scale,
+        int length)
+    {
+        return new ST_MELSEC_MAP_DATA(
+            id,
+            true,
+            "REGRESSION",
+            id,
+            0,
+            address,
+            dataType,
+            direction,
+            access,
+            scale,
+            length,
+            2,
+            "MELSEC handshake regression");
+    }
+
+    private static ST_MELSEC_WRITE_STATUS WaitForMelsecWrite(
+        CMelsec melsec,
+        int requestNo,
+        int timeoutMsec)
+    {
+        DateTime deadline = DateTime.UtcNow.AddMilliseconds(timeoutMsec);
+        while (DateTime.UtcNow < deadline)
+        {
+            ST_MELSEC_WRITE_STATUS? status = melsec.GetWriteStatus(requestNo);
+            if (status != null && IsTerminalMelsecWriteResult(status.Result))
+            {
+                return status;
+            }
+
+            Thread.Sleep(2);
+        }
+
+        ST_MELSEC_WRITE_STATUS? timeoutStatus = melsec.GetWriteStatus(requestNo);
+        throw new InvalidOperationException(
+            "MELSEC write request did not reach terminal state: " + requestNo +
+            " / " + (timeoutStatus == null ? "UNKNOWN" : timeoutStatus.Result.ToString()));
+    }
+
+    private static bool IsTerminalMelsecWriteResult(EN_MELSEC_WRITE_RESULT result)
+    {
+        return result == EN_MELSEC_WRITE_RESULT.Confirmed ||
+            result == EN_MELSEC_WRITE_RESULT.Timeout ||
+            result == EN_MELSEC_WRITE_RESULT.CommunicationError ||
+            result == EN_MELSEC_WRITE_RESULT.InvalidParameter ||
+            result == EN_MELSEC_WRITE_RESULT.Cancelled;
+    }
+
     private static ST_INTERFACE_DATA CreateSimulatedInterface(
         EN_INTERFACE_TYPE interfaceType,
         EN_EQP_MODULE module,
@@ -804,6 +1301,324 @@ internal static class Program
         snapshot.Add("[Log]");
         snapshot.Add($"RelativePath={NormalizeDateDigits(Path.GetRelativePath(testRoot, files[0]).Replace('\\', '/'))}");
         snapshot.Add($"Payload={Escape(line.Substring(payloadStart))}");
+    }
+
+    private sealed class CTestMelsecServer : CtrlThread
+    {
+        private readonly object mobjLock = new object();
+        private readonly Dictionary<string, ushort> mobjWords = new Dictionary<string, ushort>(StringComparer.Ordinal);
+        private TcpListener? mobjListener;
+        private TcpClient? mobjClient;
+        private bool mblnEchoReadback = true;
+        private ushort mushNextEndCode;
+        private int mintReadCommandCount;
+        private int mintWriteCommandCount;
+        private Exception? mobjLastError;
+
+        public int Port { get; private set; }
+
+        public int ReadCommandCount
+        {
+            get
+            {
+                lock (mobjLock)
+                {
+                    return mintReadCommandCount;
+                }
+            }
+        }
+
+        public int WriteCommandCount
+        {
+            get
+            {
+                lock (mobjLock)
+                {
+                    return mintWriteCommandCount;
+                }
+            }
+        }
+
+        public Exception? LastError
+        {
+            get
+            {
+                lock (mobjLock)
+                {
+                    return mobjLastError;
+                }
+            }
+        }
+
+        public void StartServer()
+        {
+            TcpListener listener = new TcpListener(IPAddress.Loopback, 0);
+            listener.Start();
+            mobjListener = listener;
+            Port = ((IPEndPoint)listener.LocalEndpoint).Port;
+            Start(1, "MELSEC_REGRESSION_SERVER");
+        }
+
+        public void StopServer()
+        {
+            Stop();
+            CloseClient();
+            mobjListener?.Stop();
+            mobjListener = null;
+        }
+
+        public void SetEchoReadback(bool enabled)
+        {
+            lock (mobjLock)
+            {
+                mblnEchoReadback = enabled;
+            }
+        }
+
+        public void SetNextEndCode(ushort endCode)
+        {
+            lock (mobjLock)
+            {
+                mushNextEndCode = endCode;
+            }
+        }
+
+        public override void Run()
+        {
+            try
+            {
+                if (mobjClient == null)
+                {
+                    AcceptClient();
+                    return;
+                }
+
+                Socket socket = mobjClient.Client;
+                if (socket.Poll(0, SelectMode.SelectRead) && socket.Available == 0)
+                {
+                    CloseClient();
+                    return;
+                }
+
+                NetworkStream stream = mobjClient.GetStream();
+                if (!stream.DataAvailable)
+                {
+                    return;
+                }
+
+                byte[] header = new byte[9];
+                if (!TryReadExact(stream, header, header.Length))
+                {
+                    CloseClient();
+                    return;
+                }
+
+                int bodyLength = BinaryPrimitives.ReadUInt16LittleEndian(header.AsSpan(7, 2));
+                if (bodyLength < 12 || bodyLength > 4096)
+                {
+                    throw new InvalidDataException(
+                        "MELSEC regression request body length is invalid: " + bodyLength);
+                }
+
+                byte[] body = new byte[bodyLength];
+                if (!TryReadExact(stream, body, body.Length))
+                {
+                    CloseClient();
+                    return;
+                }
+
+                ProcessRequest(stream, header, body);
+            }
+            catch (Exception exception) when (
+                exception is IOException or SocketException or InvalidDataException or ObjectDisposedException)
+            {
+                if (!IsStopRequested())
+                {
+                    lock (mobjLock)
+                    {
+                        mobjLastError = exception;
+                    }
+                }
+                CloseClient();
+            }
+        }
+
+        private void AcceptClient()
+        {
+            TcpListener? listener = mobjListener;
+            if (listener == null || !listener.Pending())
+            {
+                return;
+            }
+
+            TcpClient client = listener.AcceptTcpClient();
+            client.NoDelay = true;
+            client.ReceiveTimeout = 500;
+            client.SendTimeout = 500;
+            mobjClient = client;
+        }
+
+        private void ProcessRequest(
+            NetworkStream stream,
+            byte[] header,
+            byte[] body)
+        {
+            ushort command = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(2, 2));
+            int deviceNumber = body[6] | (body[7] << 8) | (body[8] << 16);
+            byte deviceCode = body[9];
+            ushort pointCount = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(10, 2));
+            ushort endCode = TakeNextEndCode();
+            byte[] responseData = Array.Empty<byte>();
+
+            if (command == 0x0401)
+            {
+                lock (mobjLock)
+                {
+                    mintReadCommandCount++;
+                }
+                if (endCode == 0)
+                {
+                    responseData = ReadWords(deviceCode, deviceNumber, pointCount);
+                }
+            }
+            else if (command == 0x1401)
+            {
+                lock (mobjLock)
+                {
+                    mintWriteCommandCount++;
+                }
+                if (endCode == 0)
+                {
+                    WriteWords(deviceCode, deviceNumber, pointCount, body);
+                }
+            }
+            else
+            {
+                endCode = 0xC059;
+            }
+
+            byte[] response = BuildResponse(header, endCode, responseData);
+            stream.Write(response, 0, response.Length);
+            stream.Flush();
+        }
+
+        private byte[] ReadWords(byte deviceCode, int deviceNumber, int pointCount)
+        {
+            byte[] data = new byte[pointCount * 2];
+            lock (mobjLock)
+            {
+                for (int index = 0; index < pointCount; index++)
+                {
+                    mobjWords.TryGetValue(CreateWordKey(deviceCode, deviceNumber + index), out ushort value);
+                    BinaryPrimitives.WriteUInt16LittleEndian(data.AsSpan(index * 2, 2), value);
+                }
+            }
+            return data;
+        }
+
+        private void WriteWords(
+            byte deviceCode,
+            int deviceNumber,
+            int pointCount,
+            byte[] body)
+        {
+            if (body.Length < 12 + pointCount * 2)
+            {
+                throw new InvalidDataException("MELSEC regression write payload is too short.");
+            }
+
+            lock (mobjLock)
+            {
+                for (int index = 0; index < pointCount; index++)
+                {
+                    ushort value = BinaryPrimitives.ReadUInt16LittleEndian(body.AsSpan(12 + index * 2, 2));
+                    mobjWords[CreateWordKey(deviceCode, deviceNumber + index)] = value;
+                    if (mblnEchoReadback)
+                    {
+                        int readbackNumber = ResolveReadbackNumber(deviceCode, deviceNumber + index);
+                        mobjWords[CreateWordKey(deviceCode, readbackNumber)] = value;
+                    }
+                }
+            }
+        }
+
+        private static int ResolveReadbackNumber(byte deviceCode, int writeNumber)
+        {
+            if (deviceCode == 0xA8 && writeNumber >= 100 && writeNumber < 200)
+            {
+                return writeNumber + 100;
+            }
+
+            if (deviceCode == 0xB4 && writeNumber >= 0x100 && writeNumber < 0x200)
+            {
+                return writeNumber + 0x100;
+            }
+
+            return writeNumber;
+        }
+
+        private ushort TakeNextEndCode()
+        {
+            lock (mobjLock)
+            {
+                ushort endCode = mushNextEndCode;
+                mushNextEndCode = 0;
+                return endCode;
+            }
+        }
+
+        private static byte[] BuildResponse(
+            byte[] requestHeader,
+            ushort endCode,
+            byte[] responseData)
+        {
+            int bodyLength = 2 + responseData.Length;
+            byte[] response = new byte[9 + bodyLength];
+            response[0] = 0xD0;
+            response[1] = 0x00;
+            Array.Copy(requestHeader, 2, response, 2, 5);
+            BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(7, 2), (ushort)bodyLength);
+            BinaryPrimitives.WriteUInt16LittleEndian(response.AsSpan(9, 2), endCode);
+            Array.Copy(responseData, 0, response, 11, responseData.Length);
+            return response;
+        }
+
+        private static bool TryReadExact(
+            NetworkStream stream,
+            byte[] buffer,
+            int length)
+        {
+            int offset = 0;
+            while (offset < length)
+            {
+                int readCount = stream.Read(buffer, offset, length - offset);
+                if (readCount <= 0)
+                {
+                    return false;
+                }
+                offset += readCount;
+            }
+            return true;
+        }
+
+        private static string CreateWordKey(byte deviceCode, int deviceNumber)
+        {
+            return deviceCode.ToString("X2", CultureInfo.InvariantCulture) + ":" +
+                deviceNumber.ToString("X6", CultureInfo.InvariantCulture);
+        }
+
+        private void CloseClient()
+        {
+            try
+            {
+                mobjClient?.Close();
+                mobjClient?.Dispose();
+            }
+            finally
+            {
+                mobjClient = null;
+            }
+        }
     }
 
     private sealed class CRegressionSettingFile : CSettingFileBase

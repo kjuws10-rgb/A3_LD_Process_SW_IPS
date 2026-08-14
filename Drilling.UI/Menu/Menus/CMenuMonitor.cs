@@ -1438,28 +1438,49 @@ public sealed class CMenuMonitor : CMenuBase
 
             var value = row.WriteValue.Trim();
             _melsecWriteValues[row.Id] = value;
+            int requestNo;
 
             switch (row.DataType)
             {
                 case "BIT":
-                    _interfaceManager.Melsec.WriteBit(row.Id, ParseMelsecBit(value));
+                    requestNo = _interfaceManager.Melsec.QueueWriteBit(
+                        row.Id,
+                        ParseMelsecBit(value));
                     break;
                 case "WORD":
                 case "DWORD":
-                    _interfaceManager.Melsec.WriteWord(row.Id, int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture));
+                    requestNo = _interfaceManager.Melsec.QueueWriteWord(
+                        row.Id,
+                        int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture));
                     break;
                 case "DOUBLE":
                 case "FLOAT":
-                    _interfaceManager.Melsec.WriteDouble(row.Id, double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture));
+                    requestNo = _interfaceManager.Melsec.QueueWriteDouble(
+                        row.Id,
+                        double.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture));
                     break;
                 case "STRING":
-                    _interfaceManager.Melsec.WriteString(row.Id, value);
+                    requestNo = _interfaceManager.Melsec.QueueWriteString(row.Id, value);
                     break;
                 default:
                     throw new InvalidOperationException($"Unsupported MELSEC write type: {row.DataType}");
             }
 
-            return new ST_DEVICE_COMMAND_RESULT(true, $"MELSEC WRITE {row.Id}({row.Address}) = {value}");
+            ST_MELSEC_WRITE_STATUS? status = _interfaceManager.Melsec.GetWriteStatus(requestNo);
+            if (status == null ||
+                status.Result == EN_MELSEC_WRITE_RESULT.InvalidParameter ||
+                status.Result == EN_MELSEC_WRITE_RESULT.CommunicationError ||
+                status.Result == EN_MELSEC_WRITE_RESULT.Cancelled)
+            {
+                string error = status == null ? "Write request status is unavailable." : status.ErrorMessage;
+                return new ST_DEVICE_COMMAND_RESULT(
+                    false,
+                    $"MELSEC WRITE {row.Id} failed. {error}");
+            }
+
+            return new ST_DEVICE_COMMAND_RESULT(
+                true,
+                $"MELSEC WRITE QUEUED #{requestNo} {row.Id}({row.Address}) = {value}");
         }
         catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or TimeoutException or IOException or FormatException)
         {

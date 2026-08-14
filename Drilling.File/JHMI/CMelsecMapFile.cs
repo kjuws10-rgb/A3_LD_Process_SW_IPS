@@ -46,41 +46,29 @@ public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
         cancellationToken.ThrowIfCancellationRequested();
         EnsureFile();
         CCsvParser.ValidateRequiredHeaders(GetMapPath(), TableName, RequiredHeaderGroups);
-        ST_MELSEC_MAP_DATA SelectRow1(IReadOnlyDictionary<string, string> row, int index)
+        IReadOnlyList<IReadOnlyDictionary<string, string>> sourceRows = CCsvParser.Read(GetMapPath());
+        List<ST_MELSEC_MAP_DATA> rows = new List<ST_MELSEC_MAP_DATA>();
+        for (int index = 0; index < sourceRows.Count; index++)
         {
-            return Parse(row, index + 2);
+            cancellationToken.ThrowIfCancellationRequested();
+            IReadOnlyDictionary<string, string> sourceRow = sourceRows[index];
+            string idText = ReadFirst(sourceRow, "ID");
+            if (IsCommentRow(idText))
+            {
+                continue;
+            }
+
+            ST_MELSEC_MAP_DATA data = Parse(sourceRow, index + 2);
+            if (!string.IsNullOrWhiteSpace(data.Id))
+            {
+                rows.Add(data);
+            }
         }
 
-        bool FilterData2(ST_MELSEC_MAP_DATA data)
-        {
-            return !string.IsNullOrWhiteSpace(data.Id);
-        }
-
-        string GetDataSortKey3(ST_MELSEC_MAP_DATA data)
-        {
-            return data.Group;
-        }
-
-        int GetDataSortKey4(ST_MELSEC_MAP_DATA data)
-        {
-            return data.DeviceNo;
-        }
-
-        string GetDataSortKey5(ST_MELSEC_MAP_DATA data)
-        {
-            return data.Id;
-        }
-
-        var rows = CCsvParser.Read(GetMapPath())
-            .Select(SelectRow1)
-            .Where(FilterData2)
-            .OrderBy(GetDataSortKey3, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(GetDataSortKey4)
-            .ThenBy(GetDataSortKey5, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        rows.Sort(CompareMapData);
 
         Validate(rows);
-        return rows;
+        return rows.ToArray();
     }
 
     private ST_MELSEC_MAP_DATA Parse(
@@ -123,13 +111,13 @@ public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
     private static void Validate(IReadOnlyList<ST_MELSEC_MAP_DATA> rows)
     {
         var usedIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        bool FilterRow6(ST_MELSEC_MAP_DATA row)
+        foreach (ST_MELSEC_MAP_DATA row in rows)
         {
-            return row.Use;
-        }
+            if (!row.Use)
+            {
+                continue;
+            }
 
-        foreach (var row in rows.Where(FilterRow6))
-        {
             if (string.IsNullOrWhiteSpace(row.Id))
             {
                 throw new InvalidDataException($"{TableName} validation failed. ID cannot be empty.");
@@ -164,7 +152,44 @@ public sealed class CMelsecMapFile(string configRoot) : CMelsecMapFileBase
             {
                 throw new InvalidDataException($"{TableName} validation failed. BIT LENGTH must be 1: {row.Id}");
             }
+
+            try
+            {
+                CMelsec.ValidateMapData(row);
+            }
+            catch (Exception exception) when (
+                exception is FormatException or InvalidDataException or InvalidOperationException or NotSupportedException)
+            {
+                throw new InvalidDataException(
+                    $"{TableName} validation failed. ADDRESS or LENGTH is invalid: {row.Id} / {exception.Message}",
+                    exception);
+            }
         }
+    }
+
+    private static bool IsCommentRow(string idText)
+    {
+        string text = idText.TrimStart();
+        return text.StartsWith("#", StringComparison.Ordinal) ||
+            text.StartsWith(";", StringComparison.Ordinal) ||
+            text.StartsWith("//", StringComparison.Ordinal);
+    }
+
+    private static int CompareMapData(ST_MELSEC_MAP_DATA left, ST_MELSEC_MAP_DATA right)
+    {
+        int groupCompare = StringComparer.OrdinalIgnoreCase.Compare(left.Group, right.Group);
+        if (groupCompare != 0)
+        {
+            return groupCompare;
+        }
+
+        int deviceCompare = left.DeviceNo.CompareTo(right.DeviceNo);
+        if (deviceCompare != 0)
+        {
+            return deviceCompare;
+        }
+
+        return StringComparer.OrdinalIgnoreCase.Compare(left.Id, right.Id);
     }
 
     private static IReadOnlyList<IReadOnlyDictionary<string, string>> CreateDefaultRows()

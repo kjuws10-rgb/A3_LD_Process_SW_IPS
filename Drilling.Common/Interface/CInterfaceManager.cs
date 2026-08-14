@@ -45,7 +45,8 @@ public enum EN_INTERFACE_TYPE
     AcsNet,
     XpsNet,
     Automation1Net,
-    PicoMotor
+    PicoMotor,
+    MelsecNet
 }
 
 public sealed record ST_INTERFACE_HISTORY(
@@ -155,13 +156,14 @@ public sealed class CInterfaceManager {
         CLogManager? logManager = null,
         CBETFileBase? betFile = null,
         CPowerMeterFileBase? powerMeterFile = null,
-        IReadOnlyList<ST_MELSEC_MAP_DATA>? melsecMap = null)
+        IReadOnlyList<ST_MELSEC_MAP_DATA>? melsecMap = null,
+        CMelsecNetApi? melsecNetApi = null)
     {
         _simulationMode = simulationMode;
         _logManager = logManager;
         _betFile = betFile;
         _powerMeterFile = powerMeterFile;
-        _melsec = new CMelsec(this, _logManager, melsecMap);
+        _melsec = new CMelsec(this, _logManager, melsecMap, melsecNetApi);
     }
 
     public bool IsSimulation
@@ -2757,6 +2759,8 @@ internal static class CInterfaceConnectOption
                     return CreateAutomation1Option(args);
                 case EN_INTERFACE_TYPE.PicoMotor:
                     return CreatePicoMotorOption();
+                case EN_INTERFACE_TYPE.MelsecNet:
+                    return CreateMelsecNetOption(args);
                 case EN_INTERFACE_TYPE.OpcUa:
                     return CreateOpcUaOption(args);
                 default:
@@ -2765,6 +2769,33 @@ internal static class CInterfaceConnectOption
         }
 
         return EvaluateInterfaceTypeSwitch3();
+    }
+
+    private static ST_INTERFACE_CONNECT_OPTION CreateMelsecNetOption(
+        IReadOnlyList<string> args)
+    {
+        string channel = DefaultIfBlank(args[0], "NOT_CONFIGURED");
+        string network = DefaultIfBlank(args[1], "NOT_CONFIGURED");
+        string station = DefaultIfBlank(args[2], "NOT_CONFIGURED");
+        int timeoutMs = ReadInt(args[3], 3000);
+        int retryCount = ReadInt(args[4], 1);
+        string endpoint = "MELSECNET:CHANNEL=" + channel +
+            ":NETWORK=" + network +
+            ":STATION=" + station;
+
+        return new ST_INTERFACE_CONNECT_OPTION(
+            endpoint,
+            "",
+            "",
+            0,
+            timeoutMs,
+            retryCount,
+            "",
+            0,
+            "",
+            0,
+            "",
+            "");
     }
 
     private static ST_INTERFACE_CONNECT_OPTION CreateSocketOption(

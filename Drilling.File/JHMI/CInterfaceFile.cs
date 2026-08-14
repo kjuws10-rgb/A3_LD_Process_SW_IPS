@@ -288,6 +288,13 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
                 break;
             case EN_INTERFACE_TYPE.PicoMotor:
                 break;
+            case EN_INTERFACE_TYPE.MelsecNet:
+                RequireMelsecNetChannel(data, args[0]);
+                RequireMelsecNetNetwork(data, args[1]);
+                RequireMelsecNetStation(data, args[2]);
+                RequirePositiveInt(data, args[3], "ARG4/TIMEOUT_MS");
+                RequireNonNegativeInt(data, args[4], "ARG5/RETRY_COUNT");
+                break;
             case EN_INTERFACE_TYPE.OpcUa:
                 RequireArgument(data, args[0], "ARG1/ENDPOINT");
                 RequirePositiveInt(data, args[3], "ARG4/TIMEOUT_MS");
@@ -462,6 +469,8 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
                     return EN_INTERFACE_TYPE.Automation1Net;
                 case "PICOMOTOR" or "PICO_MOTOR" or "PICO":
                     return EN_INTERFACE_TYPE.PicoMotor;
+                case "MELSEC_NET" or "MELSECNET" or "MNET":
+                    return EN_INTERFACE_TYPE.MelsecNet;
                 default:
                     throw new InvalidDataException($"JHMI_INTERFACE validation failed. Unknown TYPE: {value}");
             }
@@ -501,6 +510,8 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
                     return "AUTOMATION1_NET";
                 case EN_INTERFACE_TYPE.PicoMotor:
                     return "PICOMOTOR";
+                case EN_INTERFACE_TYPE.MelsecNet:
+                    return "MELSEC_NET";
                 default:
                     return "SOCKET_C";
             }
@@ -616,6 +627,59 @@ public sealed class CInterfaceFile(string configRoot) : CInterfaceFileBase
         {
             throw new InvalidDataException(
                 $"JHMI_INTERFACE validation failed. {data.NickName}/{fieldName} cannot be empty in ONLINE mode.");
+        }
+    }
+
+    private static void RequireMelsecNetChannel(
+        ST_INTERFACE_DATA data,
+        string value)
+    {
+        int channel = ReadRequiredInt(value, 0, "ARG1/MELSECNET_CHANNEL");
+        if (channel < 51 || channel > 54)
+        {
+            throw new InvalidDataException(
+                "JHMI_INTERFACE validation failed. MELSECNET/H channel must be 51 to 54: " +
+                FormatInterfaceLabel(data));
+        }
+    }
+
+    private static void RequireMelsecNetNetwork(
+        ST_INTERFACE_DATA data,
+        string value)
+    {
+        int network = ReadRequiredInt(value, 0, "ARG2/NETWORK_NO");
+        if (network < 0 || network > 239)
+        {
+            throw new InvalidDataException(
+                "JHMI_INTERFACE validation failed. MELSECNET network must be 0 to 239: " +
+                FormatInterfaceLabel(data));
+        }
+    }
+
+    private static void RequireMelsecNetStation(
+        ST_INTERFACE_DATA data,
+        string value)
+    {
+        int station = ReadRequiredInt(value, 0, "ARG3/STATION_NO");
+        if (station < 0 || station > 255)
+        {
+            throw new InvalidDataException(
+                "JHMI_INTERFACE validation failed. MELSECNET station must be 0 to 255: " +
+                FormatInterfaceLabel(data));
+        }
+    }
+
+    private static void RequireNonNegativeInt(
+        ST_INTERFACE_DATA data,
+        string value,
+        string fieldName)
+    {
+        int number = ReadRequiredInt(value, 0, fieldName);
+        if (number < 0)
+        {
+            throw new InvalidDataException(
+                "JHMI_INTERFACE validation failed. " + fieldName +
+                " cannot be negative: " + FormatInterfaceLabel(data));
         }
     }
 

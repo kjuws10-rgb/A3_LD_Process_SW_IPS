@@ -15,7 +15,8 @@
 | 변경 전 Release Build | 성공, 경고 0, 오류 0 |
 | 변경 전 Golden | 150줄, SHA-256 `5EA33F52AA0E1E63BF1B90F02156BED2C1F51472E849C6609E8D82F08629FADB` |
 | 변경 후 Golden | 변경 전과 byte 단위 동일 |
-| PR | 최종 Push 후 본 보고서와 최종 결과에 기록 |
+| 구현 Commit ID | `0fd0e066294d211409a12c104664f2fbf56348c1` |
+| PR | `https://github.com/kjuws10-rgb/A3_LD_Process_SW_IPS/pull/5` |
 | Merge Commit | Merge 후 최종 결과에 기록 |
 
 작업 시작 시 소스의 미커밋 변경은 없었다. 저장소에 추적 중인 `bin/obj` 빌드 산출물 변경과 추적하지 않는 `Data`, `Log`, `artifacts`, Release 빌드 산출물이 이미 있었으며, 이번 작업의 소스 변경과 분리했다. 해당 산출물은 수정 대상으로 취급하거나 Commit에 포함하지 않는다.
@@ -238,9 +239,9 @@ Roslyn syntax tree로 5개 직접 관리 프로젝트의 C# 99개 파일을 검�
 |---|---|
 | Branch | `agent/improve-melsec-handshake` |
 | 변경 파일 | Common 2, File 1, UI 1, Regression 1, 문서 1 |
-| Commit ID | 최종 검증 후 기록 |
-| Push | 최종 검증 후 수행 |
-| PR | 최종 검증 후 생성 |
+| 구현 Commit ID | `0fd0e066294d211409a12c104664f2fbf56348c1` |
+| Push | `agent/improve-melsec-handshake` 원격 Push 성공 |
+| PR | `https://github.com/kjuws10-rgb/A3_LD_Process_SW_IPS/pull/5` 생성, 자체 Diff 검토 완료 |
 | Merge | 모든 검증 통과 후 수행 |
 
 `bin`, `obj`, `.g.cs`, `.g.i.cs`, `Data`, `Log`, `artifacts`는 Commit에서 제외한다. 강제 Push, History 재작성, `reset --hard`, `clean`은 사용하지 않는다.
